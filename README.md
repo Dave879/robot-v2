@@ -2,10 +2,10 @@
 
 ## TODO
 
-1. Test VL52L1X sensor
 1. Test TCS34723 sensor
 
 ## Done
 
-1. Tested MPU6050 (Chosen)
-2. Tested ICM-20948
+1. Tested VL52L1X sensor
+2. Tested MPU6050 (Chosen)
+3. Tested ICM-20948
