@@ -8,3 +8,9 @@ struct GyroData
 } typedef GyroData;
 
 void SignalBuiltinLED(int count, int delayTime);
+
+#define START_TIMER int startTime = millis();
+#define END_TIMER                   \
+	int endTime = millis();              \
+	int deltaTime = endTime - startTime; \
+	Serial.println(deltaTime);
