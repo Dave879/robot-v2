@@ -6,6 +6,6 @@
 
 ## Done
 
-1. Tested VL52L1X sensor
+1. Tested VL52L1X sensors
 2. Tested MPU6050 (Chosen)
 3. Tested ICM-20948
