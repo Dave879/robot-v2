@@ -9,6 +9,8 @@ struct GyroData
 
 void SignalBuiltinLED(int count, int delayTime);
 
+void SetupDebugLEDs();
+
 #define START_TIMER int startTime = millis();
 #define END_TIMER                   \
 	int endTime = millis();              \

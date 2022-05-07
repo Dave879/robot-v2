@@ -28,6 +28,7 @@ private:
 
 public:
 	Gyro();
+	Gyro(int ledPin);
 
 	GyroData GetGyroData();
 	void ResetGyro();

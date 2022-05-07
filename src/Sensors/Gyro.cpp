@@ -3,7 +3,6 @@
 
 Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 {
-	pinMode(LED_BUILTIN, OUTPUT);
 	mpu.initialize();
 	devStatus = mpu.dmpInitialize();
 
@@ -37,6 +36,44 @@ Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 		SignalBuiltinLED(15, 100);
 	}
 }
+
+Gyro::Gyro(int ledPin) : gyro({-1.0f, -1.0f, -1.0f})
+{
+	mpu.initialize();
+	devStatus = mpu.dmpInitialize();
+
+	// supply your own gyro offsets here, scaled for min sensitivity
+	mpu.setXGyroOffset(51);
+	mpu.setYGyroOffset(8);
+	mpu.setZGyroOffset(21);
+	mpu.setXAccelOffset(1150);
+	mpu.setYAccelOffset(-50);
+	mpu.setZAccelOffset(1060);
+	// make sure it worked (returns 0 if so)
+	if (devStatus == 0)
+	{
+		// Calibration Time: generate offsets and calibrate our MPU6050
+		mpu.CalibrateAccel(6);
+		mpu.CalibrateGyro(6);
+		mpu.setDMPEnabled(true);
+		dmpReady = true;
+		packetSize = mpu.dmpGetFIFOPacketSize();
+		SignalBuiltinLED(4, 100);
+	}
+	else
+	{
+		// ERROR!
+		// 1 = initial memory load failed
+		// 2 = DMP configuration updates failed
+		// (if it's going to break, usually the code will be 1)
+		digitalWrite(ledPin, HIGH);
+		Serial.print(F("DMP Initialization failed (code "));
+		Serial.print(devStatus);
+		Serial.println(F(")"));
+		SignalBuiltinLED(15, 100);
+	}
+}
+
 
 GyroData Gyro::GetGyroData()
 {
