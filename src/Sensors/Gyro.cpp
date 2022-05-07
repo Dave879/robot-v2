@@ -1,13 +1,9 @@
 
-#include "Gyro.h"
+#include "Sensors/Gyro.h"
 
-Gyro::Gyro(int baudrate) : gyro({-1.0f, -1.0f, -1.0f})
+Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 {
-	Serial.begin(baudrate);
 	pinMode(LED_BUILTIN, OUTPUT);
-	// join I2C bus (I2Cdev library doesn't do this automatically)
-	Wire.begin();
-	Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
 	mpu.initialize();
 	devStatus = mpu.dmpInitialize();
 

@@ -27,7 +27,7 @@ private:
 	GyroData gyro;
 
 public:
-	Gyro(int baudrate);
+	Gyro();
 
 	GyroData GetGyroData();
 	void ResetGyro();

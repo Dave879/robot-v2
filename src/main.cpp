@@ -8,13 +8,15 @@
 #include "config.h"
 #include "dataname.h"
 #include "util.h"
-#include "Gyro.h"
+#include "Sensors/Gyro.h"
+#include "Sensors/Laser.h"
 
 DynamicJsonDocument doc(1024);
 String res = "";
 
-VL53L1X laser0, laser1;
+VL53L1X laser1;
 
+Laser *l0;
 Gyro *mpu;
 GyroData gyro = {0.0f, 0.0f, 0.0f};
 int laser0_data = 0;
@@ -24,27 +26,21 @@ void setup()
 {
 	// configure LED for output
 	pinMode(LED_BUILTIN, OUTPUT);
-	SignalBuiltinLED(7, 50);
+	Serial.begin(115200);
 	Wire.begin();
 	Wire.setClock(400000);
 	Wire2.begin();
 	Wire2.setClock(400000);
-	Serial.begin(115200);
+	SignalBuiltinLED(7, 50);
 	while (!Serial)
 		SignalBuiltinLED(2, 50);
-	; // wait for Leonardo enumeration, others continue immediately
-	mpu = new Gyro(115200);
+	;
+	mpu = new Gyro();
 
-	laser0.setTimeout(500);
+	l0 = new Laser(&Wire);
 	laser1.setBus(&Wire2);
 	laser1.setTimeout(500);
-	if (!laser0.init())
-	{
-		SignalBuiltinLED(7, 50);
-		Serial.println("Failed to detect and initialize laser0!");
-		while (1)
-			;
-	}
+
 	if (!laser1.init())
 	{
 		SignalBuiltinLED(7, 50);
@@ -58,15 +54,12 @@ void setup()
 	// the minimum timing budget is 20 ms for short distance mode and 33 ms for
 	// medium and long distance modes. See the VL53L1X datasheet for more
 	// information on range and timing limits.
-	laser0.setDistanceMode(VL53L1X::Long);
-	laser0.setMeasurementTimingBudget(60000);
 	laser1.setDistanceMode(VL53L1X::Long);
 	laser1.setMeasurementTimingBudget(60000);
 
 	// Start continuous readings at a rate of one measurement every 50 ms (the
 	// inter-measurement period). This period should be at least as long as the
 	// timing budget.
-	laser0.startContinuous(60);
 	laser1.startContinuous(60);
 }
 
@@ -82,8 +75,7 @@ void loop()
 	Serial.print(gyro.z);
 	Serial.println();
 	*/
-	if (laser0.dataReady())
-		laser0_data = laser0.read(false);
+	laser0_data = l0->GetData();
 	if (laser1.dataReady())
 		laser1_data = laser1.read(false);
 	doc[DATANAME_GYRO_X] = gyro.x;
@@ -96,8 +88,6 @@ void loop()
 	serializeJson(doc, res);
 	Serial.println(res);
 	res = "";
-	if (laser0.timeoutOccurred())
-		SignalBuiltinLED(2, 30);
 	//delay(4);
 #endif
 }
