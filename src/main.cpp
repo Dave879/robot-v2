@@ -27,14 +27,17 @@ void setup()
 {
 	SetupDebugLEDs();
 	Serial.begin(115200);
+	Serial5.begin(57600); // Attiny85 baudrate, could go faster, needs further testing
 	Wire.begin();
 	Wire.setClock(400000);
 	Wire2.begin();
 	Wire2.setClock(400000);
 	SignalBuiltinLED(7, 50);
-	while (!Serial)
-		SignalBuiltinLED(2, 50);
-	;
+	// while (!Serial)
+	//	SignalBuiltinLED(2, 50);
+	//;
+
+	pinMode(33, INPUT);
 
 	rgb_sensor.begin();
 
@@ -101,27 +104,56 @@ void printColorSensor()
 	Serial.println(F("K"));
 }
 
+char PWM_1 = ' ';
+char PWM_2 = ' ';
+char dir = '0';
+String motorString = "";
+
 void loop()
 {
 	gyro = mpu->GetGyroData();
 	laser0_data = l0->GetData();
 	laser1_data = l1->GetData();
+	if (digitalRead(33))
+	{
+		res += PWM_1;
+		res += PWM_2;
+		res += dir;
+		PWM_1 += 10;
+		PWM_2 += 10;
+		res += "\n";
+		Serial5.print(res);
+		res = "";
+		if (dir == '0')
+			dir = '3';
+		else
+			dir = '0';
+		if (PWM_1 >= 127)
+			PWM_1 = ' ';
+		if (PWM_2 >= 127)
+			PWM_2 = ' ';
+		delay(500);
+	}
+
+	/*
 	START_TIMER
 	rgb_sensor.getData();
 	END_TIMER
 
 	printColorSensor();
-
-#if DEBUG == true
-	doc[DATANAME_GYRO_X] = gyro.x;
-	doc[DATANAME_GYRO_Y] = gyro.y;
-	doc[DATANAME_GYRO_Z] = gyro.z;
-	doc[DATANAME_LASER_0] = laser0_data;
-	doc[DATANAME_LASER_1] = laser1_data;
-	doc["dummy_data"] = 0;
-	serializeJson(doc, res);
-	Serial.println(res);
-	res = "";
-	// delay(4);
-#endif
+	*/
+	/*
+	#if DEBUG == true
+		doc[DATANAME_GYRO_X] = gyro.x;
+		doc[DATANAME_GYRO_Y] = gyro.y;
+		doc[DATANAME_GYRO_Z] = gyro.z;
+		doc[DATANAME_LASER_0] = laser0_data;
+		doc[DATANAME_LASER_1] = laser1_data;
+		doc["dummy_data"] = 0;
+		serializeJson(doc, res);
+		Serial.println(res);
+		res = "";
+		// delay(4);
+	#endif
+	*/
 }

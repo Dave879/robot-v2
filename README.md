@@ -2,10 +2,11 @@
 
 ## TODO
 
-1. Test TCS34723 sensor
+1. Speed up TCS34723 readings
 
 ## Done
 
-1. Tested VL52L1X sensors
-2. Tested MPU6050 (Chosen)
-3. Tested ICM-20948
+1. Tested TCS34723 sensor
+2. Tested VL52L1X sensors
+3. Tested MPU6050 (Chosen)
+4. Tested ICM-20948
