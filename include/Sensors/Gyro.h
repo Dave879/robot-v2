@@ -13,7 +13,7 @@ private:
 	MPU6050 mpu;
 
 	// MPU control/status vars
-	bool dmpReady = false;	// set true if DMP init was successful
+	bool data_ready = false;	// set true if DMP init was successful
 	uint8_t devStatus;		// return status after each device operation (0 = success, !0 = error)
 	uint16_t packetSize;		// expected DMP packet size (default is 42 bytes)
 	uint16_t fifoCount;		// count of all bytes currently in FIFO
@@ -28,8 +28,8 @@ private:
 
 public:
 	Gyro();
-	Gyro(int ledPin);
 
+	void SetDataReady(bool is_ready);
 	GyroData GetGyroData();
 	void ResetGyro();
 };

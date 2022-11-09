@@ -1,119 +1,109 @@
 
 #include <Arduino.h>
+
 #include <ArduinoJson.h>
 
 #include <Wire.h>
-#include <VL53L1X.h>
 
 #include "config.h"
 #include "dataname.h"
-#include "util.h"
 #include "Sensors/Gyro.h"
-#include "Sensors/Laser.h"
-#include "Sensors/Color.h"
+#include "data_formatter.h"
 
-DynamicJsonDocument doc(1024);
-String res = "";
-
-tcs34725 rgb_sensor;
-
-Laser *l0, *l1;
+#include "util.h"
 Gyro *mpu;
-GyroData gyro = {0.0f, 0.0f, 0.0f};
-int laser0_data = 0;
-int laser1_data = 0;
+GyroData gyro = {0};
+volatile uint8_t gyro_data_ready = false;
+uint16_t calls_a_second = 0;
+uint64_t millis_after_one_second = 0;
+
+void GyroDataIsReady()
+{
+	gyro_data_ready++;
+}
 
 void setup()
 {
-	SetupDebugLEDs();
-	Serial.begin(115200);
-	Serial5.begin(57600); // Attiny85 baudrate, could go faster, needs further testing
+	if (CrashReport)
+	{
+		delay(5000);
+		Serial.print(CrashReport);
+		delay(5000);
+	}
 	Wire.begin();
 	Wire.setClock(400000);
-	Wire2.begin();
-	Wire2.setClock(400000);
-	SignalBuiltinLED(7, 50);
-	// while (!Serial)
-	//	SignalBuiltinLED(2, 50);
-	//;
 
-	pinMode(33, INPUT);
-
-	rgb_sensor.begin();
-
-#if DEBUG == true
-	mpu = new Gyro(LED_0);
-	l0 = new Laser(&Wire, LED_1);
-	l1 = new Laser(&Wire2, LED_2);
-#else
 	mpu = new Gyro();
-	l0 = new Laser(&Wire);
-	l1 = new Laser(&Wire2);
-#endif
+
+	attachInterrupt(20, GyroDataIsReady, RISING);
+
+	millis_after_one_second = millis() + 1000;
 }
-
-void printColorSensor()
-{
-	Serial.print(F("Gain:"));
-	Serial.print(rgb_sensor.againx);
-	Serial.print(F("x "));
-	Serial.print(F("Time:"));
-	Serial.print(rgb_sensor.atime_ms);
-	Serial.print(F("ms (0x"));
-	Serial.print(rgb_sensor.atime, HEX);
-	Serial.println(F(")"));
-
-	Serial.print(F("Raw R:"));
-	Serial.print(rgb_sensor.r);
-	Serial.print(F(" G:"));
-	Serial.print(rgb_sensor.g);
-	Serial.print(F(" B:"));
-	Serial.print(rgb_sensor.b);
-	Serial.print(F(" C:"));
-	Serial.println(rgb_sensor.c);
-
-	Serial.print(F("IR:"));
-	Serial.print(rgb_sensor.ir);
-	Serial.print(F(" CRATIO:"));
-	Serial.print(rgb_sensor.cratio);
-	Serial.print(F(" Sat:"));
-	Serial.print(rgb_sensor.saturation);
-	Serial.print(F(" Sat75:"));
-	Serial.print(rgb_sensor.saturation75);
-	Serial.print(F(" "));
-	Serial.println(rgb_sensor.isSaturated ? "*SATURATED*" : "");
-
-	Serial.print(F("CPL:"));
-	Serial.print(rgb_sensor.cpl);
-	Serial.print(F(" Max lux:"));
-	Serial.println(rgb_sensor.maxlux);
-
-	Serial.print(F("Compensated R:"));
-	Serial.print(rgb_sensor.r_comp);
-	Serial.print(F(" G:"));
-	Serial.print(rgb_sensor.g_comp);
-	Serial.print(F(" B:"));
-	Serial.print(rgb_sensor.b_comp);
-	Serial.print(F(" C:"));
-	Serial.println(rgb_sensor.c_comp);
-
-	Serial.print(F("Lux:"));
-	Serial.print(rgb_sensor.lux);
-	Serial.print(F(" CT:"));
-	Serial.print(rgb_sensor.ct);
-	Serial.println(F("K"));
-}
-
-char PWM_1 = ' ';
-char PWM_2 = ' ';
-char dir = '0';
-String motorString = "";
 
 void loop()
 {
-	gyro = mpu->GetGyroData();
-	laser0_data = l0->GetData();
-	laser1_data = l1->GetData();
+	if (millis() > millis_after_one_second)
+	{
+		Serial.print("Calls last second: ");
+		Serial.println(calls_a_second);
+		calls_a_second = 0;
+		millis_after_one_second = millis() + 1000;
+	}
+	
+	/*
+	DynamicJsonDocument doc(200);
+	DataFormatter fm;
+	String res = "";
+
+	doc[fm.AddLineGraph("Denis")] = 10;
+	doc[fm.AddLineGraph("Noise")] = 69;
+	doc[fm.AddLineGraph("Noise1")] = 30;
+	doc[fm.AddLineGraph("Noise2")] = 20;
+	serializeJson(doc, res);
+	Serial.println(res);
+	*/
+
+	if (gyro_data_ready > 1)
+	{
+		gyro = mpu->GetGyroData();
+
+
+		Serial.print("gyro.x: \t");
+		Serial.print(gyro.x);
+		Serial.print(" \t");
+		Serial.print("gyro.y: \t");
+		Serial.print(gyro.y);
+		Serial.print(" \t");
+		Serial.print("gyro.z: \t");
+		Serial.println(gyro.z);
+
+		calls_a_second++;
+		gyro_data_ready = 0;
+	}
+
+	//  gyro = mpu->GetGyroData();
+	//  laser0_data = l0->GetData();
+	//  l1->SetROICenter(center[Zone]);
+	//  LaserDataArray.add(l1->GetData());
+	/*
+		if (Zone >= PX_COUNT - 1)
+		{
+			// doc[DATANAME_LASER_1] = LaserDataArray;
+			serializeJson(doc, res);
+			doc.clear();
+			// LaserDataArray = doc.createNestedArray("laser");
+			Serial.println(res);
+			res = "";
+		}
+		Zone++;
+		Zone = Zone % PX_COUNT;
+	*/
+	/*
+	if (digitalRead(33))
+	{
+		l1 = new Laser(&Wire2);
+		delay(1000);
+	}
 	if (digitalRead(33))
 	{
 		res += PWM_1;
@@ -125,6 +115,10 @@ void loop()
 		Serial5.print(res);
 		res = "";
 		if (dir == '0')
+			dir = '1';
+		else if (dir == '1')
+			dir = '2';
+		else if (dir == '2')
 			dir = '3';
 		else
 			dir = '0';
@@ -134,6 +128,7 @@ void loop()
 			PWM_2 = ' ';
 		delay(500);
 	}
+	*/
 
 	/*
 	START_TIMER
@@ -147,13 +142,8 @@ void loop()
 		doc[DATANAME_GYRO_X] = gyro.x;
 		doc[DATANAME_GYRO_Y] = gyro.y;
 		doc[DATANAME_GYRO_Z] = gyro.z;
-		doc[DATANAME_LASER_0] = laser0_data;
-		doc[DATANAME_LASER_1] = laser1_data;
-		doc["dummy_data"] = 0;
-		serializeJson(doc, res);
-		Serial.println(res);
-		res = "";
-		// delay(4);
-	#endif
 	*/
+	// doc[DATANAME_LASER_0] = laser0_data;
+
+	//#endif
 }

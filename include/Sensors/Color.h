@@ -53,7 +53,7 @@ private:
 public:
   tcs34725(void);
 
-  boolean begin(void);
+  boolean begin(TwoWire* wireInterface);
   void getData(void);
 
   boolean isAvailable, isSaturated;
