@@ -9,13 +9,17 @@
 #include "dataname.h"
 #include "Sensors/Gyro.h"
 #include "data_formatter.h"
+#include "motors.h"
 
 #include "util.h"
+#include "pins.h"
+
 Gyro *mpu;
 GyroData gyro = {0};
 volatile uint8_t gyro_data_ready = false;
 uint16_t calls_a_second = 0;
 uint64_t millis_after_one_second = 0;
+motors *ms;
 
 void GyroDataIsReady()
 {
@@ -30,13 +34,17 @@ void setup()
 		Serial.print(CrashReport);
 		delay(5000);
 	}
+
 	Wire.begin();
 	Wire.setClock(400000);
 
 	mpu = new Gyro();
 
-	attachInterrupt(20, GyroDataIsReady, RISING);
-
+	attachInterrupt(R_PIN_GYRO_INT, GyroDataIsReady, RISING);
+	ms = new motors();
+	ms->setPower(30, 30);
+	delay(1000);
+	ms->setPower(0, 0);
 	millis_after_one_second = millis() + 1000;
 }
 
@@ -49,7 +57,7 @@ void loop()
 		calls_a_second = 0;
 		millis_after_one_second = millis() + 1000;
 	}
-	
+
 	/*
 	DynamicJsonDocument doc(200);
 	DataFormatter fm;
@@ -67,7 +75,6 @@ void loop()
 	{
 		gyro = mpu->GetGyroData();
 
-
 		Serial.print("gyro.x: \t");
 		Serial.print(gyro.x);
 		Serial.print(" \t");
@@ -79,6 +86,7 @@ void loop()
 
 		calls_a_second++;
 		gyro_data_ready = 0;
+
 	}
 
 	//  gyro = mpu->GetGyroData();
@@ -145,5 +153,5 @@ void loop()
 	*/
 	// doc[DATANAME_LASER_0] = laser0_data;
 
-	//#endif
+	// #endif
 }

@@ -17,8 +17,8 @@ Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 	if (devStatus == 0)
 	{
 		// Calibration Time: generate offsets and calibrate our MPU6050
-		mpu.CalibrateAccel(6);
-		mpu.CalibrateGyro(6);
+		mpu.CalibrateAccel(10);
+		mpu.CalibrateGyro(10);
 		mpu.setDMPEnabled(true);
 		packetSize = mpu.dmpGetFIFOPacketSize();
 		Serial.println();
