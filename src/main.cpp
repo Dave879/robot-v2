@@ -9,7 +9,7 @@
 #include "dataname.h"
 #include "Sensors/Gyro.h"
 #include "data_formatter.h"
-#include "motors.h"
+#include "Motors.h"
 
 #include "util.h"
 #include "pins.h"
@@ -19,7 +19,7 @@ GyroData gyro = {0};
 volatile uint8_t gyro_data_ready = false;
 uint16_t calls_a_second = 0;
 uint64_t millis_after_one_second = 0;
-motors *ms;
+Motors *ms;
 
 void GyroDataIsReady()
 {
@@ -35,16 +35,22 @@ void setup()
 		delay(5000);
 	}
 
+	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
+	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
+	delay(10);									 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
+	delay(10);									 // Wait for sensors to wake up (especially sensor 0)
+
 	Wire.begin();
 	Wire.setClock(400000);
 
 	mpu = new Gyro();
 
 	attachInterrupt(R_PIN_GYRO_INT, GyroDataIsReady, RISING);
-	ms = new motors();
-	ms->setPower(30, 30);
+	ms = new Motors();
+	ms->SetPower(-30, -30);
 	delay(1000);
-	ms->setPower(0, 0);
+	ms->SetPower(0, 0);
 	millis_after_one_second = millis() + 1000;
 }
 

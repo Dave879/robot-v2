@@ -11,15 +11,10 @@ void SignalBuiltinLED(int count, int delayTime)
 	}
 }
 
-void SetupDebugLEDs()
-{
-	pinMode(LED_0, OUTPUT);
-	pinMode(LED_1, OUTPUT);
-	pinMode(LED_2, OUTPUT);
-	pinMode(LED_3, OUTPUT);
-	pinMode(LED_BUILTIN, OUTPUT);
-	digitalWrite(LED_0, LOW);
-	digitalWrite(LED_1, LOW);
-	digitalWrite(LED_2, LOW);
-	digitalWrite(LED_3, LOW);
+int clamp(int8_t value, int8_t min, int8_t max){
+	if (value > max)
+		return max;
+	else if (value < min)
+		return min;
+	return value;
 }

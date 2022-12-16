@@ -6,19 +6,19 @@ Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 	mpu.initialize();
 	devStatus = mpu.dmpInitialize();
 
-	// supply your own gyro offsets here, scaled for min sensitivity
-	mpu.setXGyroOffset(51);
-	mpu.setYGyroOffset(8);
-	mpu.setZGyroOffset(21);
-	mpu.setXAccelOffset(1150);
-	mpu.setYAccelOffset(-50);
-	mpu.setZAccelOffset(1060);
-	// make sure it worked (returns 0 if so)
+	// Changed by Dave on 16/12/2022 - 17:42
+	mpu.setXGyroOffset(39);
+	mpu.setYGyroOffset(98);
+	mpu.setZGyroOffset(-397);
+	mpu.setXAccelOffset(-3617);
+	mpu.setYAccelOffset(1799);
+	mpu.setZAccelOffset(1362);
+
 	if (devStatus == 0)
 	{
 		// Calibration Time: generate offsets and calibrate our MPU6050
-		mpu.CalibrateAccel(10);
-		mpu.CalibrateGyro(10);
+		//mpu.CalibrateAccel(10);
+		//mpu.CalibrateGyro(10);
 		mpu.setDMPEnabled(true);
 		packetSize = mpu.dmpGetFIFOPacketSize();
 		Serial.println();
@@ -30,9 +30,9 @@ Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 		// 1 = initial memory load failed
 		// 2 = DMP configuration updates failed
 		// (if it's going to break, usually the code will be 1)
-		Serial.print(F("DMP Initialization failed (code "));
+		Serial.print("DMP Initialization failed (code ");
 		Serial.print(devStatus);
-		Serial.println(F(")"));
+		Serial.println(")");
 	}
 }
 
