@@ -1,4 +1,8 @@
-#pragma once
+
+#ifndef __PINS_H__
+#define __PINS_H__
+
+#include <stdint.h>
 
 #define R_PIN_MOTOR_L_PWM 23
 #define R_PIN_MOTOR_R_PWM 22
@@ -10,12 +14,28 @@
 #define R_PIN_BUTTON 27
 #define R_PIN_GYRO_INT 15
 
-#define R_PIN_VL53L5CX_F_INT 30
-#define R_PIN_VL53L5CX_B_INT 1
-#define R_PIN_VL53L5CX_L_INT 12
-#define R_PIN_VL53L5CX_R_INT 28
+const uint8_t VL53L5CX_LPn_pin[4] = {
+	31,	// Forward
+	2,		// Backward
+	11,	// Left
+	29		// Right
+};
 
-#define R_PIN_VL53L5CX_F_LPN 31
-#define R_PIN_VL53L5CX_B_LPN 2
-#define R_PIN_VL53L5CX_L_LPN 11
-#define R_PIN_VL53L5CX_R_LPN 29
+const uint8_t VL53L5CX_int_pin[4] = {
+	30,	// Forward
+	1,		// Backward
+	12,	// Left
+	28		// Right
+};
+
+
+// TODO: explain why close i2c adresses are bad, example: 0x52, 0x53....
+// https://community.st.com/s/feed/0D53W00001GQQVaSAP
+const uint8_t VL53L5CX_addr[4]{
+	0x50U,
+	0x60U,
+	0x70U,
+	0x80U,
+};
+
+#endif // __PINS_H__

@@ -15,4 +15,6 @@ void SignalBuiltinLED(int count, int delayTime);
 	int deltaTime = endTime - startTime; \
 	Serial.println(deltaTime);
 
+#define LOG(x) Serial.println(x)
+
 int clamp(int8_t value, int8_t min, int8_t max);

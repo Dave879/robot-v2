@@ -10,6 +10,7 @@
 #include "Sensors/Gyro.h"
 #include "data_formatter.h"
 #include "Motors.h"
+#include "Sensors/VL53L5CX_manager.h"
 
 #include "util.h"
 #include "pins.h"
@@ -20,6 +21,27 @@ volatile uint8_t gyro_data_ready = false;
 uint16_t calls_a_second = 0;
 uint64_t millis_after_one_second = 0;
 Motors *ms;
+VL53L5CX_manager *lasers;
+
+void VL53L5CX_int_0()
+{
+	lasers->data_ready[0] = true;
+}
+
+void VL53L5CX_int_1()
+{
+	lasers->data_ready[1] = true;
+}
+
+void VL53L5CX_int_2()
+{
+	lasers->data_ready[2] = true;
+}
+
+void VL53L5CX_int_3()
+{
+	lasers->data_ready[3] = true;
+}
 
 void GyroDataIsReady()
 {
@@ -28,29 +50,63 @@ void GyroDataIsReady()
 
 void setup()
 {
+	LOG("Robot initialization starting...");
+	delay(10000);
+	LOG("Robot initialization starting...");
+
 	if (CrashReport)
 	{
 		delay(5000);
 		Serial.print(CrashReport);
 		delay(5000);
+	} else {
+		LOG("Good news! No crash report found!");
 	}
 
+	LOG("Disabling sensors power supply...");
 	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-	delay(10);									 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
-	delay(10);									 // Wait for sensors to wake up (especially sensor 0)
+	delay(10);													// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+	delay(10);													// Wait for sensors to wake up (especially sensor 0)
+	LOG("...done!");
 
-	Wire.begin();
+	Wire.begin(); // Gyro
 	Wire.setClock(400000);
 
+	LOG("Gyro setup started");
 	mpu = new Gyro();
+	LOG("Finished gyro setup!");
 
 	attachInterrupt(R_PIN_GYRO_INT, GyroDataIsReady, RISING);
+
+	LOG("Motor setup started");
 	ms = new Motors();
-	ms->SetPower(-30, -30);
+	LOG("Finished motor setup!");
+	ms->SetPower(30, 30);
 	delay(1000);
 	ms->SetPower(0, 0);
+
+	Wire2.begin(); // Lasers
+	Wire2.setClock(1000000);
+
+	LOG("Laser sensors setup started");
+	lasers = new VL53L5CX_manager(Wire2);
+	LOG("Laser sensors setup finished");
+
+
+	/*
+		Interrupts *MUST* be attached after the VL53L5CX_manager is instantiated,
+		otherwise if the data_ready array isn't initialized and an interrupt is
+		fired, the program will crash.
+	*/
+	attachInterrupt(VL53L5CX_int_pin[0], VL53L5CX_int_0, FALLING); // sensor_0
+	attachInterrupt(VL53L5CX_int_pin[1], VL53L5CX_int_1, FALLING); // sensor_1
+	attachInterrupt(VL53L5CX_int_pin[2], VL53L5CX_int_2, FALLING); // sensor_2
+	attachInterrupt(VL53L5CX_int_pin[3], VL53L5CX_int_3, FALLING); // sensor_3
+
+	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous); // 4*4, 60Hz
+
 	millis_after_one_second = millis() + 1000;
 }
 
@@ -81,6 +137,34 @@ void loop()
 	{
 		gyro = mpu->GetGyroData();
 
+
+
+		calls_a_second++;
+		gyro_data_ready = 0;
+	}
+
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		if (lasers->data_ready[i])
+		{
+			lasers->sensors[i]->UpdateData();
+
+			Serial.print("Sensor number ");
+			Serial.println(i);
+
+			for (uint8_t j = 0; j < lasers->resolution; j++)
+			{
+				Serial.print(lasers->sensors[i]->GetData()->distance_mm[j]);
+				Serial.print(", \t");
+				if (j == 3 || j == 7 || j == 11 || j == 15)
+				{
+					Serial.println();
+				}
+			}
+			Serial.println();
+
+
+
 		Serial.print("gyro.x: \t");
 		Serial.print(gyro.x);
 		Serial.print(" \t");
@@ -90,74 +174,9 @@ void loop()
 		Serial.print("gyro.z: \t");
 		Serial.println(gyro.z);
 
-		calls_a_second++;
-		gyro_data_ready = 0;
 
-	}
 
-	//  gyro = mpu->GetGyroData();
-	//  laser0_data = l0->GetData();
-	//  l1->SetROICenter(center[Zone]);
-	//  LaserDataArray.add(l1->GetData());
-	/*
-		if (Zone >= PX_COUNT - 1)
-		{
-			// doc[DATANAME_LASER_1] = LaserDataArray;
-			serializeJson(doc, res);
-			doc.clear();
-			// LaserDataArray = doc.createNestedArray("laser");
-			Serial.println(res);
-			res = "";
+			lasers->data_ready[i] = false;
 		}
-		Zone++;
-		Zone = Zone % PX_COUNT;
-	*/
-	/*
-	if (digitalRead(33))
-	{
-		l1 = new Laser(&Wire2);
-		delay(1000);
 	}
-	if (digitalRead(33))
-	{
-		res += PWM_1;
-		res += PWM_2;
-		res += dir;
-		PWM_1 += 10;
-		PWM_2 += 10;
-		res += "\n";
-		Serial5.print(res);
-		res = "";
-		if (dir == '0')
-			dir = '1';
-		else if (dir == '1')
-			dir = '2';
-		else if (dir == '2')
-			dir = '3';
-		else
-			dir = '0';
-		if (PWM_1 >= 127)
-			PWM_1 = ' ';
-		if (PWM_2 >= 127)
-			PWM_2 = ' ';
-		delay(500);
-	}
-	*/
-
-	/*
-	START_TIMER
-	rgb_sensor.getData();
-	END_TIMER
-
-	printColorSensor();
-	*/
-	/*
-	#if DEBUG == true
-		doc[DATANAME_GYRO_X] = gyro.x;
-		doc[DATANAME_GYRO_Y] = gyro.y;
-		doc[DATANAME_GYRO_Z] = gyro.z;
-	*/
-	// doc[DATANAME_LASER_0] = laser0_data;
-
-	// #endif
 }
