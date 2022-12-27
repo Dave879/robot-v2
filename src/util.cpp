@@ -1,5 +1,4 @@
 
-#include "config.h"
 #include "util.h"
 
 void SignalBuiltinLED(int count, int delayTime)

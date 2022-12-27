@@ -7,6 +7,11 @@
 
 #include "util.h"
 
+struct GyroData
+{
+	double x, y, z;
+} typedef GyroData;
+
 class Gyro
 {
 private:
