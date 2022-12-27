@@ -13,10 +13,6 @@ volatile bool Robot::mpu_data_ready = false;
 volatile bool Robot::lasers_data_ready[4] = {0};
 Robot *rb;
 
-volatile uint8_t gyro_data_ready = false;
-uint16_t calls_a_second = 0;
-uint64_t millis_after_one_second = 0;
-
 void setup()
 {
 	LOG("Robot initialization starting... 1");

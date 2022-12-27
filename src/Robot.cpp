@@ -86,6 +86,7 @@ uint8_t Robot::TrySensorDataUpdate()
 	if (mpu_data_ready)
 	{
 		mpu_data = mpu->GetGyroData();
+		mpu_data_ready = false;
 		status++;
 	}
 
@@ -94,7 +95,7 @@ uint8_t Robot::TrySensorDataUpdate()
 		if (lasers_data_ready[i])
 		{
 			lasers->sensors[i]->UpdateData();
-			lasers->data_ready[i] = false;
+			lasers_data_ready[i] = false;
 			status |= 0b10000 << i;
 		}
 	}
