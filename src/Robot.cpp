@@ -41,6 +41,66 @@ Robot::Robot()
 	attachInterrupt(VL53L5CX_int_pin[2], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[3], R_VL53L5CX_int_3, FALLING); // sensor_3
 	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);	  // 4*4, 60Hz
+
+	bool ignore_right = false;
+
+	ms->SetPower(40,40);
+	/*
+	while (1)
+	{
+		if (lasers_data_ready[3])
+		{
+			lasers->sensors[3]->UpdateData();
+			lasers_data_ready[3] = false;
+		}
+		if (lasers_data_ready[0])
+		{
+			lasers->sensors[0]->UpdateData();
+			lasers_data_ready[0] = false;
+		}
+		if (lasers_data_ready[2])
+		{
+			lasers->sensors[2]->UpdateData();
+			lasers_data_ready[2] = false;
+		}
+
+		if(lasers->sensors[0]->GetData()->distance_mm[2] < 50) {
+			ms->SetPower(0,0);
+			if(lasers->sensors[2]->GetData()->distance_mm[2] > 200) {
+				ms->SetPower(-60, 60);
+				delay(1200);
+				ms->SetPower(50,50);
+			} else {
+				ms->SetPower(-60, 60);
+				delay(2400);
+				ms->SetPower(50,50);
+			}
+		}
+
+		if(lasers->sensors[3]->GetData()->distance_mm[2] > 200 && !ignore_right){
+			delay(600);
+			ignore_right = true;
+			ms->SetPower(60, -60);
+			delay(1200);
+			ms->SetPower(50,50);
+		} else if(lasers->sensors[3]->GetData()->distance_mm[2] < 150 && ignore_right){
+			ignore_right = false;
+		}
+	}
+	*/
+
+	// Rampa:
+prima:
+	ms->SetPower(100,100);
+	delay(5000);
+	ms->SetPower(0,0);
+	
+	while (1)
+	{
+		if(!digitalRead(R_PIN_BUTTON))
+		goto prima;
+	}
+	
 }
 
 void Robot::R_MPU6050_int()

@@ -53,6 +53,10 @@ void Motors::SetPowerRight(int8_t power)
 	analogWrite(R_PIN_MOTOR_R_PWM, abs(map(power, -100, 100, -255, 255)));
 }
 
+void Motors::StopMotors(){
+	SetPower(0, 0);
+}
+
 Motors::~Motors()
 {
 }
