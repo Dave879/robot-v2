@@ -35,8 +35,10 @@ void setup()
 
 void loop()
 {
+
 	rb->TrySensorDataUpdate();
-	rb->PrintSensorData();
+	// rb->PrintSensorData();
+	rb->Run();
 	/*
 	DynamicJsonDocument doc(200);
 	DataFormatter fm;

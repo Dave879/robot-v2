@@ -17,6 +17,9 @@ private:
 	Gyro *mpu;
 	GyroData mpu_data = {0};
 	static volatile bool mpu_data_ready;
+	double desired_angle;
+	bool ignore_right = false;
+	int16_t back_distance_before;
 
 	Motors *ms;
 
@@ -32,6 +35,8 @@ private:
 public:
 	Robot();
 	uint8_t TrySensorDataUpdate();
+	void UpdateSensorNumBlocking(uint8_t num);
 	void PrintSensorData();
+	void Run();
 	~Robot();
 };
