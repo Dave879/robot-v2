@@ -69,3 +69,40 @@ while(desired_angle * mpu_data > 0 and mpu_data > desired_angle) {
     ms->SetPower(+K, -k);
 }
 ```
+
+
+# 90° destra, 180° sinistra
+
+``` cpp
+# Da mettere come prima cosa nel Run()
+bool fermo = true;
+bool test = false;
+while (test) {
+    if (fermo) {
+        ms->SetPower(0,0);
+    } else {
+        desired_angle = mpu_data.x + 90;
+        if (desired_angle >= 180)
+        {
+            desired_angle -= 360;
+        }
+        while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+        {
+            UpdateGyroBlocking();
+            ms->SetPower(100, -100);
+        }
+        ms->SetPower(0,0);
+        desired_angle = mpu_data.x - 180;
+        if (desired_angle <= -180)
+        {
+            desired_angle += 360;
+        }
+        while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
+        {
+            UpdateGyroBlocking();
+            ms->SetPower(-100, 100);
+        }
+        ms->SetPower(0, 0);
+    }
+}
+```

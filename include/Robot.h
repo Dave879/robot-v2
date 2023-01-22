@@ -36,6 +36,7 @@ public:
 	Robot();
 	uint8_t TrySensorDataUpdate();
 	void UpdateSensorNumBlocking(uint8_t num);
+	void UpdateGyroBlocking();
 	void PrintSensorData();
 	void Run();
 	~Robot();
