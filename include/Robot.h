@@ -20,6 +20,7 @@ private:
 	double desired_angle;
 	bool ignore_right = false;
 	int16_t back_distance_before;
+	bool stop_the_robot = false;
 
 	Motors *ms;
 
@@ -31,6 +32,8 @@ private:
 	static void R_VL53L5CX_int_1();
 	static void R_VL53L5CX_int_2();
 	static void R_VL53L5CX_int_3();
+
+	bool StopRobot();
 
 public:
 	Robot();

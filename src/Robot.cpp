@@ -43,104 +43,152 @@ Robot::Robot()
 	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);	 // 4*4, 60Hz
 	UpdateSensorNumBlocking(1);
 	back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+	pinMode(R_PIN_BUTTON, INPUT);
+
+	pinMode(LED_BUILTIN, OUTPUT);
+	digitalWrite(LED_BUILTIN, HIGH);
+	delay(100);
+	digitalWrite(LED_BUILTIN, LOW);
+
 }
 
 void Robot::Run()
 {
-	bool fermo = true;
-	while (fermo) {
-		UpdateSensorNumBlocking(SENSOR_BW);
-		Serial.println(lasers->sensors[SENSOR_BW]->GetData()->distance_mm[2]);
-	}
-	Serial.print("Destra:");
-	Serial.println(lasers->sensors[3]->GetData()->distance_mm[2]);
-	Serial.print("Gyro: ");
-	Serial.println(mpu_data.x);
-	if (lasers->sensors[3]->GetData()->distance_mm[2] >= 250 and not ignore_right)
-	{
-		Serial.println("Varco a destra------------------------------------------");
-		while (!(lasers->sensors[1]->GetData()->distance_mm[2] > back_distance_before + 300))
+	if (!StopRobot()) {
+		bool fermo = false;
+		bool test = true;
+		if (test) {
+			if (fermo) {
+				ms->SetPower(0,0);
+			} else {
+				desired_angle = mpu_data.x + 45;
+				if (desired_angle >= 180)
+				{
+					desired_angle -= 360;
+				}
+				while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+				{
+					UpdateGyroBlocking();
+					ms->SetPower(60, 0);
+					if (StopRobot()) {
+						break;
+					}
+				}
+				ms->SetPower(0,0);
+				desired_angle = mpu_data.x + 45;
+				if (desired_angle <= -180)
+				{
+					desired_angle += 360;
+				}
+				while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+				{
+					UpdateGyroBlocking();
+					ms->SetPower(0, -60);
+					if (StopRobot()) {
+						break;
+					}
+				}
+				ms->SetPower(0, 0);
+			}
+		}
+		/*
+		bool fermo = true;
+		while (fermo) {
+			UpdateSensorNumBlocking(SENSOR_BW);
+			Serial.println(lasers->sensors[SENSOR_BW]->GetData()->distance_mm[2]);
+		}
+		
+		Serial.print("Destra:");
+		Serial.println(lasers->sensors[3]->GetData()->distance_mm[2]);
+		Serial.print("Gyro: ");
+		Serial.println(mpu_data.x);
+		if (lasers->sensors[3]->GetData()->distance_mm[2] >= 250 and not ignore_right)
 		{
+			Serial.println("Varco a destra------------------------------------------");
+			while (!(lasers->sensors[1]->GetData()->distance_mm[2] > back_distance_before + 300))
+			{
+				UpdateSensorNumBlocking(1);
+				Serial.print("Adesso: ");
+				Serial.println(lasers->sensors[1]->GetData()->distance_mm[2]);
+				Serial.print("Prima: ");
+				Serial.println(back_distance_before);
+				ms->SetPower(43, 43);
+			}
+			ms->SetPower(0, 0);
+			ignore_right = true;
+			desired_angle = mpu_data.x + 90;
+			if (desired_angle >= 180)
+			{
+				desired_angle -= 360;
+			}
+			while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+			{
+				UpdateGyroBlocking();
+				Serial.print("Gyro: ");
+				Serial.println(mpu_data.x);
+				Serial.print("Gyro desiderato: ");
+				Serial.println(desired_angle);
+				ms->SetPower(43, -43);
+			}
+			ms->SetPower(0, 0);
 			UpdateSensorNumBlocking(1);
-			Serial.print("Adesso: ");
-			Serial.println(lasers->sensors[1]->GetData()->distance_mm[2]);
-			Serial.print("Prima: ");
-			Serial.println(back_distance_before);
-			ms->SetPower(43, 43);
-		}
-		ms->SetPower(0, 0);
-		ignore_right = true;
-		desired_angle = mpu_data.x + 90;
-		if (desired_angle >= 180)
-		{
-			desired_angle -= 360;
-		}
-		while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
-		{
-			UpdateGyroBlocking();
-			Serial.print("Gyro: ");
-			Serial.println(mpu_data.x);
-			Serial.print("Gyro desiderato: ");
-			Serial.println(desired_angle);
-			ms->SetPower(43, -43);
-		}
-		ms->SetPower(0, 0);
-		UpdateSensorNumBlocking(1);
-		back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
-	}
-	else
-	{
-		if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[2] < 150 and ignore_right){
-			ignore_right = false;
-		}
-		if (lasers->sensors[1]->GetData()->distance_mm[2] >= back_distance_before + 300)
-		{
 			back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
 		}
-		if (lasers->sensors[0]->GetData()->distance_mm[2] < 80)
+		else
 		{
-			Serial.println("Muro frontale");
-			if (lasers->sensors[2]->GetData()->distance_mm[2] >= 200)
+			if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[2] < 150 and ignore_right){
+				ignore_right = false;
+			}
+			if (lasers->sensors[1]->GetData()->distance_mm[2] >= back_distance_before + 300)
 			{
-				desired_angle = mpu_data.x - 90;
-				if (desired_angle <= -180)
-				{
-					desired_angle += 360;
-				}
-				while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
-				{
-					UpdateGyroBlocking();
-					ms->SetPower(-43, 43);
-				}
-				ms->SetPower(0, 0);
-				UpdateSensorNumBlocking(1);
 				back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
 			}
-			else
+			if (lasers->sensors[0]->GetData()->distance_mm[2] < 80)
 			{
-				desired_angle = mpu_data.x - 180;
-				if (desired_angle <= -180)
+				Serial.println("Muro frontale");
+				if (lasers->sensors[2]->GetData()->distance_mm[2] >= 200)
 				{
-					desired_angle += 360;
+					desired_angle = mpu_data.x - 90;
+					if (desired_angle <= -180)
+					{
+						desired_angle += 360;
+					}
+					while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
+					{
+						UpdateGyroBlocking();
+						ms->SetPower(-43, 43);
+					}
+					ms->SetPower(0, 0);
+					UpdateSensorNumBlocking(1);
+					back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
 				}
-				while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
+				else
 				{
-					UpdateGyroBlocking();
-					ms->SetPower(-43, 43);
+					desired_angle = mpu_data.x - 180;
+					if (desired_angle <= -180)
+					{
+						desired_angle += 360;
+					}
+					while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
+					{
+						UpdateGyroBlocking();
+						ms->SetPower(-43, 43);
+					}
+					ms->SetPower(0, 0);
+					UpdateSensorNumBlocking(1);
+					back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
 				}
-				ms->SetPower(0, 0);
-				UpdateSensorNumBlocking(1);
-				back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+			}
+			UpdateGyroBlocking();
+			if (mpu_data.x < desired_angle) {
+				ms->SetPower(43 + 20, 43);
+			} else if (mpu_data.x > desired_angle){
+				ms->SetPower(43, 43 + 20);
+			} else{
+				ms->SetPower(43, 43);
 			}
 		}
-		UpdateGyroBlocking();
-		if (mpu_data.x < desired_angle) {
-			ms->SetPower(43 + 20, 43);
-		} else if (mpu_data.x > desired_angle){
-			ms->SetPower(43, 43 + 20);
-		} else{
-			ms->SetPower(43, 43);
-		}
+		*/
 	}
 }
 
@@ -169,6 +217,16 @@ void Robot::R_VL53L5CX_int_3()
 	lasers_data_ready[3] = true;
 }
 
+bool Robot::StopRobot()
+{
+	stop_the_robot = true;
+	if (digitalRead(R_PIN_BUTTON)) {
+		stop_the_robot = false;
+	}
+	Serial.println(stop_the_robot);
+	return stop_the_robot;
+}
+
 uint8_t Robot::TrySensorDataUpdate()
 {
 	/*
@@ -184,7 +242,7 @@ uint8_t Robot::TrySensorDataUpdate()
 		If every sensor was read successfully status = 0b11110001 = 0xF1 = 241
 	*/
 	uint8_t status = 0;
-	if (mpu_data_ready)
+	//if (mpu_data_ready)
 	{
 		mpu_data = mpu->GetGyroData();
 		mpu_data_ready = false;
