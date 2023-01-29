@@ -106,3 +106,66 @@ while (test) {
     }
 }
 ```
+
+``` cpp
+if (!StopRobot()) {
+    bool fermo = false;
+    bool test = true;
+    if (test) {
+        if (fermo) {
+            ms->SetPower(0,0);
+        } else {
+            desired_angle = mpu_data.x + 45;
+            if (desired_angle >= 180)
+            {
+                desired_angle -= 360;
+            }
+            while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+            {
+                UpdateGyroBlocking();
+                ms->SetPower(60, 0);
+                if (StopRobot()) {
+                    break;
+                }
+            }
+            ms->SetPower(0,0);
+            desired_angle = mpu_data.x + 45;
+            if (desired_angle <= -180)
+            {
+                desired_angle += 360;
+            }
+            while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+            {
+                UpdateGyroBlocking();
+                ms->SetPower(0, -60);
+                if (StopRobot()) {
+                    break;
+                }
+            }
+            ms->SetPower(0, 0);
+        }
+    }
+}
+```
+
+### Turn right
+
+``` cpp
+desired_angle = mpu_data.x + 90;
+if (desired_angle >= 180)
+{
+    desired_angle -= 360;
+}
+while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+{
+    UpdateGyroBlocking();
+    Serial.print("Gyro: ");
+    Serial.println(mpu_data.x);
+    Serial.print("Gyro desiderato: ");
+    Serial.println(desired_angle);
+    ms->SetPower(43, -43);
+}
+ms->SetPower(0, 0);
+UpdateSensorNumBlocking(1);
+back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+```

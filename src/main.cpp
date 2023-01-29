@@ -18,7 +18,7 @@ void setup()
 	LOG("Robot initialization starting... 1");
 	LOG("Robot initialization starting... 2");
 	LOG("Robot initialization starting... 3");
-	delay(2000);
+	delay(3000);
 	LOG("Robot initialization starting... 4");
 
 	if (CrashReport)
@@ -37,8 +37,8 @@ void loop()
 {
 
 	rb->TrySensorDataUpdate();
-	// rb->PrintSensorData();
-	rb->Run();
+	rb->PrintSensorData();
+	// rb->Run();
 	/*
 	DynamicJsonDocument doc(200);
 	DataFormatter fm;

@@ -42,7 +42,7 @@ Robot::Robot()
 	attachInterrupt(VL53L5CX_int_pin[3], R_VL53L5CX_int_3, FALLING); // sensor_3
 	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);	 // 4*4, 60Hz
 	UpdateSensorNumBlocking(1);
-	back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+	back_distance_before = lasers->sensors[1]->GetData()->distance_mm[6];
 	pinMode(R_PIN_BUTTON, INPUT);
 
 	pinMode(LED_BUILTIN, OUTPUT);
@@ -54,141 +54,83 @@ Robot::Robot()
 
 void Robot::Run()
 {
-	if (!StopRobot()) {
-		bool fermo = false;
-		bool test = true;
-		if (test) {
-			if (fermo) {
-				ms->SetPower(0,0);
-			} else {
-				desired_angle = mpu_data.x + 45;
-				if (desired_angle >= 180)
+	if (StopRobot()) {
+		// Stampo valori sensori
+		// PrintSensorData();
+		// Controllo la presenza di un varco a destra
+		if (lasers->sensors[3]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_RIGHT_MM and not ignore_right)
+		{
+			Serial.println("Varco a destra!!!");
+			// Varco trovato!
+			ms->SetPower(0, 0);
+			// Non controllo la destra fino al prossimo muro destro
+			/*
+			int16_t back_distance_to_reach = back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM;
+			if (!(lasers->sensors[1]->GetData()->distance_mm[6] > back_distance_to_reach)) {
+				// Proseguo dritto fino a quando non sono arrivato a 30cm dalla tile precendete
+				// ovvero, fino a quando non sono al centro della tile attuale
+				ms->SetPower(SPEED, SPEED);
+				while (!(lasers->sensors[1]->GetData()->distance_mm[6] > back_distance_to_reach))
 				{
-					desired_angle -= 360;
-				}
-				while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
-				{
-					UpdateGyroBlocking();
-					ms->SetPower(60, 0);
-					if (StopRobot()) {
-						break;
-					}
-				}
-				ms->SetPower(0,0);
-				desired_angle = mpu_data.x + 45;
-				if (desired_angle <= -180)
-				{
-					desired_angle += 360;
-				}
-				while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
-				{
-					UpdateGyroBlocking();
-					ms->SetPower(0, -60);
-					if (StopRobot()) {
-						break;
-					}
+					Serial.print("Dio besta!");
+					UpdateSensorNumBlocking(1);
 				}
 				ms->SetPower(0, 0);
 			}
-		}
-		/*
-		bool fermo = true;
-		while (fermo) {
-			UpdateSensorNumBlocking(SENSOR_BW);
-			Serial.println(lasers->sensors[SENSOR_BW]->GetData()->distance_mm[2]);
-		}
-		
-		Serial.print("Destra:");
-		Serial.println(lasers->sensors[3]->GetData()->distance_mm[2]);
-		Serial.print("Gyro: ");
-		Serial.println(mpu_data.x);
-		if (lasers->sensors[3]->GetData()->distance_mm[2] >= 250 and not ignore_right)
-		{
-			Serial.println("Varco a destra------------------------------------------");
-			while (!(lasers->sensors[1]->GetData()->distance_mm[2] > back_distance_before + 300))
-			{
-				UpdateSensorNumBlocking(1);
-				Serial.print("Adesso: ");
-				Serial.println(lasers->sensors[1]->GetData()->distance_mm[2]);
-				Serial.print("Prima: ");
-				Serial.println(back_distance_before);
-				ms->SetPower(43, 43);
-			}
-			ms->SetPower(0, 0);
+			*/
+			// Giro a destra (90°)
+			Turn(90);
 			ignore_right = true;
-			desired_angle = mpu_data.x + 90;
-			if (desired_angle >= 180)
-			{
-				desired_angle -= 360;
-			}
-			while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
-			{
-				UpdateGyroBlocking();
-				Serial.print("Gyro: ");
-				Serial.println(mpu_data.x);
-				Serial.print("Gyro desiderato: ");
-				Serial.println(desired_angle);
-				ms->SetPower(43, -43);
-			}
-			ms->SetPower(0, 0);
-			UpdateSensorNumBlocking(1);
-			back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
 		}
 		else
 		{
-			if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[2] < 150 and ignore_right){
+			// Se è presente un muro laterale e sto ignorando la destra, smetto di ingorarla
+			if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[6] < MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM and ignore_right){
 				ignore_right = false;
 			}
-			if (lasers->sensors[1]->GetData()->distance_mm[2] >= back_distance_before + 300)
+			/*
+			// Distanza dal muro
+			if (lasers->sensors[1]->GetData()->distance_mm[6] >= back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM)
 			{
-				back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+				// Aggiorno la distanza dal muro
+				back_distance_before = lasers->sensors[1]->GetData()->distance_mm[6];
 			}
-			if (lasers->sensors[0]->GetData()->distance_mm[2] < 80)
+			*/
+			// Controllo la distaza frontale, e se snon bloccato frontalmente
+			if (lasers->sensors[0]->GetData()->distance_mm[6] < MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
-				Serial.println("Muro frontale");
-				if (lasers->sensors[2]->GetData()->distance_mm[2] >= 200)
+				Serial.println("Muro frontale!!!");
+				// Controllo la sinistra, se libera giro
+				if (lasers->sensors[2]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
-					desired_angle = mpu_data.x - 90;
-					if (desired_angle <= -180)
-					{
-						desired_angle += 360;
-					}
-					while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
-					{
-						UpdateGyroBlocking();
-						ms->SetPower(-43, 43);
-					}
-					ms->SetPower(0, 0);
-					UpdateSensorNumBlocking(1);
-					back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+					// Giro a sinstra
+					Serial.println("Sinistra libera!!!");
+					Turn(-90);
 				}
-				else
+				else // Sinistra bloccata, giro di 180 gradi
 				{
-					desired_angle = mpu_data.x - 180;
-					if (desired_angle <= -180)
-					{
-						desired_angle += 360;
-					}
-					while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
-					{
-						UpdateGyroBlocking();
-						ms->SetPower(-43, 43);
-					}
-					ms->SetPower(0, 0);
-					UpdateSensorNumBlocking(1);
-					back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
+					Serial.println("Tutto bloccato!!!");
+					Turn(180);
+					ms->SetPower(-50, -50);
+					delay(100);
 				}
 			}
-			UpdateGyroBlocking();
-			if (mpu_data.x < desired_angle) {
-				ms->SetPower(43 + 20, 43);
-			} else if (mpu_data.x > desired_angle){
-				ms->SetPower(43, 43 + 20);
-			} else{
-				ms->SetPower(43, 43);
+			
+			// Prosegue "dritto"
+			UpdateGyroBlocking(); // Prendo valori aggiornati del gyro
+			if (mpu_data.x < desired_angle) { // Se tende a sinistra, più potenza a sinistra
+				ms->SetPower(SPEED + 20, SPEED);
+			} else if (mpu_data.x > desired_angle){ // Se tende a destra, più potenza a destra
+				ms->SetPower(SPEED, SPEED + 20);
+			} else{ // Se è dritto, infatibile, prosegue dritto
+				ms->SetPower(SPEED, SPEED);
 			}
+			ms->SetPower(SPEED, SPEED);
 		}
-		*/
+	} else
+	{
+		Serial.print("Nero");
+		ms->StopMotors();
 	}
 }
 
@@ -217,14 +159,66 @@ void Robot::R_VL53L5CX_int_3()
 	lasers_data_ready[3] = true;
 }
 
-bool Robot::StopRobot()
+bool Robot::StopRobot() // TODO: Fix this shit
 {
-	stop_the_robot = true;
+	stop_the_robot = false;
 	if (digitalRead(R_PIN_BUTTON)) {
-		stop_the_robot = false;
+		stop_the_robot = true;
 	}
-	Serial.println(stop_the_robot);
 	return stop_the_robot;
+}
+
+void Robot::Turn(int degree) {
+	Serial.println("Metodo Turn: ");
+	// Calcolo il grado da raggiungere
+	UpdateGyroBlocking();
+	desired_angle = mpu_data.x + degree;
+	// Controllo se devo girare a destra o sinistra
+	if (degree > 0) // Giro a destra 
+	{
+		Serial.println("Giro destra ->");
+		Serial.print("Angolo da raggiungere: ");
+		Serial.print(desired_angle);
+		Serial.print("Angolo Attuale: ");
+		Serial.print(mpu_data.x);
+		// Aggiusto il valore dell'angolo da raggiungere nel intervallo [-179,9, 179,9]
+		if (desired_angle >= 180)
+		{
+			desired_angle -= 360;
+		}
+		// Inizio a girare
+		ms->SetPower(TURN_SPEED, -TURN_SPEED);
+		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
+		while (!(mpu_data.x > desired_angle && mpu_data.x * desired_angle > 0))
+		{
+			UpdateGyroBlocking();
+		}
+	}
+	else // Giro a sinistra
+	{
+		Serial.println("Giro sinistra <-");
+		Serial.print("Angolo da raggiungere: ");
+		Serial.print(desired_angle);
+		Serial.print("Angolo Attuale: ");
+		Serial.print(mpu_data.x);
+		// Aggiusto il valore dell'angolo da raggiungere nel intervallo [-179,9, 179,9]
+		if (desired_angle <= -180)
+		{
+			desired_angle += 360;
+		}
+		// Inizio a girare
+		ms->SetPower(-TURN_SPEED, TURN_SPEED);
+		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
+		while (!(mpu_data.x < desired_angle && mpu_data.x * desired_angle > 0))
+		{
+			UpdateGyroBlocking();
+		}
+	}
+	// Stop dei motori e ricalcolo distanza dal muro posteriore
+	Serial.println("Metodo Turn: Fine!!!");
+	ms->SetPower(0, 0);
+	// UpdateSensorNumBlocking(1);
+	// back_distance_before = lasers->sensors[1]->GetData()->distance_mm[6];
 }
 
 uint8_t Robot::TrySensorDataUpdate()
