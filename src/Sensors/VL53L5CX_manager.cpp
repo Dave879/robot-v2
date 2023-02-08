@@ -2,6 +2,8 @@
 
 VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface) : resolution(0)
 {
+	
+
 	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		pinMode(VL53L5CX_LPn_pin[i], OUTPUT);

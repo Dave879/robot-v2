@@ -30,11 +30,14 @@ private:
 	float ypr[3];			// [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 	GyroData gyro;
+	GyroData offset;
+
+	uint64_t StartTime = 0;
 
 public:
 	Gyro();
 
 	void SetDataReady(bool is_ready);
-	GyroData GetGyroData();
-	void ResetGyro();
+	uint8_t GetGyroData(GyroData &data);
+	void Reset();
 };

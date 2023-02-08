@@ -236,9 +236,9 @@ uint8_t Robot::TrySensorDataUpdate()
 		If every sensor was read successfully status = 0b11110001 = 0xF1 = 241
 	*/
 	uint8_t status = 0;
-	//if (mpu_data_ready)
+	if (mpu_data_ready)
 	{
-		mpu_data = mpu->GetGyroData();
+		mpu->GetGyroData(mpu_data);
 		mpu_data_ready = false;
 		status++;
 	}
@@ -270,13 +270,19 @@ void Robot::UpdateSensorNumBlocking(uint8_t num)
 void Robot::UpdateGyroBlocking(){
 	while (mpu_data_ready)
 	{
-		mpu_data = mpu->GetGyroData();
+		mpu->GetGyroData(mpu_data);
 		mpu_data_ready = false;
 	}
 }
 
 void Robot::PrintSensorData()
 {
+	if (!digitalRead(R_PIN_BUTTON))
+	{
+		mpu->Reset();
+	}
+	
+
 	Serial.print("gyro.x: \t");
 	Serial.print(mpu_data.x);
 	Serial.print(" \t");

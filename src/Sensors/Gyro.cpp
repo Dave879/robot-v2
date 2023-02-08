@@ -1,9 +1,9 @@
 
 #include "Sensors/Gyro.h"
 
-Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
+Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 {
-	mpu.initialize();
+	//mpu.initialize();
 	devStatus = mpu.dmpInitialize();
 
 	// Changed by Dave on 16/12/2022 - 17:42
@@ -17,8 +17,8 @@ Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 	if (devStatus == 0)
 	{
 		// Calibration Time: generate offsets and calibrate our MPU6050
-		//mpu.CalibrateAccel(10);
-		//mpu.CalibrateGyro(10);
+		// mpu.CalibrateAccel(10);
+		// mpu.CalibrateGyro(10);
 		mpu.setDMPEnabled(true);
 		packetSize = mpu.dmpGetFIFOPacketSize();
 		Serial.println();
@@ -34,23 +34,37 @@ Gyro::Gyro() : gyro({-1.0f, -1.0f, -1.0f})
 		Serial.print(devStatus);
 		Serial.println(")");
 	}
+	StartTime = millis();
 }
 
-GyroData Gyro::GetGyroData()
+uint8_t Gyro::GetGyroData(GyroData &data)
 {
 	int8_t status = mpu.dmpGetCurrentFIFOPacket(fifoBuffer);
 	if (status == 1)
 	{
+		uint32_t ElapsedTime = millis() - StartTime;
 		mpu.dmpGetQuaternion(&q, fifoBuffer);
 		mpu.dmpGetGravity(&gravity, &q);
 		mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-		gyro.x = ypr[0] * 180 / M_PI;
-		gyro.y = ypr[1] * 180 / M_PI;
-		gyro.z = ypr[2] * 180 / M_PI;
-		return gyro;
+		int16_t v[3] = {0, 0, 0};
+		mpu.dmpGetGyro(&v[0], fifoBuffer);
+		// gyro.x = ypr[0] * 180 / M_PI;
+		double Gx = v[2] / 16.4;
+		data.y = ypr[1] * 180 / M_PI - offset.y;
+		data.z = ypr[2] * 180 / M_PI - offset.z;
+		data.x += Gx * (ElapsedTime * 0.001) - offset.x;
+		gyro = data;
+		StartTime = millis();
+		return 0;
 	}
 	else
 	{
-		return { (double)status, (double)status, (double)status };
+		return status;
 	}
+}
+
+void Gyro::Reset(){
+	offset.x = gyro.x;
+	offset.y = gyro.y;
+	offset.z = gyro.z;
 }
