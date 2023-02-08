@@ -39,7 +39,7 @@ void loop()
 	rb->TrySensorDataUpdate();
 	rb->PrintSensorData();
 
-	// rb->Run();
+	rb->Run();
 	/*
 	DynamicJsonDocument doc(200);
 	DataFormatter fm;

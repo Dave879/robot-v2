@@ -19,7 +19,7 @@ private:
 	static volatile bool mpu_data_ready;
 	
 	bool stop_the_robot = false;
-	const int SPEED = 60; 
+	const int SPEED = 40; 
 	const int TURN_SPEED = 75;
 	int16_t back_distance_before;
 	double desired_angle;
@@ -27,7 +27,7 @@ private:
 	const int MIN_DISTANCE_TO_TURN_RIGHT_MM = 250;
 	const int MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM = 150;
 	const int MIN_DISTANCE_TO_TURN_LEFT_MM = 250;
-	const int MIN_DISTANCE_FROM_FRONT_WALL_MM = 80;
+	const int MIN_DISTANCE_FROM_FRONT_WALL_MM = 50;
 	const int MIN_DISTANCE_FROM_LAST_TILE_MM = 300;
 
 	Motors *ms;

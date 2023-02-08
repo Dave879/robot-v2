@@ -52,7 +52,7 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 		double Gx = v[2] / 16.4;
 		data.y = ypr[1] * 180 / M_PI - offset.y;
 		data.z = ypr[2] * 180 / M_PI - offset.z;
-		data.x += Gx * (ElapsedTime * 0.001) - offset.x;
+		data.x -= Gx * (ElapsedTime * 0.001) - offset.x;
 		gyro = data;
 		StartTime = millis();
 		return 0;
