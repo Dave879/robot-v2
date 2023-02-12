@@ -3,7 +3,7 @@
 
 Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 {
-	//mpu.initialize();
+	// mpu.initialize();
 	devStatus = mpu.dmpInitialize();
 
 	// Changed by Dave on 16/12/2022 - 17:42
@@ -35,6 +35,18 @@ Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 		Serial.println(")");
 	}
 	StartTime = millis();
+	uint16_t waitToStabilize = millis() + 15 * 1000; // Current time + 11s
+	GyroData temp;
+	uint16_t i = 0;
+	while (millis() < waitToStabilize)
+	{
+		GetGyroData(temp);
+		Serial.print("Stabilizing gyro: ");
+		Serial.println(i++);
+		delay(3);
+	}
+	delay(100);
+	Reset();
 }
 
 uint8_t Gyro::GetGyroData(GyroData &data)
@@ -49,10 +61,10 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 		int16_t v[3] = {0, 0, 0};
 		mpu.dmpGetGyro(&v[0], fifoBuffer);
 		// gyro.x = ypr[0] * 180 / M_PI;
-		double Gx = v[2] / 16.4;
+		double Gx = v[2] / 65.5;
 		data.y = ypr[1] * 180 / M_PI - offset.y;
 		data.z = ypr[2] * 180 / M_PI - offset.z;
-		data.x -= Gx * (ElapsedTime * 0.001) - offset.x;
+		data.x -= Gx * (ElapsedTime * 0.001);
 		gyro = data;
 		StartTime = millis();
 		return 0;
@@ -63,8 +75,10 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 	}
 }
 
-void Gyro::Reset(){
+void Gyro::Reset()
+{
 	offset.x = gyro.x;
 	offset.y = gyro.y;
 	offset.z = gyro.z;
+	gyro.x -= offset.x;
 }
