@@ -56,7 +56,7 @@ void Robot::Run()
 	if (StopRobot())
 	{
 		// Controllo la presenza di un varco a destra
-		if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM and not ignore_right)
+		if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
 		{
 			Serial.println("Varco a destra!!!");
 			Serial.println("Distanza Destra: ");
@@ -85,7 +85,7 @@ void Robot::Run()
 		else
 		{
 			// Se è presente un muro laterale e sto ignorando la destra, smetto di ingorarla
-			if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM and ignore_right)
+			if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM && ignore_right)
 			{
 				ignore_right = false;
 				Serial.println("Muro a destra a tot mm: ");
@@ -322,4 +322,7 @@ void Robot::PrintSensorData()
 
 Robot::~Robot()
 {
+	delete ms;
+	delete lasers;
+	delete mpu;
 }
