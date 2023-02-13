@@ -3,22 +3,18 @@
 
 Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 {
-	// mpu.initialize();
 	devStatus = mpu.dmpInitialize();
 
-	// Changed by Dave on 16/12/2022 - 17:42
-	mpu.setXGyroOffset(39);
-	mpu.setYGyroOffset(98);
-	mpu.setZGyroOffset(-397);
-	mpu.setXAccelOffset(-3617);
-	mpu.setYAccelOffset(1799);
-	mpu.setZAccelOffset(1362);
 
 	if (devStatus == 0)
 	{
-		// Calibration Time: generate offsets and calibrate our MPU6050
-		// mpu.CalibrateAccel(10);
-		// mpu.CalibrateGyro(10);
+		// Changed by Dave on 16/12/2022 - 17:42
+		mpu.setXGyroOffset(39);
+		mpu.setYGyroOffset(98);
+		mpu.setZGyroOffset(-397);
+		mpu.setXAccelOffset(-3617);
+		mpu.setYAccelOffset(1799);
+		mpu.setZAccelOffset(1362);
 		mpu.setDMPEnabled(true);
 		packetSize = mpu.dmpGetFIFOPacketSize();
 		Serial.println();
@@ -46,7 +42,7 @@ Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 		delay(3);
 	}
 	delay(100);
-	Reset();
+	ResetX();
 }
 
 uint8_t Gyro::GetGyroData(GyroData &data)
@@ -62,10 +58,10 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 		mpu.dmpGetGyro(&v[0], fifoBuffer);
 		// gyro.x = ypr[0] * 180 / M_PI;
 		double Gx = v[2] / 65.5;
-		data.y = ypr[1] * 180 / M_PI - offset.y;
-		data.z = ypr[2] * 180 / M_PI - offset.z;
-		data.x -= Gx * (ElapsedTime * 0.001);
-		gyro = data;
+		gyro.y = ypr[1] * 180 / M_PI;
+		gyro.z = ypr[2] * 180 / M_PI;
+		gyro.x -= Gx * (ElapsedTime * 0.001);
+		data = gyro;
 		StartTime = millis();
 		return 0;
 	}
@@ -75,10 +71,7 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 	}
 }
 
-void Gyro::Reset()
+void Gyro::ResetX()
 {
-	offset.x = gyro.x;
-	offset.y = gyro.y;
-	offset.z = gyro.z;
-	gyro.x -= offset.x;
+	gyro.x = 0;
 }

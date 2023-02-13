@@ -292,12 +292,6 @@ void Robot::UpdateGyroBlocking(){
 
 void Robot::PrintSensorData()
 {
-	if (!digitalRead(R_PIN_BUTTON))
-	{
-		mpu->Reset();
-	}
-	
-
 	Serial.print("gyro.x: \t");
 	Serial.print(mpu_data.x);
 	Serial.print(" \t");
