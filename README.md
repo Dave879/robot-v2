@@ -1,4 +1,4 @@
-# This repository hosts the files for the Teensy 4.1-based maze robot
+# Teensy 4.1-based Maze robot code
 
 To compile and upload + serial monitor:
 
@@ -17,8 +17,9 @@ if the device monitor doesn't pick up the correct serial port
 ## TODO
 
 1. Speed up TCS34725 readings
-2. Refactoring
-3. Fix data_formatter for ArduPlot
+1. Refactoring
+1. Fix data_formatter for ArduPlot
+1. OpenMV communication
 
 ## Done
 
