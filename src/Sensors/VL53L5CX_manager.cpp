@@ -2,7 +2,6 @@
 
 VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface) : resolution(0)
 {
-	
 
 	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
@@ -75,6 +74,14 @@ void VL53L5CX_manager::SetAllDataReady(bool b)
 	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		data_ready[i] = b;
+	}
+}
+
+void VL53L5CX_manager::GetStatus(uint8_t status[SENSORS_NUM])
+{
+	for (size_t i = 0; i < SENSORS_NUM; i++)
+	{
+		status[i] = sensors[i]->GetStatus();
 	}
 }
 

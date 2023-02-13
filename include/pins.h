@@ -28,11 +28,12 @@ const uint8_t VL53L5CX_int_pin[4] = {
 	28		// Right
 };
 
-#define SENSOR_FW 0
-#define SENSOR_BW 1
-#define SENSOR_SX 2
-#define SENSOR_DX 3
-
+enum VL53L5CX {
+	FW,
+	BW,
+	SX,
+	DX
+};
 
 // TODO: explain why close i2c adresses are bad, example: 0x52, 0x53....
 // https://community.st.com/s/feed/0D53W00001GQQVaSAP

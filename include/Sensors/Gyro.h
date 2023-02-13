@@ -35,7 +35,7 @@ private:
 
 public:
 	GyroData offset;
-	Gyro();
+	Gyro(bool cold_start = true);
 
 	void SetDataReady(bool is_ready);
 	uint8_t GetGyroData(GyroData &data);

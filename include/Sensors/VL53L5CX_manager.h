@@ -19,6 +19,7 @@ public:
 	void StartRanging(const uint8_t resolution, const uint8_t frequency, const ELIA::RangingMode mode);
 	void UpdateData();
 	void SetAllDataReady(bool b);
+	void GetStatus(uint8_t status[SENSORS_NUM]);
 	~VL53L5CX_manager();
 };
 

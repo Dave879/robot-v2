@@ -1,10 +1,9 @@
 
 #include "Sensors/Gyro.h"
 
-Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
+Gyro::Gyro(bool cold_start) : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 {
 	devStatus = mpu.dmpInitialize();
-
 
 	if (devStatus == 0)
 	{
@@ -30,19 +29,24 @@ Gyro::Gyro() : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f})
 		Serial.print(devStatus);
 		Serial.println(")");
 	}
-	StartTime = millis();
-	uint16_t waitToStabilize = millis() + 15 * 1000; // Current time + 11s
-	GyroData temp;
-	uint16_t i = 0;
-	while (millis() < waitToStabilize)
+
+	if (cold_start)
 	{
-		GetGyroData(temp);
-		Serial.print("Stabilizing gyro: ");
-		Serial.println(i++);
-		delay(3);
+		GyroData temp;
+		uint16_t i = 0;
+		StartTime = millis();
+		uint16_t waitToStabilize = millis() + 15 * 1000; // Current time + 11s
+		while (millis() < waitToStabilize)
+		{
+			GetGyroData(temp);
+			Serial.print("Stabilizing gyro: ");
+			Serial.println(i++);
+			delay(3);
+		}
+		delay(100);
+		ResetX();
 	}
-	delay(100);
-	ResetX();
+	StartTime = millis();
 }
 
 uint8_t Gyro::GetGyroData(GyroData &data)

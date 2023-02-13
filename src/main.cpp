@@ -11,8 +11,10 @@ volatile bool Robot::mpu_data_ready = false;
 volatile bool Robot::lasers_data_ready[4] = {0};
 Robot *rb;
 
+uint16_t elapseeeee;
 void setup()
 {
+	elapseeeee = millis();
 	LOG("Robot initialization starting... 1");
 	LOG("Robot initialization starting... 2");
 	LOG("Robot initialization starting... 3");
@@ -28,12 +30,12 @@ void setup()
 		LOG("Good news! No crash report found!");
 	}
 
-	rb = new Robot();
+	// If a complete restart of the sensors is needed on every boot, set parameter to true
+	rb = new Robot(false);
 }
 
 void loop()
 {
-
 	rb->TrySensorDataUpdate();
 	rb->PrintSensorData();
 

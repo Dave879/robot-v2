@@ -1,21 +1,24 @@
 
 #include "Robot.h"
 
-Robot::Robot()
+Robot::Robot(bool cold_start)
 {
-	LOG("Disabling and then enabling sensors power supply...");
-	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
-	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-	delay(10);										// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-	digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
-	delay(10);										// Wait for sensors to wake up (especially sensor 0)
-	LOG("...done!");
-
+	if (cold_start)
+	{
+		LOG("Disabling and then enabling sensors power supply...");
+		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
+		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
+		delay(10);										// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+		delay(10);										// Wait for sensors to wake up (especially sensor 0)
+		LOG("...done!");
+	}
+	
 	Wire.begin(); // Gyro
-	Wire.setClock(400000);
+	Wire.setClock(400000); // 400kHz
 
 	LOG("Gyro setup started");
-	mpu = new Gyro();
+	mpu = new Gyro(cold_start);
 	mpu_data_ready = false;
 	attachInterrupt(R_PIN_GYRO_INT, R_MPU6050_int, RISING);
 	LOG("Finished gyro setup!");
@@ -25,7 +28,7 @@ Robot::Robot()
 	LOG("Finished motor setup!");
 
 	Wire2.begin(); // Lasers
-	Wire2.setClock(1000000);
+	Wire2.setClock(1000000); // 1MHz
 
 	LOG("Laser sensors setup started");
 	lasers = new VL53L5CX_manager(Wire2);
@@ -36,13 +39,13 @@ Robot::Robot()
 		otherwise if the data_ready array isn't initialized and an interrupt is
 		fired, the program will crash.
 	*/
-	attachInterrupt(VL53L5CX_int_pin[0], R_VL53L5CX_int_0, FALLING); // sensor_0
-	attachInterrupt(VL53L5CX_int_pin[1], R_VL53L5CX_int_1, FALLING); // sensor_1
-	attachInterrupt(VL53L5CX_int_pin[2], R_VL53L5CX_int_2, FALLING); // sensor_2
-	attachInterrupt(VL53L5CX_int_pin[3], R_VL53L5CX_int_3, FALLING); // sensor_3
+	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
+	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
+	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
+	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
 	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);	 // 4*4, 60Hz
-	UpdateSensorNumBlocking(1);
-	back_distance_before = lasers->sensors[1]->GetData()->distance_mm[6];
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
 	pinMode(R_PIN_BUTTON, INPUT);
 
 	pinMode(LED_BUILTIN, OUTPUT);
@@ -56,20 +59,20 @@ void Robot::Run()
 	if (StopRobot())
 	{
 		// Controllo la presenza di un varco a destra
-		if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
+		if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
 		{
 			Serial.println("Varco a destra!!!");
 			Serial.println("Distanza Destra: ");
-			Serial.print(lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5]);
+			Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
 			// Varco trovato!
 			ms->SetPower(0, 0);
 			/*
 			int16_t back_distance_to_reach = back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM;
-			if (!(lasers->sensors[1]->GetData()->distance_mm[6] > back_distance_to_reach)) {
+			if (!(lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6] > back_distance_to_reach)) {
 				// Proseguo dritto fino a quando non sono arrivato a 30cm dalla tile precendete
 				// ovvero, fino a quando non sono al centro della tile attuale
 				ms->SetPower(SPEED, SPEED);
-				while (!(lasers->sensors[1]->GetData()->distance_mm[6] > back_distance_to_reach))
+				while (!(lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6] > back_distance_to_reach))
 				{
 					Serial.print("Dio besta!");
 					UpdateSensorNumBlocking(1);
@@ -85,26 +88,26 @@ void Robot::Run()
 		else
 		{
 			// Se è presente un muro laterale e sto ignorando la destra, smetto di ingorarla
-			if (lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM && ignore_right)
+			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM && ignore_right)
 			{
 				ignore_right = false;
 				Serial.println("Muro a destra a tot mm: ");
-				Serial.print(lasers->sensors[SENSOR_DX]->GetData()->distance_mm[5]);
+				Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
 			}
 			/*
 			// Distanza dal muro
-			if (lasers->sensors[1]->GetData()->distance_mm[6] >= back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM)
+			if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6] >= back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM)
 			{
 				// Aggiorno la distanza dal muro
-				back_distance_before = lasers->sensors[1]->GetData()->distance_mm[6];
+				back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
 			}
 			*/
-			// Controllo la distaza frontale, e se trovo un muro
-			if (lasers->sensors[SENSOR_FW]->GetData()->distance_mm[5] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
+			// Controllo la distanza frontale, e se trovo un muro
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				Serial.println("Muro frontale!!!");
 				// Controllo la sinistra, se libera giro
-				if (lasers->sensors[SENSOR_SX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
+				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
 					// Giro a sinstra
 					Serial.println("Sinistra libera!!!");
@@ -228,7 +231,7 @@ void Robot::Turn(int degree) {
 	ms->SetPower(0, 0);
 	/*
 	UpdateSensorNumBlocking(1);
-	back_distance_before = lasers->sensors[1]->GetData()->distance_mm[6];
+	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
 	*/
 }
 
@@ -266,7 +269,7 @@ uint8_t Robot::TrySensorDataUpdate()
 	return status;
 }
 
-void Robot::UpdateSensorNumBlocking(uint8_t num)
+void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 {
 	while (1)
 	{
