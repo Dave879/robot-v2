@@ -8,13 +8,13 @@ Robot::Robot(bool cold_start)
 		LOG("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-		delay(10);																			// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+		delay(10);													// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
 		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
-		delay(10);																			// Wait for sensors to wake up (especially sensor 0)
+		delay(10);													// Wait for sensors to wake up (especially sensor 0)
 		LOG("...done!");
 	}
 
-	Wire.begin();					 // Gyro
+	Wire.begin();			  // Gyro
 	Wire.setClock(400000); // 400kHz
 
 	LOG("Gyro setup started");
@@ -27,7 +27,12 @@ Robot::Robot(bool cold_start)
 	ms = new Motors();
 	LOG("Finished motor setup!");
 
-	Wire2.begin();					 // Lasers
+	LOG("Servo setup started");
+	kit.attach(R_PIN_SERVO);
+	kit.write(0);
+	LOG("Finished servo setup!");
+
+	Wire2.begin();				 // Lasers
 	Wire2.setClock(1000000); // 1MHz
 
 	LOG("Laser sensors setup started");
@@ -43,13 +48,21 @@ Robot::Robot(bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);								// 4*4, 60Hz
+	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);					 // 4*4, 60Hz
 
-	Wire1.begin(); // Color sensor
+	Wire1.begin();				// Color sensor
 	Wire1.setClock(400000); // 400kHz
 
+	Serial.println("Initializing color sensor");
 	cs = new Color();
-	cs->begin(&Wire1);
+	if (cs->begin(&Wire1))
+	{
+		Serial.println("Initialized color sensor!");
+	}
+	else
+	{
+		Serial.println("Failed to initialize color sensor!");
+	}
 
 	/**
 	 * Robot ready signal
@@ -296,7 +309,7 @@ uint8_t Robot::TrySensorDataUpdate()
 		}
 	}
 
-	cs->getData();
+	//cs->getData();
 	return status;
 }
 

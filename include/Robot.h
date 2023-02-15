@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <ArduinoJson.h>
+#include <Servo.h>
 
 #include "util.h"
 #include "pins.h"
@@ -55,6 +56,8 @@ private:
 	static volatile bool lasers_data_ready[4];
 
 	Color *cs;
+
+	Servo kit;
 
 	/**
 	 * Interrupt functions

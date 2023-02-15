@@ -22,8 +22,9 @@ Color::Color() : agc_cur(0), isAvailable(0), isSaturated(0) {
 boolean Color::begin(TwoWire* wireInterface) {
   tcs = Adafruit_TCS34725(agc_lst[agc_cur].at, agc_lst[agc_cur].ag);
   if ((isAvailable = tcs.begin(0x29, wireInterface))){
-    setGainTime();
-    Serial.println("Sensor found and initialized");
+    tcs.setGain(tcs34725Gain_t::TCS34725_GAIN_1X);
+    tcs.setIntegrationTime(TCS34725_INTEGRATIONTIME_2_4MS);
+    //setGainTime();
   }
   return(isAvailable);
 }
