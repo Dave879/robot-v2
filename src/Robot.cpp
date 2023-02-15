@@ -8,13 +8,13 @@ Robot::Robot(bool cold_start)
 		LOG("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-		delay(10);										// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+		delay(10);																			// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
 		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
-		delay(10);										// Wait for sensors to wake up (especially sensor 0)
+		delay(10);																			// Wait for sensors to wake up (especially sensor 0)
 		LOG("...done!");
 	}
-	
-	Wire.begin(); // Gyro
+
+	Wire.begin();					 // Gyro
 	Wire.setClock(400000); // 400kHz
 
 	LOG("Gyro setup started");
@@ -27,7 +27,7 @@ Robot::Robot(bool cold_start)
 	ms = new Motors();
 	LOG("Finished motor setup!");
 
-	Wire2.begin(); // Lasers
+	Wire2.begin();					 // Lasers
 	Wire2.setClock(1000000); // 1MHz
 
 	LOG("Laser sensors setup started");
@@ -43,20 +43,34 @@ Robot::Robot(bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);	 // 4*4, 60Hz
-	UpdateSensorNumBlocking(VL53L5CX::BW);
-	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
-	pinMode(R_PIN_BUTTON, INPUT);
+	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);								// 4*4, 60Hz
+
+	Wire1.begin(); // Color sensor
+	Wire1.setClock(400000); // 400kHz
+
+	cs = new Color();
+	cs->begin(&Wire1);
+
+	/**
+	 * Robot ready signal
+	 */
 
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, HIGH);
 	delay(100);
 	digitalWrite(LED_BUILTIN, LOW);
+
+	/**
+	 * Navigation (dead code?)
+	 */
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
+	pinMode(R_PIN_BUTTON, INPUT);
 }
 
 void Robot::Run()
 {
-	if (StopRobot())
+	if (!StopRobot())
 	{
 		// Controllo la presenza di un varco a destra
 		if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
@@ -131,7 +145,9 @@ void Robot::Run()
 				if (mpu_data.x < desired_angle)
 				{ // Se tende a sinistra, più potenza a sinistra
 					ms->SetPower(SPEED + 20, SPEED);
-				} else if (mpu_data.x > desired_angle){ // Se tende a destra, più potenza a destra
+				}
+				else if (mpu_data.x > desired_angle)
+				{ // Se tende a destra, più potenza a destra
 					ms->SetPower(SPEED, SPEED + 20);
 				}
 				else
@@ -147,6 +163,8 @@ void Robot::Run()
 		ms->StopMotors();
 	}
 }
+
+#pragma region INTERRUPT_ROUTINES
 
 void Robot::R_MPU6050_int()
 {
@@ -173,22 +191,33 @@ void Robot::R_VL53L5CX_int_3()
 	lasers_data_ready[3] = true;
 }
 
-bool Robot::StopRobot() // TODO: Fix this shit
+#pragma endregion INTERRUPT_ROUTINES
+
+bool Robot::StopRobot() // TODO: Fix this
 {
-	stop_the_robot = false;
-	if (digitalRead(R_PIN_BUTTON)) {
-		stop_the_robot = true;
+	if (digitalRead(R_PIN_BUTTON))
+	{
+		if (!first_time_pressed)
+		{
+			stop_the_robot = !stop_the_robot;
+			first_time_pressed = true;
+		}
+	}
+	else
+	{
+		first_time_pressed = false;
 	}
 	return stop_the_robot;
 }
 
-void Robot::Turn(int degree) {
+void Robot::Turn(int degree)
+{
 	Serial.println("Metodo Turn: ");
 	// Calcolo il grado da raggiungere
 	UpdateGyroBlocking();
 	desired_angle = mpu_data.x + degree;
 	// Controllo se devo girare a destra o sinistra
-	if (degree > 0) // Giro a destra 
+	if (degree > 0) // Giro a destra
 	{
 		Serial.println("Giro destra ->");
 		Serial.print("Angolo da raggiungere: ");
@@ -266,6 +295,8 @@ uint8_t Robot::TrySensorDataUpdate()
 			status |= 0b10000 << i;
 		}
 	}
+
+	cs->getData();
 	return status;
 }
 
@@ -273,7 +304,8 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 {
 	while (1)
 	{
-		if(lasers_data_ready[num]){
+		if (lasers_data_ready[num])
+		{
 			lasers->sensors[num]->UpdateData();
 			lasers_data_ready[num] = false;
 			break;
@@ -281,7 +313,8 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	}
 }
 
-void Robot::UpdateGyroBlocking(){
+void Robot::UpdateGyroBlocking()
+{
 	while (true)
 	{
 		if (mpu_data_ready)
@@ -321,6 +354,13 @@ void Robot::PrintSensorData()
 		}
 		Serial.println();
 	}
+
+	Serial.print("r_comp: ");
+	Serial.print(cs->r_comp);
+	Serial.print("\tg_comp: ");
+	Serial.print(cs->g_comp);
+	Serial.print("\tb_comp:");
+	Serial.println(cs->b_comp);
 }
 
 Robot::~Robot()

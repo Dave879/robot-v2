@@ -36,7 +36,7 @@
 #define TCS34725_CT_Offset 1391.0
 
 // Autorange class for TCS34725
-class tcs34725 {
+class Color {
 private:
   struct tcs_agc {
     tcs34725Gain_t ag;
@@ -51,7 +51,7 @@ private:
   Adafruit_TCS34725 tcs;
 
 public:
-  tcs34725(void);
+  Color(void);
 
   boolean begin(TwoWire* wireInterface);
   void getData(void);

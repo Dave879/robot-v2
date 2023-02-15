@@ -9,6 +9,7 @@
 #include "Motors.h"
 #include "Sensors/Gyro.h"
 #include "Sensors/VL53L5CX_manager.h"
+#include "Sensors/Color.h"
 #include "data_formatter.h"
 
 class Robot
@@ -29,6 +30,7 @@ private:
 	 * Navigation variables
 	 */
 	bool stop_the_robot = false;
+	bool first_time_pressed = false;
 	int16_t back_distance_before;
 	double desired_angle;
 	bool ignore_right = false;
@@ -51,6 +53,8 @@ private:
 
 	VL53L5CX_manager *lasers;
 	static volatile bool lasers_data_ready[4];
+
+	Color *cs;
 
 	/**
 	 * Interrupt functions

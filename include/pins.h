@@ -14,6 +14,9 @@
 #define R_PIN_BUTTON 27
 #define R_PIN_GYRO_INT 15
 
+#define R_PIN_SERVO 0
+#define R_PIN_COLOR_INT 14
+
 const uint8_t VL53L5CX_LPn_pin[4] = {
 	31,	// Forward
 	2,		// Backward

@@ -11,10 +11,8 @@ volatile bool Robot::mpu_data_ready = false;
 volatile bool Robot::lasers_data_ready[4] = {0};
 Robot *rb;
 
-uint16_t elapseeeee;
 void setup()
 {
-	elapseeeee = millis();
 	LOG("Robot initialization starting... 1");
 	LOG("Robot initialization starting... 2");
 	LOG("Robot initialization starting... 3");

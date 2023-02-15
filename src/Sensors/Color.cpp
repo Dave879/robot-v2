@@ -8,26 +8,28 @@
 // Also set the first min count and the last max count to 0 to indicate
 // the start and end of the list.
 //
-const tcs34725::tcs_agc tcs34725::agc_lst[] = {
+const Color::tcs_agc Color::agc_lst[] = {
   { TCS34725_GAIN_60X, TCS34725_INTEGRATIONTIME_614MS,     0, 20000 },
   { TCS34725_GAIN_60X, TCS34725_INTEGRATIONTIME_154MS,  4990, 63000 },
   { TCS34725_GAIN_16X, TCS34725_INTEGRATIONTIME_154MS, 16790, 63000 },
   { TCS34725_GAIN_4X,  TCS34725_INTEGRATIONTIME_154MS, 15740, 63000 },
   { TCS34725_GAIN_1X,  TCS34725_INTEGRATIONTIME_154MS, 15740, 0 }
 };
-tcs34725::tcs34725() : agc_cur(0), isAvailable(0), isSaturated(0) {
+Color::Color() : agc_cur(0), isAvailable(0), isSaturated(0) {
 }
 
 // initialize the sensor
-boolean tcs34725::begin(TwoWire* wireInterface) {
+boolean Color::begin(TwoWire* wireInterface) {
   tcs = Adafruit_TCS34725(agc_lst[agc_cur].at, agc_lst[agc_cur].ag);
-  if ((isAvailable = tcs.begin(0x29, wireInterface)))
+  if ((isAvailable = tcs.begin(0x29, wireInterface))){
     setGainTime();
+    Serial.println("Sensor found and initialized");
+  }
   return(isAvailable);
 }
 
 // Set the gain and integration time
-void tcs34725::setGainTime(void) {
+void Color::setGainTime() {
   tcs.setGain(agc_lst[agc_cur].ag);
   tcs.setIntegrationTime(agc_lst[agc_cur].at);
   atime = int(agc_lst[agc_cur].at);
@@ -49,7 +51,7 @@ void tcs34725::setGainTime(void) {
 }
 
 // Retrieve data from the sensor and do the calculations
-void tcs34725::getData(void) {
+void Color::getData() {
   // read the sensor and autorange if necessary
   tcs.getRawData(&r, &g, &b, &c);
 
