@@ -109,7 +109,7 @@ void Robot::Run()
 			*/
 			// Giro a destra (90°)
 			Turn(90);
-			// Non controllo la destra fino al prossimo muro destro
+			// Non controllo la destra fino al prossimo mufalsero destro
 			ignore_right = true;
 		}
 		else
@@ -134,7 +134,7 @@ void Robot::Run()
 			{
 				Serial.println("Muro frontale!!!");
 				// Controllo la sinistra, se libera giro
-				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
+				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
 					// Giro a sinstra
 					Serial.println("Sinistra libera!!!");
@@ -177,8 +177,6 @@ void Robot::Run()
 	}
 }
 
-#pragma region INTERRUPT_ROUTINES
-
 void Robot::R_MPU6050_int()
 {
 	mpu_data_ready = true;
@@ -204,9 +202,7 @@ void Robot::R_VL53L5CX_int_3()
 	lasers_data_ready[3] = true;
 }
 
-#pragma endregion INTERRUPT_ROUTINES
-
-bool Robot::StopRobot() // TODO: Fix this
+bool Robot::StopRobot() // FIXED
 {
 	if (digitalRead(R_PIN_BUTTON))
 	{

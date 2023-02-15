@@ -19,8 +19,8 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 40
-#define TURN_SPEED 75
+#define SPEED 65
+#define TURN_SPEED 85
 #define MIN_DISTANCE_TO_TURN_RIGHT_MM 250
 #define MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM 120
 #define MIN_DISTANCE_TO_TURN_LEFT_MM 250
@@ -33,7 +33,7 @@ private:
 	bool stop_the_robot = false;
 	bool first_time_pressed = false;
 	int16_t back_distance_before;
-	double desired_angle;
+	double desired_angle = 0;
 	bool ignore_right = false;
 
 	/**

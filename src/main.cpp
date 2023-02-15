@@ -11,6 +11,9 @@ volatile bool Robot::mpu_data_ready = false;
 volatile bool Robot::lasers_data_ready[4] = {0};
 Robot *rb;
 
+uint16_t times_per_second = 0;
+uint32_t past_millis = 0;
+
 void setup()
 {
 	LOG("Robot initialization starting... 1");
@@ -29,15 +32,27 @@ void setup()
 	}
 
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
-	rb = new Robot(false);
+	rb = new Robot(true);
+	past_millis = millis();
 }
 
 void loop()
 {
+
 	rb->TrySensorDataUpdate();
 	rb->PrintSensorData();
 
-	// rb->Run();
+	rb->Run();
+
+	times_per_second++;
+	if (past_millis + 1000 < millis())
+	{
+		Serial.print("Times per second: ");
+		Serial.println(times_per_second);
+		times_per_second = 0;
+		past_millis = millis();
+	}
+	
 	/*
 	DynamicJsonDocument doc(200);
 	DataFormatter fm;
