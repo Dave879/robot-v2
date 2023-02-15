@@ -169,3 +169,23 @@ ms->SetPower(0, 0);
 UpdateSensorNumBlocking(1);
 back_distance_before = lasers->sensors[1]->GetData()->distance_mm[2];
 ```
+
+## Old method to make the robot go straight
+``` cpp
+// In assenza di muro frontale ci troviamo in una strada da prosseguire in modo rettilineo
+else
+{
+    if (mpu_data.x < desired_angle)
+    { // Se tende a sinistra, più potenza a sinistra
+        ms->SetPower(SPEED + 20, SPEED);
+    }
+    else if (mpu_data.x > desired_angle)
+    { // Se tende a destra, più potenza a destra
+        ms->SetPower(SPEED, SPEED + 20);
+    }
+    else
+    { // Se è dritto, infatibile, prosegue dritto
+        ms->SetPower(SPEED, SPEED);
+    }
+}
+```

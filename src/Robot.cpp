@@ -74,11 +74,13 @@ Robot::Robot(bool cold_start)
 	digitalWrite(LED_BUILTIN, LOW);
 
 	/**
-	 * Navigation (dead code?)
+	 * Navigation (dead code?) (DK: Yhep)
 	 */
-	UpdateSensorNumBlocking(VL53L5CX::BW);
-	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
+	// UpdateSensorNumBlocking(VL53L5CX::BW);
+	// back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
 	pinMode(R_PIN_BUTTON, INPUT);
+	// Per il controllo PID
+	auto startTime = high_resolution_clock::now();
 }
 
 void Robot::Run()
@@ -88,92 +90,84 @@ void Robot::Run()
 		// Controllo la presenza di un varco a destra
 		if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
 		{
-			Serial.println("Varco a destra!!!");
-			Serial.println("Distanza Destra: ");
-			Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
 			// Varco trovato!
+
+			// Output variabili varco
+			// Serial.println("Varco a destra!!!");
+			// Serial.println("Distanza Destra: ");
+			// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
+
+			// Fermo il robot. TODO: capire se necessario
 			ms->SetPower(0, 0);
-			/*
-			int16_t back_distance_to_reach = back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM;
-			if (!(lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6] > back_distance_to_reach)) {
-				// Proseguo dritto fino a quando non sono arrivato a 30cm dalla tile precendete
-				// ovvero, fino a quando non sono al centro della tile attuale
-				ms->SetPower(SPEED, SPEED);
-				while (!(lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6] > back_distance_to_reach))
-				{
-					Serial.print("Dio besta!");
-					UpdateSensorNumBlocking(1);
-				}
-				ms->SetPower(0, 0);
-			}
-			*/
+
 			// Giro a destra (90°)
 			Turn(90);
-			// Non controllo la destra fino al prossimo mufalsero destro
+			// IMposto un vincolo sul varco a destra
 			ignore_right = true;
 		}
 		else
 		{
-			// Se è presente un muro laterale e sto ignorando la destra, smetto di ingorarla
+			// Non è stato rilevato nessun varco a destra
+
+			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
 			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM && ignore_right)
 			{
+				// Output variabili muro laterale
+				// Serial.println("Muro a destra a tot mm: ");
+				// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
 				ignore_right = false;
-				Serial.println("Muro a destra a tot mm: ");
-				Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
 			}
-			/*
-			// Distanza dal muro
-			if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6] >= back_distance_before + MIN_DISTANCE_FROM_LAST_TILE_MM)
-			{
-				// Aggiorno la distanza dal muro
-				back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
-			}
-			*/
-			// Controllo la distanza frontale, e se trovo un muro
+
+			// Verifica presenza muro frontale
 			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
-				Serial.println("Muro frontale!!!");
-				// Controllo la sinistra, se libera giro
+				// Valutazione azione da svolgere in presenza di muro frontale
+				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione 
 				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
-					// Giro a sinstra
-					Serial.println("Sinistra libera!!!");
 					Turn(-90);
 				}
-				else // Sinistra bloccata, giro di 180 gradi
+				// Avendo tutte le direzioni bloccate, quindi in presenza di una U, mi girerò del tutto
+				else
 				{
-					Serial.println("Tutto bloccato!!!");
 					Turn(180);
+					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 					ms->SetPower(-90, -90);
 					delay(1000);
 					ms->SetPower(0, 0);
+					// TODO: Valutare se tenerlo con il PID
 					// mpu->Reset();
 					// desired_angle = 0;
 				}
 			}
+			// In assenza di muro frontale ci troviamo in una strada da prosseguire in modo rettilineo
 			else
 			{
-				// Prosegue "dritto"
-				// UpdateGyroBlocking(); // Prendo valori aggiornati del gyro (Non ha senso riprendere il valore, già lo aggiorno prima di entrare in run())
-				if (mpu_data.x < desired_angle)
-				{ // Se tende a sinistra, più potenza a sinistra
-					ms->SetPower(SPEED + 20, SPEED);
-				}
-				else if (mpu_data.x > desired_angle)
-				{ // Se tende a destra, più potenza a destra
-					ms->SetPower(SPEED, SPEED + 20);
-				}
-				else
-				{ // Se è dritto, infatibile, prosegue dritto
-					ms->SetPower(SPEED, SPEED);
-				}
+				// Calculate error
+				error = CalculateError(mpu_data.x);
+				// Calculate integral
+        integral += error;
+				// Calculate derivative
+        double derivative = error - previousError;
+        previousError = error;
+				// Calculate output
+        output = KP * error + KI * integral + KD * derivative;
+				// Update motor powers and apply motor powers to left and right motors
+				double elapsedSeconds = duration<double>(high_resolution_clock::now() - startTime).count();
+				if (output > 0) {
+					ms->SetPower(SPEED - output * elapsedSeconds,SPEED)
+        } else {
+					ms->SetPower(SPEED, SPEED + output * elapsedSeconds)
+        }
+				// Update start time
+        startTime = high_resolution_clock::now();
 			}
 		}
 	}
 	else
 	{
-		Serial.print("Bloccato");
 		ms->StopMotors();
+		Serial.println("Premere il pulsante per far partire il robot!");
 	}
 }
 
@@ -219,7 +213,7 @@ bool Robot::StopRobot() // FIXED
 	return stop_the_robot;
 }
 
-void Robot::Turn(int degree)
+void Robot::Turn(int16_t degree)
 {
 	Serial.println("Metodo Turn: ");
 	// Calcolo il grado da raggiungere
@@ -271,6 +265,11 @@ void Robot::Turn(int degree)
 	UpdateSensorNumBlocking(1);
 	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
 	*/
+}
+
+double Robot::CalculateError(double currentYaw) {
+	double currentError = desired_angle - currentYaw;
+	return currentError;
 }
 
 uint8_t Robot::TrySensorDataUpdate()

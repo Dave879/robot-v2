@@ -13,6 +13,9 @@
 #include "Sensors/Color.h"
 #include "data_formatter.h"
 
+#include <chrono>
+using namespace chrono;
+
 class Robot
 {
 private:
@@ -26,22 +29,39 @@ private:
 #define MIN_DISTANCE_TO_TURN_LEFT_MM 250
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 70
 #define MIN_DISTANCE_FROM_LAST_TILE_MM 300
+// PID controller constants
+#define KP = 0.5 // Proportional gain
+#define KI = 0.2 // Integral gain
+#define KD = 0.1 // Derivative gain
 
 	/**
 	 * Navigation variables
 	 */
 	bool stop_the_robot = false;
 	bool first_time_pressed = false;
-	int16_t back_distance_before;
+	// int16_t back_distance_before = 0; // Unused
 	double desired_angle = 0;
 	bool ignore_right = false;
 
 	/**
 	 * Navigation utility functions
 	 */
-
 	bool StopRobot();
-	void Turn(int degree);
+	void Turn(int16_t degree);
+
+	/**
+	 * PID controller variables
+	*/
+	double previousError = 0;
+	double integral = 0;
+	double output = 0;
+	double error = 0;
+	double derivative = 0;
+
+	/**
+	 * PID controller functions
+	*/
+	double CalculateError(double currentYaw);
 
 	/**
 	 * Robot peripherals
