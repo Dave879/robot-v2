@@ -54,7 +54,8 @@ public:
   Color(void);
 
   boolean begin(TwoWire* wireInterface);
-  void getData(void);
+  void getData();
+  void ClearInterrupt();
 
   boolean isAvailable, isSaturated;
   uint16_t againx, atime, atime_ms;

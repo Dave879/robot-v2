@@ -9,6 +9,8 @@
 
 volatile bool Robot::mpu_data_ready = false;
 volatile bool Robot::lasers_data_ready[4] = {0};
+volatile bool Robot::color_data_ready = false;
+
 Robot *rb;
 
 uint16_t times_per_second = 0;
@@ -32,7 +34,7 @@ void setup()
 	}
 
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
-	rb = new Robot(true);
+	rb = new Robot(false);
 	past_millis = millis();
 }
 

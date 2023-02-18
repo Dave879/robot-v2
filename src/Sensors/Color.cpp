@@ -24,6 +24,7 @@ boolean Color::begin(TwoWire* wireInterface) {
   if ((isAvailable = tcs.begin(0x29, wireInterface))){
     tcs.setGain(tcs34725Gain_t::TCS34725_GAIN_1X);
     tcs.setIntegrationTime(TCS34725_INTEGRATIONTIME_2_4MS);
+    tcs.setInterrupt(true);
     //setGainTime();
   }
   return(isAvailable);
@@ -55,7 +56,7 @@ void Color::setGainTime() {
 void Color::getData() {
   // read the sensor and autorange if necessary
   tcs.getRawData(&r, &g, &b, &c);
-
+  tcs.clearInterrupt();
   // DN40 calculations
   ir = (r + g + b > c) ? (r + g + b - c) / 2 : 0;
   r_comp = r - ir;
@@ -72,4 +73,8 @@ void Color::getData() {
 
   lux = (TCS34725_R_Coef * float(r_comp) + TCS34725_G_Coef * float(g_comp) + TCS34725_B_Coef * float(b_comp)) / cpl;
   ct = TCS34725_CT_Coef * float(b_comp) / float(r_comp) + TCS34725_CT_Offset;
+}
+
+void Color::ClearInterrupt(){
+    tcs.clearInterrupt();
 }

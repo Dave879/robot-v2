@@ -13,9 +13,6 @@
 #include "Sensors/Color.h"
 #include "data_formatter.h"
 
-#include <chrono>
-using namespace chrono;
-
 class Robot
 {
 private:
@@ -30,9 +27,9 @@ private:
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 70
 #define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // PID controller constants
-#define KP = 0.5 // Proportional gain
-#define KI = 0.2 // Integral gain
-#define KD = 0.1 // Derivative gain
+#define KP 0.5 // Proportional gain
+#define KI 0.2 // Integral gain
+#define KD 0.1 // Derivative gain
 
 	/**
 	 * Navigation variables
@@ -52,11 +49,12 @@ private:
 	/**
 	 * PID controller variables
 	*/
-	double previousError = 0;
-	double integral = 0;
-	double output = 0;
-	double error = 0;
-	double derivative = 0;
+	uint32_t PID_start_time;
+	double PID_previous_error = 0;
+	double PID_integral = 0;
+	double PID_output = 0;
+	double PID_error = 0;
+	double PID_derivative = 0;
 
 	/**
 	 * PID controller functions
@@ -76,6 +74,7 @@ private:
 	static volatile bool lasers_data_ready[4];
 
 	Color *cs;
+	static volatile bool color_data_ready;
 
 	Servo kit;
 
@@ -87,6 +86,7 @@ private:
 	static void R_VL53L5CX_int_1();
 	static void R_VL53L5CX_int_2();
 	static void R_VL53L5CX_int_3();
+	static void R_TCS34725_int();
 
 public:
 	/**

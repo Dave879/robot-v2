@@ -58,11 +58,16 @@ Robot::Robot(bool cold_start)
 	if (cs->begin(&Wire1))
 	{
 		Serial.println("Initialized color sensor!");
+		pinMode(R_PIN_COLOR_INT, INPUT_PULLUP);
+		attachInterrupt(R_PIN_COLOR_INT, R_TCS34725_int, FALLING);
+		cs->ClearInterrupt();
 	}
 	else
 	{
 		Serial.println("Failed to initialize color sensor!");
 	}
+
+	pinMode(R_PIN_BUTTON, INPUT);
 
 	/**
 	 * Robot ready signal
@@ -73,14 +78,12 @@ Robot::Robot(bool cold_start)
 	delay(100);
 	digitalWrite(LED_BUILTIN, LOW);
 
+	PID_start_time = millis();
 	/**
 	 * Navigation (dead code?) (DK: Yhep)
 	 */
 	// UpdateSensorNumBlocking(VL53L5CX::BW);
 	// back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
-	pinMode(R_PIN_BUTTON, INPUT);
-	// Per il controllo PID
-	auto startTime = high_resolution_clock::now();
 }
 
 void Robot::Run()
@@ -122,7 +125,7 @@ void Robot::Run()
 			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				// Valutazione azione da svolgere in presenza di muro frontale
-				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione 
+				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione
 				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
 					Turn(-90);
@@ -144,23 +147,26 @@ void Robot::Run()
 			else
 			{
 				// Calculate error
-				error = CalculateError(mpu_data.x);
+				PID_error = CalculateError(mpu_data.x);
 				// Calculate integral
-        integral += error;
+				PID_integral += PID_error;
 				// Calculate derivative
-        double derivative = error - previousError;
-        previousError = error;
+				double derivative = PID_error - PID_previous_error;
+				PID_previous_error = PID_error;
 				// Calculate output
-        output = KP * error + KI * integral + KD * derivative;
+				PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
 				// Update motor powers and apply motor powers to left and right motors
-				double elapsedSeconds = duration<double>(high_resolution_clock::now() - startTime).count();
-				if (output > 0) {
-					ms->SetPower(SPEED - output * elapsedSeconds,SPEED)
-        } else {
-					ms->SetPower(SPEED, SPEED + output * elapsedSeconds)
-        }
+				double elapsed_seconds = millis() - PID_start_time;
+				if (PID_output > 0)
+				{
+					ms->SetPower(SPEED - PID_output * elapsed_seconds, SPEED);
+				}
+				else
+				{
+					ms->SetPower(SPEED, SPEED + PID_output * elapsed_seconds);
+				}
 				// Update start time
-        startTime = high_resolution_clock::now();
+				PID_start_time = millis();
 			}
 		}
 	}
@@ -194,6 +200,11 @@ void Robot::R_VL53L5CX_int_2()
 void Robot::R_VL53L5CX_int_3()
 {
 	lasers_data_ready[3] = true;
+}
+
+void Robot::R_TCS34725_int()
+{
+	color_data_ready = true;
 }
 
 bool Robot::StopRobot() // FIXED
@@ -267,9 +278,9 @@ void Robot::Turn(int16_t degree)
 	*/
 }
 
-double Robot::CalculateError(double currentYaw) {
-	double currentError = desired_angle - currentYaw;
-	return currentError;
+double Robot::CalculateError(double currentYaw)
+{
+	return desired_angle - currentYaw;
 }
 
 uint8_t Robot::TrySensorDataUpdate()
@@ -304,7 +315,11 @@ uint8_t Robot::TrySensorDataUpdate()
 		}
 	}
 
-	//cs->getData();
+	if (color_data_ready)
+	{
+		cs->getData();
+	}
+
 	return status;
 }
 
@@ -362,8 +377,9 @@ void Robot::PrintSensorData()
 		}
 		Serial.println();
 	}
-
-	Serial.print("r_comp: ");
+	Serial.print("c_comp:");
+	Serial.print(cs->c_comp);
+	Serial.print("\tr_comp: ");
 	Serial.print(cs->r_comp);
 	Serial.print("\tg_comp: ");
 	Serial.print(cs->g_comp);
