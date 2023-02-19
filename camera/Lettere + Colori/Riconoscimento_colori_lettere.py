@@ -56,7 +56,7 @@ while(True):
 
     no_blob = True
     for i in thresholds:
-        for blob in img.find_blobs([i], pixels_threshold=20, area_threshold=20):
+        for blob in img.find_blobs([i], pixels_threshold=200, area_threshold=10):
             no_blob = False
             print(i)
             # These values depend on the blob not being circular - otherwise they will be shaky.
@@ -96,10 +96,8 @@ while(True):
                     # sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
                     # sensor.skip_frames(time = 2000)     # Wait for settings take effect.
 
-    print(no_blob)
     if no_blob or (start_time + 1) < time.time():
         start_time = time.time()
         led_g.off()
-        time.sleep(0.1)
     else:
         led_g.on()
