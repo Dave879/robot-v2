@@ -1,13 +1,17 @@
 import sensor, image, time, math, os, tf, uos, gc
 
+from pyb import LED
+
 # COLOR DETECTION
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-thresholds = [(0, 60, 15, 127, 15, 127), # generic_red_thresholds
-              (20, 100, -64, -8, -32, 32), # generic_green_thresholds
-              (0, 10, -30, 10, -20, 30),   # generic_black_thresholds
-              (30, 100, -10, 10, 15, 127)] # generic_yellow_thresholds
+red = (0, 60, 15, 127, 15, 127) # generic_red_thresholds
+green =(20, 40, -128, -8, -20, 32) # generic_green_thresholds
+yellow=(50, 100, -10, 10, 30, 127) # generic_yellow_thresholds
+black=(0, 8, -5, 5, -10, 10) # generic_black_thresholds
+
+thresholds = [red, green, yellow, black]
 
 
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
@@ -37,14 +41,24 @@ sensor.reset()                      # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
 sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
 sensor.skip_frames(time = 2000)     # Wait for settings take effect.
-sensor.set_auto_gain(False) # must be turned off for color tracking
-sensor.set_auto_whitebal(False) # must be turned off for color tracking
+time.sleep(0.01)
+sensor.set_auto_gain(True) # must be turned off for color tracking
+sensor.set_auto_whitebal(True) # must be turned off for color tracking
+
+led_r = LED(1) # red led
+led_g = LED(2) # green led
+led_b = LED(3) # blue led
+
+start_time = time.time()
 
 while(True):
-    img = sensor.snapshot()         # Take a picture and return the image.
+    img = sensor.snapshot() # Take a picture and return the image.
 
+    no_blob = True
     for i in thresholds:
-        for blob in img.find_blobs([i], pixels_threshold=200, area_threshold=200):
+        for blob in img.find_blobs([i], pixels_threshold=20, area_threshold=20):
+            no_blob = False
+            print(i)
             # These values depend on the blob not being circular - otherwise they will be shaky.
             if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
                 img.draw_edges(blob.min_corners(), color=(255,0,0))
@@ -55,10 +69,11 @@ while(True):
             img.draw_cross(blob.cx(), blob.cy())
             # Note - the blob rotation is unique to 0-180 only.
             img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
-            if i == (0, 10, -30, 10, -20, 30):
+            if i == black:
                 # sensor.reset()                      # Reset and initialize the sensor.
                 sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
-                #sensor.skip_frames(time = 2000)     # Wait for settings take effect.
+                # sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
+                # sensor.skip_frames(time = 2000)     # Wait for settings take effect.
                 # default settings just do one detection... change them to search the image...
                 img = sensor.snapshot()
                 for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
@@ -78,4 +93,13 @@ while(True):
                     print("Lettera: %s con %f" %(lable, letter_max_value))
                     # sensor.reset()                      # Reset and initialize the sensor.
                     sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
-                    #sensor.skip_frames(time = 2000)     # Wait for settings take effect.
+                    # sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
+                    # sensor.skip_frames(time = 2000)     # Wait for settings take effect.
+
+    print(no_blob)
+    if no_blob or (start_time + 1) < time.time():
+        start_time = time.time()
+        led_g.off()
+        time.sleep(0.1)
+    else:
+        led_g.on()
