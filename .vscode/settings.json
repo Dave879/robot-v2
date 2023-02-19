@@ -29,6 +29,5 @@
 		"typeinfo": "cpp",
 		"cstring": "cpp",
 		"chrono": "cpp"
-	},
-	"C_Cpp.errorSquiggles": "disabled"
+	}
 }

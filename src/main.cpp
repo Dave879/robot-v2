@@ -34,7 +34,7 @@ void setup()
 	}
 
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
-	rb = new Robot(false);
+	rb = new Robot(true);
 	past_millis = millis();
 }
 

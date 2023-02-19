@@ -12,4 +12,4 @@ void SignalBuiltinLED(int count, int delayTime);
 
 #define LOG(x) Serial.println(x)
 
-int clamp(int8_t value, int8_t min, int8_t max);
+int32_t clamp(int32_t value, int32_t min, int32_t max);

@@ -27,9 +27,9 @@ private:
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 70
 #define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // PID controller constants
-#define KP 0.5 // Proportional gain
-#define KI 0.2 // Integral gain
-#define KD 0.1 // Derivative gain
+#define KP 0.05//.5 // Proportional gain
+#define KI 0//.2 // Integral gain
+#define KD 0//.1 // Derivative gain
 
 	/**
 	 * Navigation variables

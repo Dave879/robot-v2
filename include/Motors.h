@@ -26,7 +26,7 @@ public:
 	 * \param left A value from -100 to 100, respectively to go backward and forward with the left motor bank
 	 * \param right A value from -100 to 100, respectively to go backward and forward with the right motor bank
 	 */
-	void SetPower(int8_t left, int8_t right);
+	void SetPower(int32_t left, int32_t right);
 	/**
 	 * Sets the power to the left motor bank
 	 * \param left A value from -100 to 100, respectively to go backward and forward with the left motor bank

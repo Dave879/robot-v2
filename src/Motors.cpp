@@ -14,7 +14,7 @@ Motors::Motors(): l_motor_power_(0), r_motor_power_(0)
 	analogWriteFrequency(R_PIN_MOTOR_R_PWM, 90000);
 }
 
-void Motors::SetPower(int8_t left, int8_t right)
+void Motors::SetPower(int32_t left, int32_t right)
 {
 	l_motor_power_ = clamp(left, -100, 100);
 	r_motor_power_ = clamp(right, -100, 100);
