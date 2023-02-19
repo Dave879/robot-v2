@@ -2,6 +2,12 @@ import sensor, image, time, math, os, tf, uos, gc
 
 from pyb import LED
 
+from pyb import UART
+
+uart = UART(3)
+
+uart.init(baudrate=115200, timeout_char=1000)
+
 # COLOR DETECTION
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
@@ -51,7 +57,10 @@ led_b = LED(3) # blue led
 
 start_time = time.time()
 
+kits = -1
+
 while(True):
+    kits = -1
     img = sensor.snapshot() # Take a picture and return the image.
 
     no_blob = True
@@ -91,13 +100,31 @@ while(True):
                         # print("%s = %f" % (predictions_list[i][0], predictions_list[i][1]))
 
                     print("Lettera: %s con %f" %(lable, letter_max_value))
+                    if lable == "Just_wall":
+                        no_blob = True
+                    elif lable == "H":
+                        kits = 3
+                    elif lable == "S":
+                        kits = 2
+                    elif lable == "U":
+                        kits = 0
                     # sensor.reset()                      # Reset and initialize the sensor.
                     sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
                     # sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
                     # sensor.skip_frames(time = 2000)     # Wait for settings take effect.
+            elif i == red or i == yellow:
+                kits = 1
+            else:
+                kits = 0
+
 
     if no_blob or (start_time + 1) < time.time():
         start_time = time.time()
         led_g.off()
     else:
         led_g.on()
+
+    if kits >= 0:
+        print(kits)
+        send = kits + 48
+        uart.writechar(send)
