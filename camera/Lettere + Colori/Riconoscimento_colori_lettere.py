@@ -57,7 +57,14 @@ led_b = LED(3) # blue led
 
 start_time = time.time()
 
-kits = -1
+# Number of kits to drop : 0 kit(is not the same as -1), 1 kit, 2 kits or 3 kits
+kits = -1 # -1 means that there is no victim
+
+# Ignore color vars
+ignore_red = False
+ignore_green = False
+ignore_yellow = False
+ignore_black = False
 
 while(True):
     kits = -1
@@ -67,7 +74,8 @@ while(True):
     for i in thresholds:
         for blob in img.find_blobs([i], pixels_threshold=200, area_threshold=10):
             no_blob = False
-            print(i)
+            #print(i)
+
             # These values depend on the blob not being circular - otherwise they will be shaky.
             if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
                 img.draw_edges(blob.min_corners(), color=(255,0,0))
@@ -78,13 +86,13 @@ while(True):
             img.draw_cross(blob.cx(), blob.cy())
             # Note - the blob rotation is unique to 0-180 only.
             img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
-            if i == black:
-                # sensor.reset()                      # Reset and initialize the sensor.
+
+            # Black detected
+            if i == black and not ignore_black:
                 sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
-                # sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
-                # sensor.skip_frames(time = 2000)     # Wait for settings take effect.
-                # default settings just do one detection... change them to search the image...
+
                 img = sensor.snapshot()
+
                 for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
                     print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
                     img.draw_rectangle(obj.rect())
@@ -102,25 +110,39 @@ while(True):
                     print("Lettera: %s con %f" %(lable, letter_max_value))
                     if lable == "Just_wall":
                         no_blob = True
+                        ignore_black = True # Si può anche togliere, dipende da cosa vogliamo: se tolto continua a guardare il nero per vedere lettere
                     elif lable == "H":
+                        ignore_black = True
                         kits = 3
                     elif lable == "S":
+                        ignore_black = True
                         kits = 2
                     elif lable == "U":
+                        ignore_black = True
                         kits = 0
-                    # sensor.reset()                      # Reset and initialize the sensor.
                     sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
-                    # sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
-                    # sensor.skip_frames(time = 2000)     # Wait for settings take effect.
-            elif i == red or i == yellow:
-                kits = 1
-            else:
-                kits = 0
 
+            # Red detected
+            elif i == red and not ignore_red:
+                ignore_red = True
+                kits = 1
+            # Yellow detected
+            elif i == yellow and not ingore_yellow:
+                ignore_yellow = True
+                kits = 1
+            # Green detected
+            elif i == green and not ignore_green:
+                ignore_green = True
+                kits = 0
 
     if no_blob or (start_time + 1) < time.time():
         start_time = time.time()
         led_g.off()
+        if no_blob:
+            ignore_red = False
+            ignore_green = False
+            ignore_yellow = False
+            ignore_black = False
     else:
         led_g.on()
 
