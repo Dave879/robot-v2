@@ -136,46 +136,49 @@ void Robot::Run()
 				else
 				{
 					Turn(180);
-					/*
+					
 					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 					ms->SetPower(-90, -90);
 					delay(1000);
 					ms->SetPower(0, 0);
-					*/
+					
 					// TODO: Valutare se tenerlo con il PID
 					// mpu->Reset();
 					// desired_angle = 0;
 				}
-			}
+			} 
 			// In assenza di muro frontale ci troviamo in una strada da prosseguire in modo rettilineo
-			// Calculate error
-			PID_error = CalculateError(mpu_data.x);
-			// Calculate integral
-			PID_integral += PID_error;
-			// Calculate derivative
-			double derivative = PID_error - PID_previous_error;
-			PID_previous_error = PID_error;
-			// Calculate output
-			PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
-			// Update motor powers and apply motor powers to left and right motors
-			double elapsed_seconds = millis() - PID_start_time;
-			if (PID_output > 0)
+			else 
 			{
-				ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
+				// Calculate error
+				PID_error = CalculateError(mpu_data.x);
+				// Calculate integral
+				PID_integral += PID_error;
+				// Calculate derivative
+				double derivative = PID_error - PID_previous_error;
+				PID_previous_error = PID_error;
+				// Calculate output
+				PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
+				// Update motor powers and apply motor powers to left and right motors
+				double elapsed_seconds = millis() - PID_start_time;
+				if (PID_output > 0)
+				{
+					ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
+				}
+				else
+				{
+					ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
+				}
+				Serial.println("PID_output: ");
+				Serial.println(PID_output);
+				Serial.println("elapsed_seconds: ");
+				Serial.println(elapsed_seconds);
+				Serial.println("PID_output * elapsed_seconds: ");
+				double corr = PID_output * elapsed_seconds;
+				Serial.println(corr);
+				// Update start time
+				PID_start_time = millis();
 			}
-			else
-			{
-				ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
-			}
-			Serial.println("PID_output: ");
-			Serial.println(PID_output);
-			Serial.println("elapsed_seconds: ");
-			Serial.println(elapsed_seconds);
-			Serial.println("PID_output * elapsed_seconds: ");
-			double corr = PID_output * elapsed_seconds;
-			Serial.println(corr);
-			// Update start time
-			PID_start_time = millis();
 		}
 	}
 	else
@@ -238,7 +241,6 @@ void Robot::Turn(int16_t degree)
 	// Calcolo il grado da raggiungere
 	UpdateGyroBlocking();
 	desired_angle = mpu_data.x + degree;
-	/*
 	// Controllo se devo girare a destra o sinistra
 	if (degree > 0) // Giro a destra
 	{
@@ -281,7 +283,7 @@ void Robot::Turn(int16_t degree)
 	// Stop dei motori e ricalcolo distanza dal muro posteriore
 	Serial.println("Metodo Turn: giro completato!!!");
 	ms->SetPower(0, 0);
-	*/
+	
 	/*
 	UpdateSensorNumBlocking(1);
 	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
