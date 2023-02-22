@@ -17,7 +17,7 @@ green =(20, 40, -128, -8, -20, 32) # generic_green_thresholds
 yellow=(50, 100, -10, 10, 30, 127) # generic_yellow_thresholds
 black=(0, 8, -5, 5, -10, 10) # generic_black_thresholds
 
-thresholds = [red, green, yellow, black]
+thresholds = [black, red, green, yellow]
 
 
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
@@ -65,16 +65,21 @@ ignore_red = False
 ignore_green = False
 ignore_yellow = False
 ignore_black = False
+after_black = 0
 
 while(True):
     kits = -1
     img = sensor.snapshot() # Take a picture and return the image.
 
     no_blob = True
+
     for i in thresholds:
-        for blob in img.find_blobs([i], pixels_threshold=200, area_threshold=10):
+        # Need time in order to get colors back
+        if ignore_black:
+            time.sleep(0.2)
+
+        for blob in img.find_blobs([i], pixels_threshold=50, area_threshold=80):
             no_blob = False
-            #print(i)
 
             # These values depend on the blob not being circular - otherwise they will be shaky.
             if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
@@ -90,7 +95,7 @@ while(True):
             # Black detected
             if i == black and not ignore_black:
                 sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
-
+                sensor.skip_frames(time = 100)     # Wait for settings take effect.
                 img = sensor.snapshot()
 
                 for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
@@ -120,14 +125,18 @@ while(True):
                     elif lable == "U":
                         ignore_black = True
                         kits = 0
+
                     sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
+
+                    print(ignore_black)
+
 
             # Red detected
             elif i == red and not ignore_red:
                 ignore_red = True
                 kits = 1
             # Yellow detected
-            elif i == yellow and not ingore_yellow:
+            elif i == yellow and not ignore_yellow:
                 ignore_yellow = True
                 kits = 1
             # Green detected
@@ -139,6 +148,7 @@ while(True):
         start_time = time.time()
         led_g.off()
         if no_blob:
+            print("Niente")
             ignore_red = False
             ignore_green = False
             ignore_yellow = False
