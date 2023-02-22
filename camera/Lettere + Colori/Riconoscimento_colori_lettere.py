@@ -148,7 +148,6 @@ while(True):
         start_time = time.time()
         led_g.off()
         if no_blob:
-            print("Niente")
             ignore_red = False
             ignore_green = False
             ignore_yellow = False
