@@ -92,6 +92,56 @@ void Robot::Run()
 {
 	if (!StopRobot())
 	{
+		// Controllo il colore della tile
+		if(cs->c_comp < 20 && mpu_data.z < 3) {
+			if (cs->c_comp <= 10)
+			{
+				just_found_black = true;
+				ms->SetPower(-40, -40);
+				while (cs->c_comp < 10)
+				{
+					if (color_data_ready)
+					{
+						cs->getData();
+						color_data_ready = false;
+					}
+				}
+
+				ms->StopMotors();
+				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
+				{
+					Turn(-90);
+					ms->StopMotors();
+					UpdateSensorNumBlocking(VL53L5CX::FW);
+					front_distance_after_black_turn = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] - 250;
+					ignore_right = true;
+				}
+				else
+				{
+					Turn(180);
+				}
+			}
+			else
+			{
+				ms->SetPower(50, 50);
+				while (cs->c_comp < 25 and cs->c_comp >= 10)
+				{
+					ms->SetPower(50, 50);
+					if (color_data_ready)
+					{
+						cs->getData();
+						color_data_ready = false;
+					}
+				}
+				if (cs->c_comp >= 10)
+				{
+					ms->StopMotors();
+					delay(5000);
+					ignore_right = false; // Per vedere il varco nel caso in cui non lo abbia visto causa ciclo while
+				}
+			}
+		}
+
 		// Controllo la presenza di un varco a destra
 		if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
 		{
@@ -115,15 +165,19 @@ void Robot::Run()
 			// Non è stato rilevato nessun varco a destra
 
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM && ignore_right)
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && (ignore_right))
 			{
 				// Output variabili muro laterale
-				// Serial.println("Muro a destra a tot mm: ");
-				// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
+				Serial.println("Muro a destra a tot mm: ");
+				Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
+				ignore_right = false;
+			}
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= (front_distance_after_black_turn) && (just_found_black))
+			{
+				just_found_black = false;
 				ignore_right = false;
 			}
 
-			// Verifica presenza muro frontale
 			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				// Valutazione azione da svolgere in presenza di muro frontale
@@ -143,8 +197,8 @@ void Robot::Run()
 					ms->SetPower(0, 0);
 					
 					// TODO: Valutare se tenerlo con il PID
-					// mpu->Reset();
-					// desired_angle = 0;
+					mpu->ResetX();
+					desired_angle = 0;
 				}
 			} 
 			// In assenza di muro frontale ci troviamo in una strada da prosseguire in modo rettilineo
@@ -161,14 +215,9 @@ void Robot::Run()
 				PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
 				// Update motor powers and apply motor powers to left and right motors
 				double elapsed_seconds = millis() - PID_start_time;
-				if (PID_output > 0)
-				{
-					ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
-				}
-				else
-				{
-					ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
-				}
+
+				ms->SetPower(SPEED + PID_output * elapsed_seconds, SPEED - PID_output * elapsed_seconds);
+
 				Serial.println("PID_output: ");
 				Serial.println(PID_output);
 				Serial.println("elapsed_seconds: ");
@@ -226,6 +275,11 @@ bool Robot::StopRobot() // FIXED
 		{
 			stop_the_robot = !stop_the_robot;
 			first_time_pressed = true;
+			if (!stop_the_robot)
+			{
+				mpu->ResetX();
+				desired_angle = 0;
+			}
 		}
 	}
 	else
@@ -240,44 +294,28 @@ void Robot::Turn(int16_t degree)
 	Serial.println("Metodo Turn: ");
 	// Calcolo il grado da raggiungere
 	UpdateGyroBlocking();
-	desired_angle = mpu_data.x + degree;
+	desired_angle = mpu_data.x + degree; // or desired angle += degree
 	// Controllo se devo girare a destra o sinistra
 	if (degree > 0) // Giro a destra
 	{
 		Serial.println("Giro destra ->");
-		Serial.print("Angolo da raggiungere: ");
-		Serial.print(desired_angle);
-		Serial.print("Angolo Attuale: ");
-		Serial.print(mpu_data.x);
 		// Inizio a girare
 		ms->SetPower(TURN_SPEED, -TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x >= desired_angle))
+		while (!(mpu_data.x >= desired_angle - 5))
 		{
 			UpdateGyroBlocking();
-			Serial.print("Attuale: ");
-			Serial.println(mpu_data.x);
-			Serial.print("Desiderato: ");
-			Serial.println(desired_angle);
 		}
 	}
 	else // Giro a sinistra
 	{
 		Serial.println("Giro sinistra <-");
-		Serial.print("Angolo da raggiungere: ");
-		Serial.print(desired_angle);
-		Serial.print("Angolo Attuale: ");
-		Serial.print(mpu_data.x);
 		// Inizio a girare
 		ms->SetPower(-TURN_SPEED, TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x <= desired_angle))
+		while (!(mpu_data.x <= desired_angle + 5))
 		{
 			UpdateGyroBlocking();
-			Serial.print("Attuale: ");
-			Serial.print(mpu_data.x);
-			Serial.print("Desiderato: ");
-			Serial.println(desired_angle);
 		}
 	}
 	// Stop dei motori e ricalcolo distanza dal muro posteriore
@@ -374,8 +412,9 @@ void Robot::PrintSensorData()
 
 	for (uint8_t i = 0; i < 4; i++)
 	{
-
-		Serial.print("Sensor number ");
+		const char arr[4] = {'F', 'B', 'S', 'D'};
+		Serial.print("Sensor ");
+		Serial.print(arr[i]);
 		Serial.println(i);
 
 		for (uint8_t j = 0; j < lasers->resolution; j++)

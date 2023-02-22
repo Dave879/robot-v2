@@ -19,7 +19,7 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 65
+#define SPEED 70
 #define TURN_SPEED 85
 #define MIN_DISTANCE_TO_TURN_RIGHT_MM 250
 #define MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM 120
@@ -28,14 +28,18 @@ private:
 #define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // PID controller constants
 #define KP 0.05//.5 // Proportional gain
-#define KI 0//.2 // Integral gain
-#define KD 0//.1 // Derivative gain
+#define KI 0.005//.2 // Integral gain
+#define KD 0.003//.1 // Derivative gain
 
 	/**
 	 * Navigation variables
 	 */
 	bool stop_the_robot = false;
 	bool first_time_pressed = false;
+	// Black tile variables
+	bool just_found_black = false;
+	int black_distance_after_black_turn = 0;
+	int front_distance_after_black_turn = 0;
 	// int16_t back_distance_before = 0; // Unused
 	double desired_angle = 0;
 	bool ignore_right = false;
