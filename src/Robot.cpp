@@ -165,7 +165,7 @@ void Robot::Run()
 			// Non è stato rilevato nessun varco a destra
 
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && (ignore_right))
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right  && !just_found_black)
 			{
 				// Output variabili muro laterale
 				Serial.println("Muro a destra a tot mm: ");
@@ -193,7 +193,7 @@ void Robot::Run()
 					
 					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 					ms->SetPower(-90, -90);
-					delay(1000);
+					delay(1200);
 					ms->SetPower(0, 0);
 					
 					// TODO: Valutare se tenerlo con il PID
@@ -302,7 +302,7 @@ void Robot::Turn(int16_t degree)
 		// Inizio a girare
 		ms->SetPower(TURN_SPEED, -TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x >= desired_angle - 5))
+		while (!(mpu_data.x >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME))
 		{
 			UpdateGyroBlocking();
 		}
@@ -313,7 +313,7 @@ void Robot::Turn(int16_t degree)
 		// Inizio a girare
 		ms->SetPower(-TURN_SPEED, TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x <= desired_angle + 5))
+		while (!(mpu_data.x <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME))
 		{
 			UpdateGyroBlocking();
 		}

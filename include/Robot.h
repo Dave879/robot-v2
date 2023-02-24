@@ -25,7 +25,8 @@ private:
 #define MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM 120
 #define MIN_DISTANCE_TO_TURN_LEFT_MM 250
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 70
-#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
+#define ADDITIONAL_ANGLE_TO_OVERCOME 5
+//#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // PID controller constants
 #define KP 0.05//.5 // Proportional gain
 #define KI 0.005//.2 // Integral gain
