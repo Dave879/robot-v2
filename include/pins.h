@@ -4,11 +4,11 @@
 
 #include <stdint.h>
 
-#define R_PIN_MOTOR_L_PWM 23
-#define R_PIN_MOTOR_R_PWM 22
+#define R_PIN_MOTOR_L_PWM 23 // M2
+#define R_PIN_MOTOR_R_PWM 22 // M1
 
-#define R_PIN_MOTOR_L_DIR 21
-#define R_PIN_MOTOR_R_DIR 20
+#define R_PIN_MOTOR_L_DIR 21 // M2
+#define R_PIN_MOTOR_R_DIR 20 // M1
 
 #define R_PIN_SENSORS_POWER_ENABLE 33
 #define R_PIN_BUTTON 27
