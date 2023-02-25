@@ -16,13 +16,13 @@ if the device monitor doesn't pick up the correct serial port
 
 ## TODO
 
-1. Speed up TCS34725 readings
 1. Refactoring
 1. Fix data_formatter for ArduPlot
 1. OpenMV communication
 
 ## Done
 
+1. Speed up TCS34725 readings
 1. Tested VL53L5CX (Chosen)
 1. Tested TCS34725 sensor (Chosen)
 1. Tested MPU6050 (Chosen)
