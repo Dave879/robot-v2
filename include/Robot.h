@@ -39,11 +39,14 @@ private:
 	bool first_time_pressed = false;
 	// Black tile variables
 	bool just_found_black = false;
-	int black_distance_after_black_turn = 0;
-	int front_distance_after_black_turn = 0;
+	int front_distance_after_black_turn_to_get  = 0; 
+	// int black_distance_after_black_turn_to_get = 0; // TO FIX back value error
 	// int16_t back_distance_before = 0; // Unused
 	double desired_angle = 0;
 	bool ignore_right = false;
+	// victim variable
+	bool just_found_victim = false;
+	int front_distance_after_victim_to_get = 0;
 
 	/**
 	 * Navigation utility functions

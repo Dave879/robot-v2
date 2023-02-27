@@ -86,14 +86,70 @@ Robot::Robot(bool cold_start)
 	 */
 	// UpdateSensorNumBlocking(VL53L5CX::BW);
 	// back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
+
+	// Inizializzazione canale di comunicazione con OpenMV, e primo avvio se presente un muro a destra alla partenza
+	Serial2.begin(115200);
+	UpdateSensorNumBlocking(VL53L5CX::DX);
+	if(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)
+	{
+		Serial2.println('1');
+	}
 }
 
 void Robot::Run()
 {
-	if (!StopRobot())
+	if (!StopRobot()) // Robot in azione
 	{
-		// Controllo il colore della tile
-		if(cs->c_comp < 20 && mpu_data.z < 3 && mpu_data.z > -3) {
+
+		// Controllo la rilevazione delle vittima - OpemMV
+		if (Serial2.available() > 0)
+		{
+			char number_victims = Serial2.read();
+			bool not_real_victim = false;
+			switch (number_victims)
+			{
+				case '0':
+					Serial.println("Vittima: 0 kit");
+					break;
+				case '1':
+					Serial.println("Vittima: 1 kit");
+					break;
+				case '2':
+					Serial.println("Vittima: 2 kit");
+					break;
+				case '3':
+					Serial.println("Vittima: 3 kit");
+					break;
+				default:
+					// Non dovrebbe mai verificarsi questo caso 
+					Serial.println("No vittima");
+					// Tengo conto della finta vittima per evitare di stare fermo 5s
+					not_real_victim = true;
+					break;
+			}
+			// Se è stata trovata una vittima giro il robot verso il senso opposto del muro per droppare il kit e sto fermo 5 secondi
+			if (!not_real_victim)
+			{
+				just_found_victim = true;
+				ms->StopMotors();
+				// 5cm per poter tornare a guardare con l'openmv
+				front_distance_after_victim_to_get = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] - 50;
+				Turn(90);
+				// Manovra da eseguire per ristabilizzare il robot e resettare il giro
+				ms->SetPower(-90, -90);
+				delay(1200);
+				ms->SetPower(50, 50);
+				delay(1000);
+				ms->StopMotors();
+				delay(5000);
+				Turn(-90);
+				UpdateSensorNumBlocking(VL53L5CX::FW);
+			}
+		}
+
+		// Controllo la luminosità della tile
+		if(cs->c_comp < 20 && mpu_data.z < 3 && mpu_data.z > -3) // Luminosità tile
+		{
 			if (cs->c_comp <= 10)
 			{
 				just_found_black = true;
@@ -110,10 +166,14 @@ void Robot::Run()
 				ms->StopMotors();
 				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
+					// Fermo l'openmv
+					Serial2.println('2');
+
 					Turn(-90);
 					ms->StopMotors();
+
 					UpdateSensorNumBlocking(VL53L5CX::FW);
-					front_distance_after_black_turn = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] - 250;
+					front_distance_after_black_turn_to_get = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] - 250;
 					ignore_right = true;
 				}
 				else
@@ -150,7 +210,10 @@ void Robot::Run()
 			// Output variabili varco
 			// Serial.println("Varco a destra!!!");
 			// Serial.println("Distanza Destra: ");
-			// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
+			// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6]);
+
+			// Fermo l'openMV
+			Serial2.println('2');
 
 			// Fermo il robot. TODO: capire se necessario
 			ms->SetPower(0, 0);
@@ -160,30 +223,50 @@ void Robot::Run()
 			// IMposto un vincolo sul varco a destra
 			ignore_right = true;
 		}
+		// Non è stato rilevato nessun varco a destra
 		else
 		{
-			// Non è stato rilevato nessun varco a destra
+			// Verifico se sono stati percorsi 5cm da quando ho rilevato la vittima
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= (front_distance_after_victim_to_get) && (just_found_victim))
+			{
+				Serial2.println('1');
+			}
 
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right  && !just_found_black)
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right && !just_found_black)
 			{
 				// Output variabili muro laterale
-				Serial.println("Muro a destra a tot mm: ");
-				Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
+				// Serial.println("Muro a destra a tot mm: ");
+				// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6]);
+				// Riattivo l'openMV
+				Serial2.println('1');
 				ignore_right = false;
 			}
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= (front_distance_after_black_turn) && (just_found_black))
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= (front_distance_after_black_turn_to_get) && (just_found_black))
 			{
 				just_found_black = false;
-				ignore_right = false;
+				
+				// Before:
+				// ignore_right = false;
+				
+				// Now:
+				// Permette di attivare l'openMV al prossimo cilco se presente un muro a destra
+				ignore_right = true;
+				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_RIGHT_MM)
+				{
+					Turn(90);
+				}
 			}
 
+			// Controllo la distanza frontale
 			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				// Valutazione azione da svolgere in presenza di muro frontale
 				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione
 				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
+					// TODO: Valutare se bloccare l'openMV in curva
+					// 1- Se lasciato attivo, ma con muretto laterale, può rilevare le vittime nei angolini in curva!
 					Turn(-90);
 				}
 				// Avendo tutte le direzioni bloccate, quindi in presenza di una U, mi girerò del tutto
@@ -196,10 +279,10 @@ void Robot::Run()
 					delay(1200);
 					mpu->ResetX();
 					ms->SetPower(0, 0);
-					desired_angle = 0;					
+					desired_angle = 0;
 				}
 			} 
-			// In assenza di muro frontale ci troviamo in una strada da prosseguire in modo rettilineo
+			// In assenza di muro frontale proseguiamo in modo rettilineo
 			else // PID Controll
 			{
 				// Calculate error
@@ -228,7 +311,7 @@ void Robot::Run()
 			}
 		}
 	}
-	else
+	else // Roboto fermo
 	{
 		ms->StopMotors();
 		Serial.println("Premere il pulsante per far partire il robot!");
