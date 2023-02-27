@@ -56,15 +56,11 @@ sensor.set_auto_whitebal(True) # must be turned off for color tracking
 kits = -1 # -1 means that there is no victim
 
 while(True):
-
     if uart.any():
         data = uart.read().decode('utf-8').rstrip()
         if data == '1':
             kits = -1
             while kits == -1:
-
-                print("vai")
-
                 if uart.any():
                     if uart.read().decode('utf-8').rstrip() == '2':
                         break
@@ -108,22 +104,28 @@ while(True):
 
                                     print("Lettera: %s con %f" %(lable, letter_max_value))
                                     if lable == "H":
-                                            kits = 3
+                                        print("black")
+                                        kits = 3
                                     elif lable == "S":
-                                            kits = 2
+                                        print("black")
+                                        kits = 2
                                     elif lable == "U":
-                                            kits = 0
+                                        print("black")
+                                        kits = 0
 
                                     sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
 
                             # Red detected
                             elif i == red:
+                                print("red")
                                 kits = 1
                             # Yellow detected
                             elif i == yellow:
+                                print("yellow")
                                 kits = 1
                             # Green detected
                             elif i == green:
+                                print("green")
                                 kits = 0
 
                 if kits >= 0:
