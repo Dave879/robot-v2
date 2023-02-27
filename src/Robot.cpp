@@ -93,7 +93,7 @@ void Robot::Run()
 	if (!StopRobot())
 	{
 		// Controllo il colore della tile
-		if(cs->c_comp < 20 && mpu_data.z < 3) {
+		if(cs->c_comp < 20 && mpu_data.z < 3 && mpu_data.z > -3) {
 			if (cs->c_comp <= 10)
 			{
 				just_found_black = true;
@@ -113,7 +113,7 @@ void Robot::Run()
 					Turn(-90);
 					ms->StopMotors();
 					UpdateSensorNumBlocking(VL53L5CX::FW);
-					front_distance_after_black_turn = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] - 250;
+					front_distance_after_black_turn = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] - 250;
 					ignore_right = true;
 				}
 				else
@@ -143,7 +143,7 @@ void Robot::Run()
 		}
 
 		// Controllo la presenza di un varco a destra
-		if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
+		if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_RIGHT_MM && !ignore_right)
 		{
 			// Varco trovato!
 
@@ -165,20 +165,20 @@ void Robot::Run()
 			// Non è stato rilevato nessun varco a destra
 
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right  && !just_found_black)
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right  && !just_found_black)
 			{
 				// Output variabili muro laterale
 				Serial.println("Muro a destra a tot mm: ");
 				Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[5]);
 				ignore_right = false;
 			}
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= (front_distance_after_black_turn) && (just_found_black))
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= (front_distance_after_black_turn) && (just_found_black))
 			{
 				just_found_black = false;
 				ignore_right = false;
 			}
 
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[5] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				// Valutazione azione da svolgere in presenza di muro frontale
 				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione
@@ -194,15 +194,13 @@ void Robot::Run()
 					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 					ms->SetPower(-90, -90);
 					delay(1200);
-					ms->SetPower(0, 0);
-					
-					// TODO: Valutare se tenerlo con il PID
 					mpu->ResetX();
-					desired_angle = 0;
+					ms->SetPower(0, 0);
+					desired_angle = 0;					
 				}
 			} 
 			// In assenza di muro frontale ci troviamo in una strada da prosseguire in modo rettilineo
-			else 
+			else // PID Controll
 			{
 				// Calculate error
 				PID_error = CalculateError(mpu_data.x);

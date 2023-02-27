@@ -17,7 +17,7 @@ green =(20, 40, -128, -8, -20, 32) # generic_green_thresholds
 yellow=(50, 100, -10, 10, 30, 127) # generic_yellow_thresholds
 black=(0, 8, -5, 5, -10, 10) # generic_black_thresholds
 
-thresholds = [black, red, green, yellow]
+thresholds = [red, green, yellow, black]
 
 
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
@@ -56,82 +56,85 @@ sensor.set_auto_whitebal(True) # must be turned off for color tracking
 kits = -1 # -1 means that there is no victim
 
 while(True):
-	
-	if uart.any():
-		if uart.read() == 1:
-			kits = -1
-			while kits == -1:
 
-				if uart.any():
-					if uart.read == 2:
-						break
+    if uart.any():
+        data = uart.read().decode('utf-8').rstrip()
+        if data == '1':
+            kits = -1
+            while kits == -1:
 
-				img = sensor.snapshot() # Take a picture and return the image.
+                print("vai")
 
-				for i in thresholds:
+                if uart.any():
+                    if uart.read().decode('utf-8').rstrip() == '2':
+                        break
 
-					for blob in img.find_blobs([i], pixels_threshold=50, area_threshold=80):
+                img = sensor.snapshot() # Take a picture and return the image.
 
-							# These values depend on the blob not being circular - otherwise they will be shaky.
-							if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
-								img.draw_edges(blob.min_corners(), color=(255,0,0))
-								img.draw_line(blob.major_axis_line(), color=(0,255,0))
-								img.draw_line(blob.minor_axis_line(), color=(0,0,255))
-							# These values are stable all the time.
-							img.draw_rectangle(blob.rect())
-							img.draw_cross(blob.cx(), blob.cy())
-							# Note - the blob rotation is unique to 0-180 only.
-							img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
+                for i in thresholds:
 
-							# Black detected
-							if i == black:
-								sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
-								sensor.skip_frames(time = 100)     # Wait for settings take effect.
-								img = sensor.snapshot()
+                    for blob in img.find_blobs([i], pixels_threshold=200, area_threshold=200):
 
-								for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
-									print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
-									img.draw_rectangle(obj.rect())
-									# This combines the labels and confidence values into a list of tuples
-									predictions_list = list(zip(labels, obj.output()))
+                            # These values depend on the blob not being circular - otherwise they will be shaky.
+                            if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
+                                img.draw_edges(blob.min_corners(), color=(255,0,0))
+                                img.draw_line(blob.major_axis_line(), color=(0,255,0))
+                                img.draw_line(blob.minor_axis_line(), color=(0,0,255))
+                            # These values are stable all the time.
+                            img.draw_rectangle(blob.rect())
+                            img.draw_cross(blob.cx(), blob.cy())
+                            # Note - the blob rotation is unique to 0-180 only.
+                            img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
 
-									letter_max_value = 0
-									lable = ""
-									for i in range(len(predictions_list)):
-											if predictions_list[i][1] > letter_max_value:
-												letter_max_value = predictions_list[i][1]
-												lable = predictions_list[i][0]
-											# print("%s = %f" % (predictions_list[i][0], predictions_list[i][1]))
+                            # Black detected
+                            if i == black:
+                                sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
+                                sensor.skip_frames(time = 100)     # Wait for settings take effect.
+                                img = sensor.snapshot()
 
-									print("Lettera: %s con %f" %(lable, letter_max_value))
-									if lable == "H":
-											kits = 3
-									elif lable == "S":
-											kits = 2
-									elif lable == "U":
-											kits = 0
+                                for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
+                                    print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
+                                    img.draw_rectangle(obj.rect())
+                                    # This combines the labels and confidence values into a list of tuples
+                                    predictions_list = list(zip(labels, obj.output()))
 
-									sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
+                                    letter_max_value = 0
+                                    lable = ""
+                                    for i in range(len(predictions_list)):
+                                            if predictions_list[i][1] > letter_max_value:
+                                                letter_max_value = predictions_list[i][1]
+                                                lable = predictions_list[i][0]
+                                            # print("%s = %f" % (predictions_list[i][0], predictions_list[i][1]))
 
-							# Red detected
-							elif i == red:
-								kits = 1
-							# Yellow detected
-							elif i == yellow:
-								kits = 1
-							# Green detected
-							elif i == green:
-								kits = 0
+                                    print("Lettera: %s con %f" %(lable, letter_max_value))
+                                    if lable == "H":
+                                            kits = 3
+                                    elif lable == "S":
+                                            kits = 2
+                                    elif lable == "U":
+                                            kits = 0
 
-				if kits >= 0:
-					print(kits)
-					send = kits + 48
-					uart.writechar(send)
+                                    sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
 
-			if kits != 1:
-				green_led = pyb.LED(2)
-				for i in range(0,5):
-					green_led.on()
-					time.sleep(.5)
-					green_led.off()
-					time.sleep(.5)
+                            # Red detected
+                            elif i == red:
+                                kits = 1
+                            # Yellow detected
+                            elif i == yellow:
+                                kits = 1
+                            # Green detected
+                            elif i == green:
+                                kits = 0
+
+                if kits >= 0:
+                    print(kits)
+                    send = kits + 48
+                    uart.writechar(send)
+
+            if kits != 1:
+                green_led = LED(2)
+                for i in range(0,5):
+                    green_led.on()
+                    time.sleep(.5)
+                    green_led.off()
+                    time.sleep(.5)

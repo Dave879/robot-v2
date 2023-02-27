@@ -28,9 +28,9 @@ private:
 #define ADDITIONAL_ANGLE_TO_OVERCOME 5
 //#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // PID controller constants
-#define KP 0.05//.5 // Proportional gain
-#define KI 0.005//.2 // Integral gain
-#define KD 0.003//.1 // Derivative gain
+#define KP 0.1//.5 // Proportional gain
+#define KI 0.01//.2 // Integral gain
+#define KD 0.008//.1 // Derivative gain
 
 	/**
 	 * Navigation variables
