@@ -13,7 +13,7 @@ uart.init(baudrate=115200, timeout_char=1000)
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
 red = (0, 60, 15, 127, 15, 127) # generic_red_thresholds
-green =(20, 40, -128, -8, -20, 32) # generic_green_thresholds
+green =(30, 50, -100, -20, -20, 32) # generic_green_thresholds
 yellow=(50, 100, -10, 10, 30, 127) # generic_yellow_thresholds
 black=(0, 8, -5, 5, -10, 10) # generic_black_thresholds
 
@@ -56,20 +56,31 @@ sensor.set_auto_whitebal(True) # must be turned off for color tracking
 kits = -1 # -1 means that there is no victim
 
 while(True):
+    red_led = LED(1)
+    red_led.on()
+    print("OpenMV in ascolto...")
     if uart.any():
+        print("Messaggi disponibili")
+        blue_led = LED(3)
+        blue_led.on()
         data = uart.read().decode('utf-8').rstrip()
         if data == '1':
+            print("OpenMV inizia a cercare...")
+            red_led.off()
             kits = -1
             while kits == -1:
+                print("OpenMV sta cercando")
                 if uart.any():
-                    if uart.read().decode('utf-8').rstrip() == '2':
+                    data = uart.read().decode('utf-8').rstrip()
+                    if data == '2':
+                        print("OpenMV smette di cercare, ha ricevuto tale ordine")
                         break
 
                 img = sensor.snapshot() # Take a picture and return the image.
 
                 for i in thresholds:
 
-                    for blob in img.find_blobs([i], pixels_threshold=200, area_threshold=200):
+                    for blob in img.find_blobs([i], pixels_threshold=20, area_threshold=100):
 
                             # These values depend on the blob not being circular - otherwise they will be shaky.
                             if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
@@ -129,11 +140,13 @@ while(True):
                                 kits = 0
 
                 if kits >= 0:
-                    print(kits)
+                    print("Open mv invia a Raspberry pi pico in numero di kits da rilasciare: " + str(kits))
                     send = kits + 48
                     uart.writechar(send)
 
-            if kits != 1:
+            blue_led.off()
+            if kits != -1:
+                print("OpenMV lampeggia per segnalare la presenza di una vittima...")
                 green_led = LED(2)
                 for i in range(0,5):
                     green_led.on()

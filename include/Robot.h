@@ -19,12 +19,12 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 70
+#define SPEED 55
 #define TURN_SPEED 85
 #define MIN_DISTANCE_TO_TURN_RIGHT_MM 250
-#define MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM 120
+#define MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM 180
 #define MIN_DISTANCE_TO_TURN_LEFT_MM 250
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 70
+#define MIN_DISTANCE_FROM_FRONT_WALL_MM 50
 #define ADDITIONAL_ANGLE_TO_OVERCOME 5
 //#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // PID controller constants
@@ -44,15 +44,21 @@ private:
 	// int16_t back_distance_before = 0; // Unused
 	double desired_angle = 0;
 	bool ignore_right = false;
-	// victim variable
-	bool just_found_victim = false;
-	int front_distance_after_victim_to_get = 0;
+
+	/**
+	 * OpenMV varaibles
+	*/
+	bool openmv_searching = false;
+	bool victim_just_found = false;
+	int32_t time_after_openmv_can_search_again = 0;
 
 	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
 	void Turn(int16_t degree);
+	// victim functions
+	void DropKit(int8_t number_of_kits);
 
 	/**
 	 * PID controller variables

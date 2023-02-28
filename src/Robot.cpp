@@ -48,7 +48,7 @@ Robot::Robot(bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);					 // 4*4, 60Hz
+	lasers->StartRanging(16, 60, ELIA::RangingMode::kContinuous);					 // 8*8, 15Hz
 
 	Wire1.begin();				// Color sensor
 	Wire1.setClock(400000); // 400kHz
@@ -89,115 +89,78 @@ Robot::Robot(bool cold_start)
 
 	// Inizializzazione canale di comunicazione con OpenMV, e primo avvio se presente un muro a destra alla partenza
 	Serial2.begin(115200);
-	UpdateSensorNumBlocking(VL53L5CX::DX);
-	if(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)
-	{
-		Serial2.println('1');
-	}
+	/*
+		UpdateSensorNumBlocking(VL53L5CX::DX);
+		if(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)
+		{
+			Serial2.println(1);
+		}
+	*/
 }
 
 void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
 	{
-
-		// Controllo la rilevazione delle vittima - OpemMV
-		if (Serial2.available() > 0)
+		if (openmv_searching)
 		{
-			char number_victims = Serial2.read();
-			bool not_real_victim = false;
-			switch (number_victims)
+			if (Serial2.available() > 0)
 			{
-				case '0':
-					Serial.println("Vittima: 0 kit");
-					break;
-				case '1':
-					Serial.println("Vittima: 1 kit");
-					break;
-				case '2':
-					Serial.println("Vittima: 2 kit");
-					break;
-				case '3':
-					Serial.println("Vittima: 3 kit");
-					break;
-				default:
-					// Non dovrebbe mai verificarsi questo caso 
-					Serial.println("No vittima");
-					// Tengo conto della finta vittima per evitare di stare fermo 5s
-					not_real_victim = true;
-					break;
-			}
-			// Se è stata trovata una vittima giro il robot verso il senso opposto del muro per droppare il kit e sto fermo 5 secondi
-			if (!not_real_victim)
-			{
-				just_found_victim = true;
-				ms->StopMotors();
-				// 5cm per poter tornare a guardare con l'openmv
-				front_distance_after_victim_to_get = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] - 50;
-				Turn(90);
-				// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-				ms->SetPower(-90, -90);
-				delay(1200);
-				ms->SetPower(50, 50);
-				delay(1000);
-				ms->StopMotors();
-				delay(5000);
-				Turn(-90);
-				UpdateSensorNumBlocking(VL53L5CX::FW);
+				openmv_searching = false;
+				victim_just_found = true;
+				char data = Serial2.read();
+				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
+				Serial.println(data);
+				switch (data)
+				{
+					case '0':
+						Serial.println("Vittima: 0 kit");
+						ms->StopMotors();
+						break;
+					case '1':
+						Serial.println("Vittima: 1 kit");
+						ms->StopMotors();
+						DropKit(1);
+						break;
+					case '2':
+						ms->StopMotors();
+						DropKit(2);
+						Serial.println("Vittima: 2 kit");
+						break;
+					case '3':
+						ms->StopMotors();
+						DropKit(3);
+						Serial.println("Vittima: 3 kit");
+						break;
+					default:
+						Serial.println("No vittima");
+						break;
+				}
+				time_after_openmv_can_search_again = millis() + 500;
 			}
 		}
-
-		// Controllo la luminosità della tile
-		if(cs->c_comp < 20 && mpu_data.z < 3 && mpu_data.z > -3) // Luminosità tile
+		else
 		{
-			if (cs->c_comp <= 10)
+			if (!victim_just_found)
 			{
-				just_found_black = true;
-				ms->SetPower(-40, -40);
-				while (cs->c_comp < 10)
+				if(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)
 				{
-					if (color_data_ready)
-					{
-						cs->getData();
-						color_data_ready = false;
-					}
-				}
-
-				ms->StopMotors();
-				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
-				{
-					// Fermo l'openmv
-					Serial2.println('2');
-
-					Turn(-90);
-					ms->StopMotors();
-
-					UpdateSensorNumBlocking(VL53L5CX::FW);
-					front_distance_after_black_turn_to_get = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] - 250;
-					ignore_right = true;
+					openmv_searching = true;
+					Serial2.println(1);
+					time_after_openmv_can_search_again = millis();
+					Serial.println("Teensy 4.1 ha inviato in seriale: 1. OpenMV ha iniziato a cercare!");
 				}
 				else
 				{
-					Turn(180);
+					Serial.println("E' presente un varco a destra, OpenMV non viene attivata");
 				}
 			}
 			else
 			{
-				ms->SetPower(50, 50);
-				while (cs->c_comp < 25 and cs->c_comp >= 10)
+				if (millis() > time_after_openmv_can_search_again)
 				{
-					ms->SetPower(50, 50);
-					if (color_data_ready)
-					{
-						cs->getData();
-						color_data_ready = false;
-					}
-				}
-				if (cs->c_comp >= 10)
-				{
-					ms->StopMotors();
-					delay(5000);
-					ignore_right = false; // Per vedere il varco nel caso in cui non lo abbia visto causa ciclo while
+					victim_just_found = false;
+					Serial.println("Tempo minimo d'attesa da attendere dopo aver trovato una vittima passato.");
 				}
 			}
 		}
@@ -208,77 +171,50 @@ void Robot::Run()
 			// Varco trovato!
 
 			// Output variabili varco
-			// Serial.println("Varco a destra!!!");
-			// Serial.println("Distanza Destra: ");
-			// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6]);
+			Serial.println("Varco a destra!!!");
+			Serial.println("Distanza Destra: ");
+			Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6]);
 
 			// Fermo l'openMV
-			Serial2.println('2');
+			Serial2.println(2);
+			openmv_searching = false;
 
-			// Fermo il robot. TODO: capire se necessario
+			// Fermo il robot prima di girare
 			ms->SetPower(0, 0);
 
 			// Giro a destra (90°)
 			Turn(90);
-			// IMposto un vincolo sul varco a destra
+			// Imposto un vincolo sul varco a destra
 			ignore_right = true;
 		}
 		// Non è stato rilevato nessun varco a destra
 		else
 		{
-			// Verifico se sono stati percorsi 5cm da quando ho rilevato la vittima
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= (front_distance_after_victim_to_get) && (just_found_victim))
-			{
-				Serial2.println('1');
-			}
-
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right && !just_found_black)
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM)  && ignore_right)
 			{
-				// Output variabili muro laterale
-				// Serial.println("Muro a destra a tot mm: ");
-				// Serial.print(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6]);
-				// Riattivo l'openMV
-				Serial2.println('1');
 				ignore_right = false;
-			}
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= (front_distance_after_black_turn_to_get) && (just_found_black))
-			{
-				just_found_black = false;
-				
-				// Before:
-				// ignore_right = false;
-				
-				// Now:
-				// Permette di attivare l'openMV al prossimo cilco se presente un muro a destra
-				ignore_right = true;
-				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_RIGHT_MM)
-				{
-					Turn(90);
-				}
 			}
 
 			// Controllo la distanza frontale
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[10] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[6] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				// Valutazione azione da svolgere in presenza di muro frontale
 				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione
 				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_LEFT_MM)
 				{
-					// TODO: Valutare se bloccare l'openMV in curva
-					// 1- Se lasciato attivo, ma con muretto laterale, può rilevare le vittime nei angolini in curva!
 					Turn(-90);
 				}
 				// Avendo tutte le direzioni bloccate, quindi in presenza di una U, mi girerò del tutto
 				else
 				{
-					Turn(180);
+					Turn(-180);
 					
 					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 					ms->SetPower(-90, -90);
 					delay(1200);
-					mpu->ResetX();
 					ms->SetPower(0, 0);
+					mpu->ResetX();
 					desired_angle = 0;
 				}
 			} 
@@ -370,6 +306,26 @@ bool Robot::StopRobot() // FIXED
 	return stop_the_robot;
 }
 
+void Robot::DropKit(int8_t number_of_kits)
+{
+	ms->SetPower(-90, -90);
+	delay(800);
+	ms->SetPower(40, 40);
+	delay(200);
+	ms->StopMotors();
+
+	for (int8_t i = 0; i < number_of_kits; i++)
+	{
+		kit.write(180);
+		delay(1000);
+		kit.write(0);
+		delay(1000);
+	}
+
+	Turn(90);
+	delay(7000 - (2000 * number_of_kits));
+}
+
 void Robot::Turn(int16_t degree)
 {
 	Serial.println("Metodo Turn: ");
@@ -383,7 +339,7 @@ void Robot::Turn(int16_t degree)
 		// Inizio a girare
 		ms->SetPower(TURN_SPEED, -TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME))
+		while (!(mpu_data.x >= desired_angle /*+ ADDITIONAL_ANGLE_TO_OVERCOME*/))
 		{
 			UpdateGyroBlocking();
 		}
@@ -394,7 +350,7 @@ void Robot::Turn(int16_t degree)
 		// Inizio a girare
 		ms->SetPower(-TURN_SPEED, TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME))
+		while (!(mpu_data.x <= desired_angle /*- ADDITIONAL_ANGLE_TO_OVERCOME*/))
 		{
 			UpdateGyroBlocking();
 		}
