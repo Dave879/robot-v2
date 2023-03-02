@@ -6,7 +6,7 @@ from pyb import UART
 
 uart = UART(3)
 
-uart.init(baudrate=115200, timeout_char=1000)
+uart.init(baudrate=115200, timeout_char=1)
 
 # COLOR DETECTION
 
@@ -16,6 +16,9 @@ red = (0, 60, 15, 127, 15, 127) # generic_red_thresholds
 green =(30, 50, -100, -20, -20, 32) # generic_green_thresholds
 yellow=(50, 100, -10, 10, 30, 127) # generic_yellow_thresholds
 black=(0, 8, -5, 5, -10, 10) # generic_black_thresholds
+
+pixels_threshold = 50
+area_threshold = 50
 
 thresholds = [red, green, yellow, black]
 
@@ -55,13 +58,15 @@ sensor.set_auto_whitebal(True) # must be turned off for color tracking
 # Number of kits to drop : 0 kit(is not the same as -1), 1 kit, 2 kits or 3 kits
 kits = -1 # -1 means that there is no victim
 
+red_led = LED(1)
+blue_led = LED(3)
+green_led = LED(2)
+
 while(True):
-    red_led = LED(1)
     red_led.on()
     print("OpenMV in ascolto...")
     if uart.any():
         print("Messaggi disponibili")
-        blue_led = LED(3)
         blue_led.on()
         data = uart.read().decode('utf-8').rstrip()
         if data == '1':
@@ -80,7 +85,7 @@ while(True):
 
                 for i in thresholds:
 
-                    for blob in img.find_blobs([i], pixels_threshold=20, area_threshold=100):
+                    for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 
                             # These values depend on the blob not being circular - otherwise they will be shaky.
                             if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
@@ -147,7 +152,6 @@ while(True):
             blue_led.off()
             if kits != -1:
                 print("OpenMV lampeggia per segnalare la presenza di una vittima...")
-                green_led = LED(2)
                 for i in range(0,5):
                     green_led.on()
                     time.sleep(.5)

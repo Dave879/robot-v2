@@ -13,8 +13,8 @@ volatile bool Robot::color_data_ready = false;
 
 Robot *rb;
 
-uint16_t times_per_second = 0;
-uint32_t past_millis = 0;
+// uint16_t times_per_second = 0;
+// uint32_t past_millis = 0;
 
 void setup()
 {
@@ -35,7 +35,7 @@ void setup()
 
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
 	rb = new Robot(true);
-	past_millis = millis();
+	// past_millis = millis();
 }
 
 void loop()
@@ -45,7 +45,7 @@ void loop()
 	rb->PrintSensorData();
 
 	rb->Run();
-
+/*
 	times_per_second++;
 	if (past_millis + 1000 < millis())
 	{
@@ -54,6 +54,7 @@ void loop()
 		times_per_second = 0;
 		past_millis = millis();
 	}
+*/
 	
 	/*
 	DynamicJsonDocument doc(200);

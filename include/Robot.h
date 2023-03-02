@@ -19,31 +19,35 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 55
-#define TURN_SPEED 85
-#define MIN_DISTANCE_TO_TURN_RIGHT_MM 250
-#define MIN_DISTANCE_TO_SET_IGNORE_RIGHT_FALSE_MM 180
-#define MIN_DISTANCE_TO_TURN_LEFT_MM 250
+#define SPEED 45
+#define TURN_SPEED 90
+#define MIN_DISTANCE_TO_TURN_MM 250
+#define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 50
 #define ADDITIONAL_ANGLE_TO_OVERCOME 5
 //#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
+// Colored tile
+#define MIN_VALUE_TO_STOP_COLORED_TILE 20
+#define MIN_VALUE_TO_STOP_BLUE 18
+#define MIN_VALUE_TO_AVOID_BLACK 9
 // PID controller constants
-#define KP 0.1//.5 // Proportional gain
-#define KI 0.01//.2 // Integral gain
-#define KD 0.008//.1 // Derivative gain
+#define KP 0.2//.5 // Proportional gain
+#define KI 0.02//.2 // Integral gain
+#define KD 0.016//.1 // Derivative gain
 
 	/**
 	 * Navigation variables
 	 */
 	bool stop_the_robot = false;
 	bool first_time_pressed = false;
+	bool last_turn_right = false;
 	// Black tile variables
 	bool just_found_black = false;
-	int front_distance_after_black_turn_to_get  = 0; 
-	// int black_distance_after_black_turn_to_get = 0; // TO FIX back value error
-	// int16_t back_distance_before = 0; // Unused
+	int32_t time_after_black_tile_ignore_false = 0;
+	// Turn variables
 	double desired_angle = 0;
 	bool ignore_right = false;
+	bool ignore_left = false;
 
 	/**
 	 * OpenMV varaibles
@@ -51,12 +55,18 @@ private:
 	bool openmv_searching = false;
 	bool victim_just_found = false;
 	int32_t time_after_openmv_can_search_again = 0;
+	// OpenMV functions
+	void StopOpenMV();
+
 
 	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
 	void Turn(int16_t degree);
+	void Straighten();
+	void TurnRight();
+	void TurnLeft();
 	// victim functions
 	void DropKit(int8_t number_of_kits);
 

@@ -57,6 +57,8 @@ kits = -1 # -1 means that there is no victim
 
 while(True):
 
+    kits = -1
+
     img = sensor.snapshot() # Take a picture and return the image.
 
     for i in thresholds:
