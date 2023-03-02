@@ -186,7 +186,7 @@ void Robot::Run()
 				{
 					// Nero prossima tile ignore = false
 					just_found_black = true;
-					time_after_black_tile_ignore_false = millis() + 600;
+					time_after_black_tile_ignore_false = millis() + 500;
 
 					// Fermo l'openMV
 					StopOpenMV();
@@ -216,7 +216,7 @@ void Robot::Run()
 				{
 					// Nero prossima tile ignore = false
 					just_found_black = true;
-					time_after_black_tile_ignore_false = millis() + 600;
+					time_after_black_tile_ignore_false = millis() + 500;
 
 					// Fermo l'openMV
 					StopOpenMV();
@@ -338,6 +338,8 @@ void Robot::Run()
 		else if((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_left))
 		{
 			// Varco trovato!
+			UpdateSensorNumBlocking(VL53L5CX::SX);
+			UpdateSensorNumBlocking(VL53L5CX::DX);
 			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right)
 			// Giro a destra
 			{
@@ -453,6 +455,7 @@ void Robot::Run()
 			{
 				ignore_right = false;
 			}
+			// In presenza di un muro laterale a sinistra, cambio il vincolo sul varco applicato nella svolta
 			if ((lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)  && ignore_left)
 			{
 				ignore_left = false;
@@ -460,6 +463,9 @@ void Robot::Run()
 			// Controllo la distanza frontale
 			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[6] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
+				ms->StopMotors();
+				UpdateSensorNumBlocking(VL53L5CX::SX);
+				UpdateSensorNumBlocking(VL53L5CX::DX);
 				// Valutazione azione da svolgere in presenza di muro frontale
 				// In presenza di varco a destra, svolterò per prosseguire verso quella direzione
 				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM)
@@ -500,7 +506,17 @@ void Robot::Run()
 				// Update motor powers and apply motor powers to left and right motors
 				double elapsed_seconds = millis() - PID_start_time;
 
-				ms->SetPower(SPEED + (PID_output * elapsed_seconds) + mpu_data.z, SPEED - (PID_output * elapsed_seconds) + mpu_data.z);
+				if (mpu_data.z > 0) {
+					ms->SetPower(SPEED + (PID_output * elapsed_seconds) + mpu_data.z, SPEED - (PID_output * elapsed_seconds) + mpu_data.z);
+				}
+				else if (mpu_data.z < 45)
+				{
+					ms->SetPower(SPEED + (PID_output * elapsed_seconds) - 5, SPEED - (PID_output * elapsed_seconds) - 5);
+				}
+				else
+				{
+					ms->SetPower(SPEED + (PID_output * elapsed_seconds), SPEED - (PID_output * elapsed_seconds));
+				}
 
 				Serial.println("PID_output: ");
 				Serial.println(PID_output);
@@ -511,7 +527,6 @@ void Robot::Run()
 				Serial.println(corr);
 				// Update start time
 				PID_start_time = millis();
-
 
 			/*
 				// Provisorio
