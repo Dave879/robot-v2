@@ -61,10 +61,14 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 		int16_t v[3] = {0, 0, 0};
 		mpu.dmpGetGyro(&v[0], fifoBuffer);
 		// gyro.x = ypr[0] * 180 / M_PI;
+		// gyro.y = ypr[1] * 180 / M_PI;
+		// gyro.z = ypr[2] * 180 / M_PI;
 		double Gx = v[2] / 65.5;
-		gyro.y = ypr[1] * 180 / M_PI;
-		gyro.z = ypr[2] * 180 / M_PI;
+		double Gz = v[0] / 65.5;
+		double Gy = v[1] / 65.5;
 		gyro.x -= Gx * (ElapsedTime * 0.001);
+		gyro.z += Gz * (ElapsedTime * 0.001);
+		gyro.y -= Gy * (ElapsedTime * 0.001);
 		data = gyro;
 		StartTime = millis();
 		return 0;
@@ -78,4 +82,6 @@ uint8_t Gyro::GetGyroData(GyroData &data)
 void Gyro::ResetX()
 {
 	gyro.x = 0;
+	gyro.y = 0;
+	gyro.z = 0;
 }

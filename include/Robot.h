@@ -19,15 +19,15 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 45
-#define TURN_SPEED 90
-#define MIN_DISTANCE_TO_TURN_MM 250
+#define SPEED 47
+#define TURN_SPEED 95
+#define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 50
 #define ADDITIONAL_ANGLE_TO_OVERCOME 5
 //#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // Colored tile
-#define MIN_VALUE_TO_STOP_COLORED_TILE 20
+#define MIN_VALUE_TO_STOP_COLORED_TILE 18
 #define MIN_VALUE_TO_STOP_BLUE 18
 #define MIN_VALUE_TO_AVOID_BLACK 9
 // PID controller constants
@@ -44,6 +44,8 @@ private:
 	// Black tile variables
 	bool just_found_black = false;
 	int32_t time_after_black_tile_ignore_false = 0;
+	// BLue tile variables
+	bool ignore_blue = false;
 	// Turn variables
 	double desired_angle = 0;
 	bool ignore_right = false;

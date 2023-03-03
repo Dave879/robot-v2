@@ -100,37 +100,40 @@ void Robot::Run()
 			if (Serial2.available() > 0)
 			{
 				openmv_searching = false;
-				victim_just_found = true;
 				char data = Serial2.read();
 				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 				Serial.println(data);
-				switch (data)
+				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 				{
-					case '0':
-						Serial.println("Vittima: 0 kit");
-						ms->StopMotors();
-						delay(6000);
-						break;
-					case '1':
-						Serial.println("Vittima: 1 kit");
-						ms->StopMotors();
-						DropKit(1);
-						break;
-					case '2':
-						ms->StopMotors();
-						DropKit(2);
-						Serial.println("Vittima: 2 kit");
-						break;
-					case '3':
-						ms->StopMotors();
-						DropKit(3);
-						Serial.println("Vittima: 3 kit");
-						break;
-					default:
-						Serial.println("No vittima");
-						break;
+					victim_just_found = true;
+					switch (data)
+					{
+						case '0':
+							Serial.println("Vittima: 0 kit");
+							ms->StopMotors();
+							delay(6000);
+							break;
+						case '1':
+							Serial.println("Vittima: 1 kit");
+							ms->StopMotors();
+							DropKit(1);
+							break;
+						case '2':
+							ms->StopMotors();
+							DropKit(2);
+							Serial.println("Vittima: 2 kit");
+							break;
+						case '3':
+							ms->StopMotors();
+							DropKit(3);
+							Serial.println("Vittima: 3 kit");
+							break;
+						default:
+							Serial.println("No vittima");
+							break;
+					}
+					time_after_openmv_can_search_again = millis() + 500;
 				}
-				time_after_openmv_can_search_again = millis() + 500;
 			}
 		}
 		else
@@ -141,7 +144,8 @@ void Robot::Run()
 				{
 					openmv_searching = true;
 					Serial2.println(1);
-					time_after_openmv_can_search_again = millis();
+					// Inutile
+					// time_after_openmv_can_search_again = millis();
 					Serial.println("Teensy 4.1 ha inviato in seriale: 1. OpenMV ha iniziato a cercare!");
 				}
 				else
@@ -160,7 +164,7 @@ void Robot::Run()
 		}
 
 	// Colore tile
-	if (cs->c_comp <= MIN_VALUE_TO_STOP_COLORED_TILE)
+	if (cs->c_comp <= MIN_VALUE_TO_STOP_COLORED_TILE && mpu_data.z < 9 && mpu_data.z > -9 && !ignore_blue) // Ignore blue, non attendo
 	{
 		ms->StopMotors();
 		delay(100);
@@ -182,7 +186,7 @@ void Robot::Run()
 			if (last_turn_right)
 			{
 				UpdateSensorNumBlocking(VL53L5CX::SX);
-				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM)
+				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[10] >= MIN_DISTANCE_TO_TURN_MM)
 				{
 					// Nero prossima tile ignore = false
 					just_found_black = true;
@@ -212,7 +216,7 @@ void Robot::Run()
 			else
 			{
 				UpdateSensorNumBlocking(VL53L5CX::DX);
-				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM)
+				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[10] >= MIN_DISTANCE_TO_TURN_MM)
 				{
 					// Nero prossima tile ignore = false
 					just_found_black = true;
@@ -244,8 +248,9 @@ void Robot::Run()
 			UpdateSensorNumBlocking(VL53L5CX::FW);
 			UpdateSensorNumBlocking(VL53L5CX::BW);
 		}
-		else if(cs->c_comp > MIN_VALUE_TO_AVOID_BLACK && cs->c_comp <= MIN_VALUE_TO_STOP_BLUE)
+		else if(cs->c_comp > MIN_VALUE_TO_AVOID_BLACK && cs->c_comp <= MIN_VALUE_TO_STOP_BLUE && !ignore_blue)
 		{
+			ignore_blue = true;
 			ms->SetPower(40, 40);
 			while (cs->c_comp <= MIN_VALUE_TO_STOP_BLUE && cs->c_comp > MIN_VALUE_TO_AVOID_BLACK)
 			{
@@ -338,6 +343,7 @@ void Robot::Run()
 		else if((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_left))
 		{
 			// Varco trovato!
+			delay(50);
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
 			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right)
@@ -450,6 +456,11 @@ void Robot::Run()
 		// Non dovrebbe aver trovato varchi
 		else
 		{
+			// Se non sono su una tile blue e sto ignorando il blue, toglo l'ignora blue
+			if (cs->c_comp > MIN_VALUE_TO_STOP_BLUE && ignore_blue)
+			{
+				ignore_blue = false;
+			}
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
 			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)  && ignore_right)
 			{
@@ -461,7 +472,7 @@ void Robot::Run()
 				ignore_left = false;
 			}
 			// Controllo la distanza frontale
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[6] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
+			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[13] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
 			{
 				ms->StopMotors();
 				UpdateSensorNumBlocking(VL53L5CX::SX);
@@ -506,10 +517,12 @@ void Robot::Run()
 				// Update motor powers and apply motor powers to left and right motors
 				double elapsed_seconds = millis() - PID_start_time;
 
+				// ms->SetPower(SPEED + (PID_output * elapsed_seconds), SPEED - (PID_output * elapsed_seconds));
+
 				if (mpu_data.z > 0) {
 					ms->SetPower(SPEED + (PID_output * elapsed_seconds) + mpu_data.z, SPEED - (PID_output * elapsed_seconds) + mpu_data.z);
 				}
-				else if (mpu_data.z < 45)
+				else if (mpu_data.z < -10)
 				{
 					ms->SetPower(SPEED + (PID_output * elapsed_seconds) - 5, SPEED - (PID_output * elapsed_seconds) - 5);
 				}

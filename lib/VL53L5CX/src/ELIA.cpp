@@ -32,7 +32,7 @@ ELIA::ELIA(TwoWire &interface, const uint8_t address) : status(0)
 	}
 	// This function takes (from 1131ms, 1063ms, 1058ms) 1053ms to execute, it needs to transfer ~84 kbytes (um2884) through the i2c bus
 	status |= vl53l5cx_init(&config);
-	status |= vl53l5cx_set_sharpener_percent(&config, 20);
+	//status |= vl53l5cx_set_sharpener_percent(&config, 20);
 
 	status |= vl53l5cx_is_alive(&config, &is_alive);
 }
