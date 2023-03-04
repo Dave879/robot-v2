@@ -4,6 +4,15 @@ from pyb import LED
 
 from pyb import UART
 
+import pyb
+
+# ANALOG READ
+
+analog_distance = pyb.ADC(pyb.Pin('P6'))
+
+
+# UART COMMUNICATION
+
 uart = UART(3)
 
 uart.init(baudrate=115200, timeout_char=1000)
@@ -56,6 +65,8 @@ sensor.set_auto_whitebal(True) # must be turned off for color tracking
 kits = -1 # -1 means that there is no victim
 
 while(True):
+
+    print("%f volts" % (((analog_distance.read() * 3.3) + 2047.5) / 4095)) # read value, 0-4095
 
     kits = -1
 
