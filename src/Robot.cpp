@@ -286,8 +286,8 @@ void Robot::Run()
 			delay(100);
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
-			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right)
 			// Giro a destra
+			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right)
 			{
 				if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 				{
@@ -299,8 +299,13 @@ void Robot::Run()
 						// Giro a destra
 						TurnRight();
 
-						// Radrizzo
-						Straighten();
+						UpdateSensorNumBlocking(VL53L5CX::BW);
+						if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+						{
+							// Radrizzo
+							Straighten();
+						}
+
 					}
 					else
 					{
@@ -315,8 +320,6 @@ void Robot::Run()
 					Serial.print("Distanza Destra: ");
 					Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6]);
 
-					
-
 					TurnRight();
 				}
 			}
@@ -330,11 +333,15 @@ void Robot::Run()
 						Serial.print("millis() % 2: ");
 						Serial.println(millis() % 2);
 
-					// Giro a sinistra
+						// Giro a sinistra
 						TurnLeft();
 
-						// Radrizzo
-						Straighten();
+						UpdateSensorNumBlocking(VL53L5CX::BW);
+						if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[5] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+						{
+							// Radrizzo
+							Straighten();
+						}
 					}
 					else
 					{
@@ -348,8 +355,6 @@ void Robot::Run()
 					Serial.println("Varco Trovato!!!");
 					Serial.print("Distanza Sinistra: ");
 					Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[6]);
-
-					
 
 					// Giro a sinistra
 					TurnLeft();
