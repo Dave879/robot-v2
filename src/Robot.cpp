@@ -161,15 +161,11 @@ void Robot::Run()
 					just_found_black = true;
 					time_after_black_tile_ignore_false = millis() + 500;
 
-					
-
 					// Giro a sinistra
 					TurnLeft();
 				}
 				else
 				{
-					
-
 					// Giro in dietro
 					TurnBack();
 				}
@@ -183,15 +179,11 @@ void Robot::Run()
 					just_found_black = true;
 					time_after_black_tile_ignore_false = millis() + 500;
 
-					
-
 					// Giro a destra
 					TurnRight();
 				}
 				else
 				{
-					
-
 					// Giro in dietro
 					TurnBack();
 				}
@@ -305,7 +297,6 @@ void Robot::Run()
 							// Radrizzo
 							Straighten();
 						}
-
 					}
 					else
 					{
@@ -389,8 +380,6 @@ void Robot::Run()
 				// In presenza di varco a destra, svolterò per prosseguire verso quella direzione
 				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[6] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					
-
 					// Giro a destra
 					TurnRight();
 
@@ -523,13 +512,14 @@ void Robot::DropKit(int8_t number_of_kits)
 	}
 
 	Turn(-90);
+	ms->SetPower(-90, -80);
+	delay(500);
+	ms->SetPower(40, 40);
+	delay(200);
+	ms->StopMotors();
+	
 	for (int8_t i = 0; i < number_of_kits; i++)
 	{
-		ms->SetPower(-90, -80);
-		delay(1000);
-		ms->SetPower(40, 40);
-		delay(200);
-		ms->StopMotors();
 		kit.write(180);
 		delay(1000);
 		kit.write(0);
@@ -588,13 +578,15 @@ void Robot::TurnBack()
 	ignore_left = true;
 }
 
-
 void Robot::Turn(int16_t degree)
 {
+	ms->StopMotors();
 	Serial.println("Metodo Turn: ");
 	// Calcolo il grado da raggiungere
-	UpdateGyroBlocking();
-	desired_angle = mpu_data.x + degree; // or desired angle += degree
+	desired_angle = mpu_data.x + degree; //da cambiare col le due righe sotto
+	//UpdateGyroBlocking();
+	//desired_angle += degree; // or desired angle += degree
+	
 	// Controllo se devo girare a destra o sinistra
 	if (degree > 0) // Giro a destra
 	{
@@ -603,7 +595,7 @@ void Robot::Turn(int16_t degree)
 		// Inizio a girare
 		ms->SetPower(TURN_SPEED, -TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x >= desired_angle /*+ ADDITIONAL_ANGLE_TO_OVERCOME*/))
+		while (mpu_data.x < desired_angle)
 		{
 			UpdateGyroBlocking();
 		}
@@ -615,19 +607,14 @@ void Robot::Turn(int16_t degree)
 		// Inizio a girare
 		ms->SetPower(-TURN_SPEED, TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
-		while (!(mpu_data.x <= desired_angle /*- ADDITIONAL_ANGLE_TO_OVERCOME*/))
+		while (mpu_data.x > desired_angle)
 		{
 			UpdateGyroBlocking();
 		}
 	}
 	// Stop dei motori e ricalcolo distanza dal muro posteriore
 	Serial.println("Metodo Turn: giro completato!!!");
-	ms->SetPower(0, 0);
-	
-	/*
-	UpdateSensorNumBlocking(1);
-	back_distance_before = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[6];
-	*/
+	ms->StopMotors();
 }
 
 double Robot::CalculateError(double currentYaw)
