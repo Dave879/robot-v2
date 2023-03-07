@@ -52,16 +52,6 @@ private:
 	bool ignore_left = false;
 
 	/**
-	 * OpenMV varaibles
-	*/
-	bool openmv_searching = false;
-	bool victim_just_found = false;
-	int32_t time_after_openmv_can_search_again = 0;
-	// OpenMV functions
-	void StopOpenMV();
-
-
-	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
@@ -69,6 +59,7 @@ private:
 	void Straighten();
 	void TurnRight();
 	void TurnLeft();
+	void TurnBack();
 	// victim functions
 	void DropKit(int8_t number_of_kits);
 

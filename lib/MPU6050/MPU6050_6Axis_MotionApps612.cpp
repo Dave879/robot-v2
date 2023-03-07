@@ -364,7 +364,7 @@ uint8_t MPU6050::dmpInitialize() { // Lets get it over with fast Write everythin
 	I2Cdev::writeBytes(devAddr,0x1A, 1, &(val = 0x01), wireObj); // 0000 0001 CONFIG: Digital Low Pass Filter (DLPF) Configuration 188HZ  //Im betting this will be the beat
 	if (!writeProgMemoryBlock(dmpMemory, MPU6050_DMP_CODE_SIZE)) return 1; // Loads the DMP image into the MPU6050 Memory // Should Never Fail
 	I2Cdev::writeWords(devAddr, 0x70, 1, &(ival = 0x0400), wireObj); // DMP Program Start Address
-	I2Cdev::writeBytes(devAddr,0x1B, 1, &(val = 0x08), wireObj); // 0001 1000 GYRO_CONFIG: 1 = +500 Deg/sec
+	I2Cdev::writeBytes(devAddr,0x1B, 1, &(val = 0x18), wireObj); // 0001 1000 GYRO_CONFIG: 3 = +2000 Deg/sec
 	I2Cdev::writeBytes(devAddr,0x6A, 1, &(val = 0xC0), wireObj); // 1100 1100 USER_CTRL: Enable Fifo and Reset Fifo
 	I2Cdev::writeBytes(devAddr,0x38, 1, &(val = 0x02), wireObj); // 0000 0010 INT_ENABLE: RAW_DMP_INT_EN on
 	I2Cdev::writeBit(devAddr,0x6A, 2, 1, wireObj);      // Reset FIFO one last time just for kicks. (MPUi2cWrite reads 0x6A first and only alters 1 bit and then saves the byte)
