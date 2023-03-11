@@ -25,11 +25,9 @@ private:
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 50
 #define ADDITIONAL_ANGLE_TO_OVERCOME 5
-//#define MIN_DISTANCE_FROM_LAST_TILE_MM 300
 // Colored tile
-#define MIN_VALUE_TO_STOP_COLORED_TILE 18
-#define MIN_VALUE_TO_STOP_BLUE 18
-#define MIN_VALUE_TO_AVOID_BLACK 9
+#define MIN_VALUE_BLUE_TILE 18
+#define MIN_VALUE_BLACK_TILE 9
 // PID controller constants
 #define KP 0.2//.5 // Proportional gain
 #define KI 0.02//.2 // Integral gain
@@ -41,6 +39,7 @@ private:
 	bool stop_the_robot = false;
 	bool first_time_pressed = false;
 	bool last_turn_right = false;
+	bool last_turn_back = false;
 	// Black tile variables
 	bool just_found_black = false;
 	uint32_t time_after_black_tile_ignore_false = 0;
@@ -55,6 +54,7 @@ private:
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
+	bool NeedToTurn();
 	void Turn(int16_t degree);
 	void Straighten();
 	void TurnRight();
