@@ -43,7 +43,7 @@ private:
 	bool last_turn_right = false;
 	// Black tile variables
 	bool just_found_black = false;
-	int32_t time_after_black_tile_ignore_false = 0;
+	uint32_t time_after_black_tile_ignore_false = 0;
 	// BLue tile variables
 	bool ignore_blue = false;
 	// Turn variables

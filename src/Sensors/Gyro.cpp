@@ -7,13 +7,13 @@ Gyro::Gyro(bool cold_start) : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f
 
 	if (devStatus == 0)
 	{
-		// Changed by Dave on 16/12/2022 - 17:42
-		mpu.setXGyroOffset(39);
-		mpu.setYGyroOffset(98);
-		mpu.setZGyroOffset(-397);
-		mpu.setXAccelOffset(-3617);
-		mpu.setYAccelOffset(1799);
-		mpu.setZAccelOffset(1362);
+		// Changed by Dave on 08/03/2023 - 11:49
+		mpu.setXGyroOffset(37);
+		mpu.setYGyroOffset(93);
+		mpu.setZGyroOffset(-393);
+		mpu.setXAccelOffset(-3556);
+		mpu.setYAccelOffset(1822);
+		mpu.setZAccelOffset(1356);
 		mpu.setDMPEnabled(true);
 		packetSize = mpu.dmpGetFIFOPacketSize();
 		Serial.println();
@@ -36,11 +36,11 @@ Gyro::Gyro(bool cold_start) : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f
 		uint16_t i = 0;
 		StartTime = millis();
 		uint16_t waitToStabilize = millis() + 15 * 1000; // Current time + 11s
+		Serial.println("Stabilizing gyro:");
 		while (millis() < waitToStabilize)
 		{
+			Serial.print(".");
 			GetGyroData(temp);
-			Serial.print("Stabilizing gyro: ");
-			Serial.println(i++);
 			delay(3);
 		}
 		delay(100);

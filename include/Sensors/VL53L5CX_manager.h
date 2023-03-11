@@ -15,7 +15,7 @@ public:
 	volatile bool data_ready[SENSORS_NUM] = {0};
 	bool is_disconnected[SENSORS_NUM] = {0};
 
-	VL53L5CX_manager(TwoWire& interface);
+	VL53L5CX_manager(TwoWire& interface, bool cold_start);
 	void StartRanging(const uint8_t resolution, const uint8_t frequency, const ELIA::RangingMode mode);
 	void UpdateData();
 	void SetAllDataReady(bool b);

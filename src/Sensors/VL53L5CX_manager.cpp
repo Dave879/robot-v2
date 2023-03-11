@@ -1,14 +1,25 @@
 #include "Sensors/VL53L5CX_manager.h"
 
-VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface) : resolution(0)
+VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface, bool cold_start) : resolution(0)
 {
 
-	for (uint8_t i = 0; i < SENSORS_NUM; i++)
+	if (cold_start)
 	{
-		pinMode(VL53L5CX_LPn_pin[i], OUTPUT);
-		digitalWrite(VL53L5CX_LPn_pin[i], LOW); // Sensor stops listening
+		for (uint8_t i = 0; i < SENSORS_NUM; i++)
+		{
+			pinMode(VL53L5CX_LPn_pin[i], OUTPUT);
+			digitalWrite(VL53L5CX_LPn_pin[i], LOW); // Sensor stops listening
+		}
 	}
-
+	else
+	{
+		for (uint8_t i = 0; i < SENSORS_NUM; i++)
+		{
+			pinMode(VL53L5CX_LPn_pin[i], OUTPUT);
+			digitalWrite(VL53L5CX_LPn_pin[i], HIGH); // Sensor starts listening
+		}
+	}
+delay(200);
 	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		digitalWrite(VL53L5CX_LPn_pin[i], HIGH); // Sensor starts listening
@@ -32,7 +43,7 @@ VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface) : resolution(0)
 		}
 
 		digitalWrite(VL53L5CX_LPn_pin[i], LOW); // Sensor stops listening
-		delay(100);										 // This delay is ESSENTIAL: If removed, the StartRanging function on the second sensor returns 255!!!
+		delay(100);															// This delay is ESSENTIAL: If removed, the StartRanging function on the second sensor returns 255!!!
 	}
 	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{

@@ -98,7 +98,6 @@ while(True):
                     # Black detected
                     if i == black:
                         sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
-                        sensor.skip_frames(time = 100)     # Wait for settings take effect.
                         img = sensor.snapshot()
 
                         for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
@@ -146,10 +145,12 @@ while(True):
             send = kits + 48
             uart.writechar(send)
             green_led = LED(2)
-            time.sleep(1.5)
+
+            time.sleep(2.5)
             for i in range(0,5):
                 green_led.on()
                 time.sleep(.5)
                 green_led.off()
                 time.sleep(.5)
-            time.sleep(1.5)
+            time.sleep(2.5)
+
