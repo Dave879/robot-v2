@@ -43,7 +43,7 @@ private:
 	// Black tile variables
 	bool just_found_black = false;
 	uint32_t time_after_black_tile_ignore_false = 0;
-	// BLue tile variables
+	// Blue tile variables
 	bool ignore_blue = false;
 	// Turn variables
 	double desired_angle = 0;
@@ -60,6 +60,7 @@ private:
 	void TurnRight();
 	void TurnLeft();
 	void TurnBack();
+	void MotorPowerZGyroAndPID();
 	// victim functions
 	void DropKit(int8_t number_of_kits);
 
@@ -77,6 +78,7 @@ private:
 	 * PID controller functions
 	*/
 	double CalculateError(double currentYaw);
+	double GetPIDOutputAndSec();
 
 	/**
 	 * Robot peripherals

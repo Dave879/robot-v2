@@ -458,44 +458,9 @@ void Robot::Run()
 				}
 			} 
 			// In assenza di muro frontale proseguiamo in modo rettilineo
-			else // PID Controll
+			else
 			{ 
-				// Calculate error
-				PID_error = CalculateError(mpu_data.x);
-				// Calculate integral
-				PID_integral += PID_error;
-				// Calculate derivative
-				double derivative = PID_error - PID_previous_error;
-				PID_previous_error = PID_error;
-				// Calculate output
-				PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
-				// Update motor powers and apply motor powers to left and right motors
-				double elapsed_seconds = millis() - PID_start_time;
-
-				// ms->SetPower(SPEED + (PID_output * elapsed_seconds), SPEED - (PID_output * elapsed_seconds));
-
-				if (mpu_data.z > 0) {
-					ms->SetPower(SPEED + (PID_output * elapsed_seconds) + mpu_data.z, SPEED - (PID_output * elapsed_seconds) + mpu_data.z);
-				}
-				else if (mpu_data.z < -10)
-				{
-					ms->SetPower(SPEED + (PID_output * elapsed_seconds) - 5, SPEED - (PID_output * elapsed_seconds) - 5);
-				}
-				else
-				{
-					ms->SetPower(SPEED + (PID_output * elapsed_seconds), SPEED - (PID_output * elapsed_seconds));
-				}
-
-				// Update start time
-				PID_start_time = millis(); 
-
-				Serial.println("PID_output: ");
-				Serial.println(PID_output);
-				Serial.println("elapsed_seconds: ");
-				Serial.println(elapsed_seconds);
-				Serial.println("PID_output * elapsed_seconds: ");
-				double corr = PID_output * elapsed_seconds;
-				Serial.println(corr);
+				MotorPowerZGyroAndPID();
 			}
 		}
 	}
@@ -536,7 +501,7 @@ void Robot::R_TCS34725_int()
 	color_data_ready = true;
 }
 
-bool Robot::StopRobot() // FIXED
+bool Robot::StopRobot()
 {
 	if (digitalRead(R_PIN_BUTTON))
 	{
@@ -592,6 +557,49 @@ void Robot::Straighten()
 	ms->StopMotors();
 	mpu->ResetX();
 	desired_angle = 0;
+}
+
+double Robot::GetPIDOutputAndSec()
+{
+	// Calculate error
+	PID_error = CalculateError(mpu_data.x);
+	// Calculate integral
+	PID_integral += PID_error;
+	// Calculate derivative
+	double derivative = PID_error - PID_previous_error;
+	PID_previous_error = PID_error;
+	// Calculate output
+	PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
+	// Update motor powers and apply motor powers to left and right motors
+	double elapsed_seconds = millis() - PID_start_time;
+
+	// Update start time
+	PID_start_time = millis();
+
+	Serial.println("PID_output: ");
+	Serial.println(PID_output);
+	Serial.println("elapsed_seconds: ");
+	Serial.println(elapsed_seconds);
+	Serial.println("PID_output * elapsed_seconds: ");
+	double corr = PID_output * elapsed_seconds;
+	Serial.println(corr);
+
+	return PID_output * elapsed_seconds;
+}
+
+void Robot::MotorPowerZGyroAndPID()
+{
+	if (mpu_data.z > 0) {
+		ms->SetPower(SPEED + GetPIDOutputAndSec() + mpu_data.z, SPEED - GetPIDOutputAndSec() + mpu_data.z);
+	}
+	else if (mpu_data.z < -10)
+	{
+		ms->SetPower(SPEED + GetPIDOutputAndSec() - 5, SPEED - GetPIDOutputAndSec() - 5);
+	}
+	else
+	{
+		ms->SetPower(SPEED + GetPIDOutputAndSec(), SPEED - GetPIDOutputAndSec());
+	}
 }
 
 bool Robot::NeedToTurn(){
@@ -665,23 +673,23 @@ void Robot::Turn(int16_t degree)
 	if (degree > 0) // Giro a destra
 	{
 		Serial.println("Giro destra ->");
-		// Inizio a girare
-		ms->SetPower(TURN_SPEED, -TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
 		while (mpu_data.x < desired_angle)
 		{
 			UpdateGyroBlocking();
+			// Potenza gestita da PID e Gyro-z
+			MotorPowerZGyroAndPID();
 		}
 	}
-	else // Giro a sinistra
+	else // Giro a sinistra o indietro
 	{
 		Serial.println("Giro sinistra <-");
-		// Inizio a girare
-		ms->SetPower(-TURN_SPEED, TURN_SPEED);
 		// Controllo se l'angolo raggiunto è quello desiderato e aspetto nuovi valori del gyro
 		while (mpu_data.x > desired_angle)
 		{
 			UpdateGyroBlocking();
+			// Potenza gestita da PID e Gyro-z
+			MotorPowerZGyroAndPID();
 		}
 	}
 	// Stop dei motori
