@@ -189,3 +189,71 @@ else
     }
 }
 ```
+
+## Set speed via serial
+
+```cpp
+int16_t receivedSpeed;
+bool newData = false;
+while (true)
+{
+    if (Serial.available() > 0) {
+        receivedSpeed = Serial.parseInt();
+        newData = true;
+        ms->SetPower(receivedSpeed, receivedSpeed);
+    }
+    if (newData == true) {
+    Serial.print("This just in ... ");
+    Serial.println(receivedSpeed);
+    newData = false;
+    }
+}
+```
+## Test PID curva
+
+```cpp
+bool newData = false;
+while (true)
+{
+        if (Serial.available() > 0) {
+                desired_angle = Serial.parseInt();
+                newData = true;
+        }
+        else
+        {
+            UpdateGyroBlocking();
+            Serial.println("Gyro: ");
+            Serial.println(mpu_data.x);
+
+            // Calculate error
+            PID_error = CalculateError(mpu_data.x);
+            // Calculate integral
+            PID_integral += PID_error;
+            // Calculate derivative
+            double derivative = PID_error - PID_previous_error;
+            PID_previous_error = PID_error;
+            // Calculate output
+            PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
+            // Update motor powers and apply motor powers to left and right motors
+            double elapsed_seconds = millis() - PID_start_time;
+
+            // Update start time
+            PID_start_time = millis();
+
+            Serial.println("PID_output: ");
+            Serial.println(PID_output);
+            Serial.println("elapsed_seconds: ");
+            Serial.println(elapsed_seconds);
+            Serial.println("PID_output * elapsed_seconds: ");
+            double corr = PID_output * elapsed_seconds;
+            Serial.println(corr);
+
+            ms->SetPower(PID_output * elapsed_seconds, -PID_output * elapsed_seconds);
+        }
+        if (newData == true) {
+        Serial.print("This just in ... ");
+        Serial.println(desired_angle);
+        newData = false;
+        }
+}
+```

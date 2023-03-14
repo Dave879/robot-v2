@@ -19,19 +19,19 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 47
+#define SPEED 55
 #define TURN_SPEED 95
 #define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 50
+#define MIN_DISTANCE_FROM_FRONT_WALL_MM 90
 #define ADDITIONAL_ANGLE_TO_OVERCOME 5
 // Colored tile
 #define MIN_VALUE_BLUE_TILE 18
 #define MIN_VALUE_BLACK_TILE 9
 // PID controller constants
-#define KP 0.2//.5 // Proportional gain
-#define KI 0.02//.2 // Integral gain
-#define KD 0.016//.1 // Derivative gain
+#define KP 5//.5 // Proportional gain
+#define KI 0.00009//.2 // Integral gain
+#define KD 0//.1 // Derivative gain
 
 	/**
 	 * Navigation variables
@@ -78,7 +78,7 @@ private:
 	 * PID controller functions
 	*/
 	double CalculateError(double currentYaw);
-	double GetPIDOutputAndSec();
+	int16_t GetPIDOutputAndSec();
 
 	/**
 	 * Robot peripherals

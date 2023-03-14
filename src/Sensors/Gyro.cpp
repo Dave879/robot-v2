@@ -39,9 +39,13 @@ Gyro::Gyro(bool cold_start) : gyro({0.0f, 0.0f, 0.0f}), offset({0.0f, 0.0f, 0.0f
 		Serial.println("Stabilizing gyro:");
 		while (millis() < waitToStabilize)
 		{
-			Serial.print(".");
+			if (i%500 == 0)
+			{
+				Serial.print(".");
+			}
 			GetGyroData(temp);
 			delay(3);
+			i++;
 		}
 		delay(100);
 		ResetX();
