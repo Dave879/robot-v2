@@ -530,6 +530,11 @@ bool Robot::StopRobot()
 			{
 				mpu->ResetX();
 				desired_angle = 0;
+				while (Serial2.available())
+				{
+					char data = Serial2.read();
+				}
+				Serial2.print('9');
 			}
 		}
 	}
