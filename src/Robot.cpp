@@ -83,6 +83,7 @@ Robot::Robot(bool cold_start)
 
 	// Inizializzazione canale di comunicazione con OpenMV, e primo avvio se presente un muro a destra alla partenza
 	Serial2.begin(115200);
+	Serial2.print('9');
 }
 
 void Robot::Run()
@@ -126,6 +127,13 @@ void Robot::Run()
 						break;
 				}
 			}
+			just_recived_from_openmv = true;
+			time_to_wait_after_openmv_search_again = millis() + 500;
+		}
+		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
+		{
+			just_recived_from_openmv = false;
+			Serial2.print('9');
 		}
 
 		// Colore tile
@@ -290,20 +298,20 @@ void Robot::Run()
 		}
 		// Se ho ignorato il nero, controllo il tempo, se passato il tempo necessario, in base a dove avevo svoltato l'ultima volta, imposto l'ignore a false
 		else if (just_found_black)
-	{
-		if (millis() > time_after_black_tile_ignore_false)
 		{
-			if (last_turn_right)
+			if (millis() > time_after_black_tile_ignore_false)
 			{
-				ignore_right = false;
+				if (last_turn_right)
+				{
+					ignore_right = false;
+				}
+				else
+				{
+					ignore_left = false;
+				}
+				just_found_black = false;
 			}
-			else
-			{
-				ignore_left = false;
-			}
-			just_found_black = false;
 		}
-	}
 
 		// Controllo se devo girare
 		if (NeedToTurn())
@@ -356,7 +364,7 @@ void Robot::Run()
 							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[28] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 							{
 								// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-								// Straighten();
+								Straighten();
 							}
 						}
 						else
@@ -390,7 +398,7 @@ void Robot::Run()
 							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[28] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 							{
 								// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-								// Straighten();
+								Straighten();
 							}
 						}
 						else
@@ -445,7 +453,7 @@ void Robot::Run()
 					TurnRight();
 
 					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-					// Straighten();
+					Straighten();
 				}
 				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione
 				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
@@ -454,7 +462,7 @@ void Robot::Run()
 					TurnLeft();
 
 					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-					// Straighten();
+					Straighten();
 				}
 				// Avendo tutte le direzioni bloccate, quindi in presenza di una U, mi girerò del tutto
 				else
@@ -566,6 +574,8 @@ void Robot::Straighten()
 	ms->StopMotors();
 	mpu->ResetX();
 	desired_angle = 0;
+	ms->SetPower(40, 40);
+	delay(500);
 }
 
 int16_t Robot::GetPIDOutputAndSec()
@@ -585,11 +595,11 @@ int16_t Robot::GetPIDOutputAndSec()
 	// Update start time
 	PID_start_time = millis();
 
-	Serial.println("PID_output: ");
-	Serial.println(PID_output);
-	Serial.println("elapsed_seconds: ");
-	Serial.println(elapsed_seconds);
-	Serial.println("PID_output * elapsed_seconds: ");
+	Serial.print("PID_output: ");
+	Serial.print(PID_output);
+	Serial.print(".\tElapsed_seconds: ");
+	Serial.print(elapsed_seconds);
+	Serial.print(".\tPID_output * elapsed_seconds: ");
 	double corr = PID_output * elapsed_seconds;
 	Serial.println(corr);
 
@@ -598,7 +608,7 @@ int16_t Robot::GetPIDOutputAndSec()
 
 void Robot::MotorPowerZGyroAndPID()
 {
-	int16_t pid_speed = GetPIDOutputAndSec() / 100;
+	int16_t pid_speed = GetPIDOutputAndSec() / 95;
 	if (mpu_data.z > 0) {
 		ms->SetPower(SPEED + pid_speed + mpu_data.z, SPEED - pid_speed + mpu_data.z);
 	}
@@ -675,10 +685,8 @@ void Robot::Turn(int16_t degree)
 	// Output metodo Turn()
 	Serial.println("Metodo Turn: Inizio la manovra!");
 
-	// Calcolo il grado da raggiungere
-	UpdateGyroBlocking();
-	desired_angle = mpu_data.x + degree;
-	// desired_angle += degree;
+	// desired_angle = mpu_data.x + degree;
+	desired_angle += degree;
 
 	// Controllo se devo girare a destra o sinistra
 	if (degree > 0) // Giro a destra
@@ -686,10 +694,10 @@ void Robot::Turn(int16_t degree)
 		Serial.println("Giro destra ->");
 		while (mpu_data.x <= desired_angle)
 		{
-			int16_t gyro_speed = GetPIDOutputAndSec();
 			UpdateGyroBlocking();
 			Serial.print("Gyyro: ");
 			Serial.println(mpu_data.x);
+			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(gyro_speed + mpu_data.z, -gyro_speed - mpu_data.z);
 		}
@@ -699,16 +707,17 @@ void Robot::Turn(int16_t degree)
 		Serial.println("Giro sinistra <-");
 		while (mpu_data.x >= desired_angle)
 		{
-			int16_t gyro_speed = GetPIDOutputAndSec();
 			UpdateGyroBlocking();
 			Serial.print("Gyyro: ");
 			Serial.println(mpu_data.x);
+			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(gyro_speed + mpu_data.z, -gyro_speed - mpu_data.z);
 		}
 	}
 
-	
+	PID_integral = 0;
+
 	// Stop dei motori
 	ms->StopMotors();
 	PID_integral = 0;

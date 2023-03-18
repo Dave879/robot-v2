@@ -70,11 +70,17 @@ kits = -1 # -1 means that there is no victim
 
 while(True):
 
+    if uart.any():
+        data = uart.read().decode('utf-8').rstrip()
+        if data == '9':
+            kits = -1
+
+    if kits != -1:
+        continue
+
     sharp_read = analog_distance.read()
 
     print("%f <- value" % sharp_read) # read value, 0-4095
-
-    kits = -1
 
     if (sharp_read > 500):
 
@@ -145,12 +151,9 @@ while(True):
             send = kits + 48
             uart.writechar(send)
             green_led = LED(2)
-
-            time.sleep(2.5)
+            # Lampeggio -> Vittima
             for i in range(0,5):
                 green_led.on()
                 time.sleep(.5)
                 green_led.off()
                 time.sleep(.5)
-            time.sleep(2.5)
-

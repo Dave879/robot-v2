@@ -257,3 +257,23 @@ while (true)
         }
 }
 ```
+
+## Send data to OPenMV via serial
+
+```cpp
+char receivedChar;
+bool newData = false;
+while (true)
+{
+    if (Serial.available() > 0) {
+        receivedChar = Serial.read();
+        newData = true;
+        Serial2.print(receivedChar);
+    }
+    if (newData == true) {
+    Serial.print("This just in ... ");
+    Serial.println(receivedChar);
+    newData = false;
+    }
+}
+```
