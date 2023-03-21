@@ -6,9 +6,9 @@ Robot::Robot(bool cold_start)
 	{
 		LOG("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
-		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
+		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
 		delay(10);													// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-		digitalWrite(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
 		delay(10);													// Wait for sensors to wake up (especially sensor 0)
 		LOG("...done!");
 	}
@@ -73,9 +73,9 @@ Robot::Robot(bool cold_start)
 	 */
 
 	pinMode(LED_BUILTIN, OUTPUT);
-	digitalWrite(LED_BUILTIN, HIGH);
+	digitalWriteFast(LED_BUILTIN, HIGH);
 	delay(100);
-	digitalWrite(LED_BUILTIN, LOW);
+	digitalWriteFast(LED_BUILTIN, LOW);
 
 	mpu->ResetX();
 
@@ -520,7 +520,7 @@ void Robot::R_TCS34725_int()
 
 bool Robot::StopRobot()
 {
-	if (digitalRead(R_PIN_BUTTON))
+	if (digitalReadFast(R_PIN_BUTTON))
 	{
 		if (!first_time_pressed)
 		{
@@ -532,7 +532,7 @@ bool Robot::StopRobot()
 				desired_angle = 0;
 				while (Serial2.available())
 				{
-					char data = Serial2.read();
+					Serial2.read();
 				}
 				Serial2.print('9');
 			}
