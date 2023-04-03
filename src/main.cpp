@@ -7,7 +7,7 @@
 #include "data_formatter.h"
 #include "util.h"
 
-volatile bool Robot::mpu_data_ready = false;
+volatile bool Robot::imu_data_ready = false;
 volatile bool Robot::lasers_data_ready[4] = {0};
 volatile bool Robot::color_data_ready = false;
 
@@ -43,8 +43,8 @@ void loop()
 
 	rb->TrySensorDataUpdate();
 	rb->PrintSensorData();
-
-	rb->Run();
+	
+	//rb->Run();
 /*
 	times_per_second++;
 	if (past_millis + 1000 < millis())

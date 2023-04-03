@@ -8,7 +8,7 @@
 #include "util.h"
 #include "pins.h"
 #include "Motors.h"
-#include "Sensors/Gyro.h"
+#include "Sensors/gyro.h"
 #include "Sensors/VL53L5CX_manager.h"
 #include "Sensors/Color.h"
 #include "data_formatter.h"
@@ -88,9 +88,8 @@ private:
 	 */
 	Motors *ms;
 
-	Gyro *mpu;
-	GyroData mpu_data = {0};
-	static volatile bool mpu_data_ready;
+	gyro *imu;
+	static volatile bool imu_data_ready;
 
 	VL53L5CX_manager *lasers;
 	static volatile bool lasers_data_ready[4];
@@ -103,7 +102,7 @@ private:
 	/**
 	 * Interrupt functions
 	 */
-	static void R_MPU6050_int();
+	static void R_IMU_int();
 	static void R_VL53L5CX_int_0();
 	static void R_VL53L5CX_int_1();
 	static void R_VL53L5CX_int_2();

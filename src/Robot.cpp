@@ -13,13 +13,10 @@ Robot::Robot(bool cold_start)
 		LOG("...done!");
 	}
 
-	Wire.begin();			  // Gyro
-	Wire.setClock(400000); // 400kHz
-
 	LOG("Gyro setup started");
-	mpu = new Gyro(cold_start);
-	mpu_data_ready = false;
-	attachInterrupt(R_PIN_GYRO_INT, R_MPU6050_int, RISING);
+	imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
+	imu_data_ready = false;
+	attachInterrupt(R_IMU_INT_SPI_PIN, R_IMU_int, RISING);
 	LOG("Finished gyro setup!");
 
 	LOG("Motor setup started");
@@ -66,24 +63,33 @@ Robot::Robot(bool cold_start)
 		Serial.println("Failed to initialize color sensor!");
 	}
 
-	pinMode(R_PIN_BUTTON, INPUT);
+	pinMode(R_SW_START_PIN, INPUT);
+	pinMode(R_SW_XTRA_PIN, INPUT);
 
 	/**
 	 * Robot ready signal
 	 */
 
-	pinMode(LED_BUILTIN, OUTPUT);
-	digitalWriteFast(LED_BUILTIN, HIGH);
-	delay(100);
-	digitalWriteFast(LED_BUILTIN, LOW);
+	pinMode(R_LED1_PIN, OUTPUT);
+	pinMode(R_LED2_PIN, OUTPUT);
+	pinMode(R_LED3_PIN, OUTPUT);
+	pinMode(R_LED4_PIN, OUTPUT);
 
-	mpu->ResetX();
+	digitalWriteFast(R_LED1_PIN, HIGH);
+	delay(100);
+	digitalWriteFast(R_LED1_PIN, LOW);
+
+	imu->ResetAxis();
 
 	PID_start_time = millis();
 
-	// Inizializzazione canale di comunicazione con OpenMV, e primo avvio se presente un muro a destra alla partenza
+	// Inizializzazione canale di comunicazione con OpenMV SX, e primo avvio se presente un muro a destra alla partenza
 	Serial2.begin(115200);
 	Serial2.print('9');
+
+	// Inizializzazione canale di comunicazione con OpenMV DX, e primo avvio se presente un muro a destra alla partenza
+	Serial8.begin(115200);
+	Serial8.print('9');
 }
 
 void Robot::Run()
@@ -137,7 +143,7 @@ void Robot::Run()
 		}
 
 		// Colore tile
-		if (cs->c_comp <= MIN_VALUE_BLUE_TILE && mpu_data.z < 9 && mpu_data.z > -9 && !ignore_blue) // Ignore blue, non attendo
+		if (cs->c_comp <= MIN_VALUE_BLUE_TILE && imu->z < 9 && imu->z > -9 && !ignore_blue) // Ignore blue, non attendo
 		{
 			// Mando il robot avanti per 100ms, così da vedere con più precisione la luminosità della tile
 			delay(150);
@@ -488,9 +494,9 @@ void Robot::Run()
 	}
 }
 
-void Robot::R_MPU6050_int()
+void Robot::R_IMU_int()
 {
-	mpu_data_ready = true;
+	imu_data_ready = true;
 }
 
 void Robot::R_VL53L5CX_int_0()
@@ -520,7 +526,7 @@ void Robot::R_TCS34725_int()
 
 bool Robot::StopRobot()
 {
-	if (digitalReadFast(R_PIN_BUTTON))
+	if (digitalReadFast(R_SW_START_PIN))
 	{
 		if (!first_time_pressed)
 		{
@@ -528,7 +534,7 @@ bool Robot::StopRobot()
 			first_time_pressed = true;
 			if (!stop_the_robot)
 			{
-				mpu->ResetX();
+				imu->ResetAxis();
 				desired_angle = 0;
 				while (Serial2.available())
 				{
@@ -577,7 +583,7 @@ void Robot::Straighten()
 	ms->SetPower(-90, -90);
 	delay(1200);
 	ms->StopMotors();
-	mpu->ResetX();
+	imu->ResetAxis();
 	desired_angle = 0;
 	ms->SetPower(40, 40);
 	delay(500);
@@ -586,7 +592,7 @@ void Robot::Straighten()
 int16_t Robot::GetPIDOutputAndSec()
 {
 	// Calculate error
-	PID_error = CalculateError(mpu_data.x);
+	PID_error = CalculateError(imu->x);
 	// Calculate integral
 	PID_integral += PID_error;
 	// Calculate derivative
@@ -614,10 +620,10 @@ int16_t Robot::GetPIDOutputAndSec()
 void Robot::MotorPowerZGyroAndPID()
 {
 	int16_t pid_speed = GetPIDOutputAndSec() / 95;
-	if (mpu_data.z > 0) {
-		ms->SetPower(SPEED + pid_speed + mpu_data.z, SPEED - pid_speed + mpu_data.z);
+	if (imu->z > 0) {
+		ms->SetPower(SPEED + pid_speed + imu->z, SPEED - pid_speed + imu->z);
 	}
-	else if (mpu_data.z < -10)
+	else if (imu->z < -10)
 	{
 		ms->SetPower(SPEED + pid_speed - 5, SPEED - pid_speed - 5);
 	}
@@ -697,27 +703,27 @@ void Robot::Turn(int16_t degree)
 	if (degree > 0) // Giro a destra
 	{
 		Serial.println("Giro destra ->");
-		while (mpu_data.x <= desired_angle)
+		while (imu->x <= desired_angle)
 		{
 			UpdateGyroBlocking();
-			Serial.print("Gyyro: ");
-			Serial.println(mpu_data.x);
+			Serial.print("Gyro: ");
+			Serial.println(imu->x);
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
-			ms->SetPower(gyro_speed + mpu_data.z, -gyro_speed - mpu_data.z);
+			ms->SetPower(gyro_speed + imu->z, -gyro_speed - imu->z);
 		}
 	}
 	else // Giro a sinistra o indietro
 	{
 		Serial.println("Giro sinistra <-");
-		while (mpu_data.x >= desired_angle)
+		while (imu->x >= desired_angle)
 		{
 			UpdateGyroBlocking();
 			Serial.print("Gyyro: ");
-			Serial.println(mpu_data.x);
+			Serial.println(imu->x);
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
-			ms->SetPower(gyro_speed + mpu_data.z, -gyro_speed - mpu_data.z);
+			ms->SetPower(gyro_speed + imu->z, -gyro_speed - imu->z);
 		}
 	}
 
@@ -749,10 +755,10 @@ uint8_t Robot::TrySensorDataUpdate()
 		If every sensor was read successfully status = 0b11110001 = 0xF1 = 241
 	*/
 	uint8_t status = 0;
-	if (mpu_data_ready)
+	if (imu_data_ready)
 	{
-		mpu->GetGyroData(mpu_data);
-		mpu_data_ready = false;
+		imu->UpdateData();
+		imu_data_ready = false;
 		status++;
 	}
 
@@ -791,10 +797,10 @@ void Robot::UpdateGyroBlocking()
 {
 	while (true)
 	{
-		if (mpu_data_ready)
+		if (imu_data_ready)
 		{
-			mpu->GetGyroData(mpu_data);
-			mpu_data_ready = false;
+			imu->UpdateData();
+			imu_data_ready = false;
 			break;
 		}
 	}
@@ -803,13 +809,13 @@ void Robot::UpdateGyroBlocking()
 void Robot::PrintSensorData()
 {
 	Serial.print("gyro.x: \t");
-	Serial.print(mpu_data.x);
+	Serial.print(imu->x);
 	Serial.print(" \t");
 	Serial.print("gyro.y: \t");
-	Serial.print(mpu_data.y);
+	Serial.print(imu->y);
 	Serial.print(" \t");
 	Serial.print("gyro.z: \t");
-	Serial.println(mpu_data.z);
+	Serial.println(imu->z);
 
 	for (uint8_t i = 0; i < 4; i++)
 	{
@@ -845,13 +851,13 @@ void Robot::PrintSensorData()
 	Serial.print("\tb_comp:");
 	Serial.println(cs->b_comp);
 
-
 	Serial.println(Serial2.available());
+
 }
 
 Robot::~Robot()
 {
 	delete ms;
 	delete lasers;
-	delete mpu;
+	delete imu;
 }

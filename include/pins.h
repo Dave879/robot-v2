@@ -11,23 +11,39 @@
 #define R_PIN_MOTOR_R_DIR 20 // M1
 
 #define R_PIN_SENSORS_POWER_ENABLE 33
-#define R_PIN_BUTTON 27
-#define R_PIN_GYRO_INT 15
 
 #define R_PIN_SERVO 0
 #define R_PIN_COLOR_INT 14
 
+#define R_LED1_PIN 5
+#define R_LED2_PIN 6
+#define R_LED3_PIN 9
+#define R_LED4_PIN 41
+
+#define R_SW_START_PIN 27
+#define R_SW_XTRA_PIN 26
+
+#define R_COLLISION_SX_PIN 3
+#define R_COLLISION_DX_PIN 4
+
+#define R_IMU_CS_PIN 10
+#define R_IMU_EXT_CLK_SPI_PIN 36
+#define R_IMU_INT_SPI_PIN 38
+
+// OpenMV SX -> Serial2
+// OpenMV DX -> Serial8
+
 const uint8_t VL53L5CX_LPn_pin[4] = {
 	31,	// Forward
-	2,		// Backward
-	11,	// Left
+	40,	// Backward
+	2,		// Left
 	29		// Right
 };
 
 const uint8_t VL53L5CX_int_pin[4] = {
 	30,	// Forward
-	1,		// Backward
-	12,	// Left
+	39,	// Backward
+	1,		// Left
 	28		// Right
 };
 

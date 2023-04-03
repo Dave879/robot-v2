@@ -27,8 +27,8 @@ void Motors::SetPower(int32_t left, int32_t right)
 	else
 		digitalWriteFast(R_PIN_MOTOR_R_DIR, LOW);
 
-	analogWrite(R_PIN_MOTOR_L_PWM, abs(map(left, -100, 100, -255, 255)));
-	analogWrite(R_PIN_MOTOR_R_PWM, abs(map(right, -100, 100, -255, 255)));
+	analogWrite(R_PIN_MOTOR_L_PWM, abs(map(l_motor_power_, -100, 100, -255, 255)));
+	analogWrite(R_PIN_MOTOR_R_PWM, abs(map(r_motor_power_, -100, 100, -255, 255)));
 }
 
 void Motors::SetPowerLeft(int8_t power)
@@ -39,7 +39,7 @@ void Motors::SetPowerLeft(int8_t power)
 	else
 		digitalWriteFast(R_PIN_MOTOR_L_DIR, LOW);
 
-	analogWrite(R_PIN_MOTOR_L_PWM, abs(map(power, -100, 100, -255, 255)));
+	analogWrite(R_PIN_MOTOR_L_PWM, abs(map(l_motor_power_, -100, 100, -255, 255)));
 }
 
 void Motors::SetPowerRight(int8_t power)
@@ -50,7 +50,7 @@ void Motors::SetPowerRight(int8_t power)
 	else
 		digitalWriteFast(R_PIN_MOTOR_R_DIR, LOW);
 
-	analogWrite(R_PIN_MOTOR_R_PWM, abs(map(power, -100, 100, -255, 255)));
+	analogWrite(R_PIN_MOTOR_R_PWM, abs(map(r_motor_power_, -100, 100, -255, 255)));
 }
 
 void Motors::StopMotors(){
