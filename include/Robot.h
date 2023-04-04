@@ -29,14 +29,14 @@ private:
 #define MIN_VALUE_BLUE_TILE 18
 #define MIN_VALUE_BLACK_TILE 9
 // PID controller constants
-#define KP 5//.5 // Proportional gain
-#define KI 0.00009//.2 // Integral gain
-#define KD 0//.1 // Derivative gain
+#define KP 0.5			 //.5 // Proportional gain
+#define KI 0.0000001 //.2 // Integral gain
+#define KD 0			 //.1 // Derivative gain
 
 	/**
 	 * Navigation variables
 	 */
-	bool stop_the_robot = false;
+	bool stop_the_robot = true;
 	bool first_time_pressed = false;
 	bool last_turn_right = false;
 	bool last_turn_back = false;
@@ -69,7 +69,7 @@ private:
 
 	/**
 	 * PID controller variables
-	*/
+	 */
 	uint32_t PID_start_time;
 	double PID_previous_error = 0;
 	double PID_integral = 0;
@@ -79,7 +79,7 @@ private:
 
 	/**
 	 * PID controller functions
-	*/
+	 */
 	double CalculateError(double currentYaw);
 	int16_t GetPIDOutputAndSec();
 
@@ -89,7 +89,7 @@ private:
 	Motors *ms;
 
 	gyro *imu;
-	static volatile bool imu_data_ready;
+	volatile bool *imu_data_ready;
 
 	VL53L5CX_manager *lasers;
 	static volatile bool lasers_data_ready[4];
@@ -118,7 +118,7 @@ public:
 	 * If set to false, some sensors may not work sometimes because of faulty connections caused by vibrations,
 	 * improper handling... but startup will take a significantly lower amount of time (~4.7 seconds), about 80% less.
 	 */
-	Robot(bool cold_start = true);
+	Robot(gyro *imu, volatile bool *imu_dr, bool cold_start = true);
 	void Run();
 	~Robot();
 
