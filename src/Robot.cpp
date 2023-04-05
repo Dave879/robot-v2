@@ -145,167 +145,112 @@ void Robot::Run()
 			just_recived_from_openmv = false;
 			Serial2.print('9');
 		}
-		// Colore tile
-		if (cs->c_comp <= MIN_VALUE_BLUE_TILE && imu->y < 9 && imu->y > -9 && !ignore_blue) // Ignore blue, non attendo
+		
+		// Black tile
+		if (cs->c_comp <= MIN_VALUE_BLACK_TILE && imu->y < 9 && imu->y > -9)
 		{
-			// Mando il robot avanti per 100ms, così da vedere con più precisione la luminosità della tile
-			delay(150);
-			// Aggiorno il valore di luminosità
-			cs->getData();
-			color_data_ready = false;
-			// Controllo il colore della tile
-			if (cs->c_comp <= MIN_VALUE_BLACK_TILE) // Tile nera
+			Serial.println("Black tile");
+			// Torno in dietro fino a quando smetto di vedere nero
+			ms->SetPower(-40, -40);
+			while (cs->c_comp <= MIN_VALUE_BLACK_TILE)
 			{
-				Serial.println("Black tile");
-				// Torno in dietro fino a quando smetto di vedere nero
-				ms->SetPower(-40, -40);
-				while (cs->c_comp <= MIN_VALUE_BLACK_TILE)
+				if (color_data_ready)
 				{
-					if (color_data_ready)
-					{
-						cs->getData();
-						color_data_ready = false;
-					}
+					cs->getData();
+					color_data_ready = false;
 				}
-				// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
-				delay(300);
-				ms->StopMotors();
-				// Giro in base all'ultima svolta effettuata
-				if (last_turn_right)
+			}
+			// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
+			delay(300);
+			ms->StopMotors();
+			// Giro in base all'ultima svolta effettuata
+			if (last_turn_right)
+			{
+				// Controllo se ho la sinistra libera
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+				UpdateSensorNumBlocking(VL53L5CX::SX);
+				if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					// Controllo se ho la sinistra libera
-					UpdateSensorNumBlocking(VL53L5CX::BW);
-					UpdateSensorNumBlocking(VL53L5CX::SX);
-					if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-					{
-						// Giro in dietro
-						TurnBack();
-					}
-					else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-					{
-						// Giro a sinistra
-						TurnLeft();
-
-						// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
-						just_found_black = true;
-						time_after_black_tile_ignore_false = millis() + 500;
-					}
-					else
-					{
-						// Giro a destra
-						TurnRight();
-					}
+					// Giro in dietro
+					TurnBack();
 				}
-				// Controllo se arrio da una U
-				else if (last_turn_back)
+				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					// Controllo se ho la destra o la sinistra libera
-					UpdateSensorNumBlocking(VL53L5CX::DX);
-					UpdateSensorNumBlocking(VL53L5CX::SX);
-					if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-					{
-						// Giro a destra
-						TurnRight();
+					// Giro a sinistra
+					TurnLeft();
 
-						// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
-						just_found_black = true;
-						time_after_black_tile_ignore_false = millis() + 500;
-					}
-					else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-					{
-						// Giro a sinistra
-						TurnLeft();
-
-						// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
-						just_found_black = true;
-						time_after_black_tile_ignore_false = millis() + 500;
-					}
-					else
-					{
-						// Giro in dietro
-						TurnBack();
-					}
+					// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
+					just_found_black = true;
+					time_after_black_tile_ignore_false = millis() + 500;
 				}
 				else
 				{
-					// Controllo se ho la destra libera
-					UpdateSensorNumBlocking(VL53L5CX::DX);
-					UpdateSensorNumBlocking(VL53L5CX::BW);
-					if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-					{
-						// Giro in dietro
-						TurnBack();
-					}
-					else if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-					{
-						// Giro a destra
-						TurnRight();
-
-						// Nero prossima tile ignore = false
-						just_found_black = true;
-						time_after_black_tile_ignore_false = millis() + 500;
-					}
-					else
-					{
-						// Giro a sinistra
-						TurnLeft();
-					}
+					// Giro a destra
+					TurnRight();
 				}
-				// Una volta svoltato aggiorno tutti i valori
-				UpdateSensorNumBlocking(VL53L5CX::SX);
-				UpdateSensorNumBlocking(VL53L5CX::DX);
-				UpdateSensorNumBlocking(VL53L5CX::FW);
-				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
-			else if (cs->c_comp > MIN_VALUE_BLACK_TILE && cs->c_comp <= MIN_VALUE_BLUE_TILE && !ignore_blue)
+			// Controllo se arrio da una U
+			else if (last_turn_back)
 			{
-				Serial.println("Blue tile");
-				// Imposto i valori per ignorare il blue
-				ignore_blue = true;
-				// proseguo dirtto fino a quando vedo blue
-				ms->SetPower(40, 40);
-				while (cs->c_comp > MIN_VALUE_BLACK_TILE && cs->c_comp <= MIN_VALUE_BLUE_TILE)
-				{
-					// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-					UpdateSensorNumBlocking(VL53L5CX::DX);
-					if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM) && ignore_right)
-					{
-						ignore_right = false;
-					}
-					// In presenza di un muro laterale a sinistra, cambio il vincolo sul varco applicato nella svolta
-					UpdateSensorNumBlocking(VL53L5CX::SX);
-					if ((lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM) && ignore_left)
-					{
-						ignore_left = false;
-					}
-
-					if (color_data_ready)
-					{
-						cs->getData();
-						Serial.println("Data ready:");
-						Serial.print("Luminosità: ");
-						Serial.println(cs->c_comp);
-						color_data_ready = false;
-					}
-				}
-				ms->StopMotors();
-				// Una volta arrivato alla fine della tile, attendo 5s prima di fare qualsiasi altra cosa
-				delay(5000);
-
-				cs->getData();
-				if (cs->c_comp <= MIN_VALUE_BLACK_TILE)
-				{
-					ignore_blue = false;
-				}
-
-				// Una volta svoltato aggiorno tutti i valori
-				UpdateSensorNumBlocking(VL53L5CX::SX);
+				// Controllo se ho la destra o la sinistra libera
 				UpdateSensorNumBlocking(VL53L5CX::DX);
-				UpdateSensorNumBlocking(VL53L5CX::FW);
-				UpdateSensorNumBlocking(VL53L5CX::BW);
+				UpdateSensorNumBlocking(VL53L5CX::SX);
+				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
+				{
+					// Giro a destra
+					TurnRight();
+
+					// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
+					just_found_black = true;
+					time_after_black_tile_ignore_false = millis() + 500;
+				}
+				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
+				{
+					// Giro a sinistra
+					TurnLeft();
+
+					// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
+					just_found_black = true;
+					time_after_black_tile_ignore_false = millis() + 500;
+				}
+				else
+				{
+					// Giro in dietro
+					TurnBack();
+				}
 			}
+			else
+			{
+				// Controllo se ho la destra libera
+				UpdateSensorNumBlocking(VL53L5CX::DX);
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+				if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
+				{
+					// Giro in dietro
+					TurnBack();
+				}
+				else if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
+				{
+					// Giro a destra
+					TurnRight();
+
+					// Nero prossima tile ignore = false
+					just_found_black = true;
+					time_after_black_tile_ignore_false = millis() + 500;
+				}
+				else
+				{
+					// Giro a sinistra
+					TurnLeft();
+				}
+			}
+			// Una volta svoltato aggiorno tutti i valori
+			UpdateSensorNumBlocking(VL53L5CX::SX);
+			UpdateSensorNumBlocking(VL53L5CX::DX);
+			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateSensorNumBlocking(VL53L5CX::BW);
 		}
-		// Se ho ignorato il nero, controllo il tempo, se passato il tempo necessario, in base a dove avevo svoltato l'ultima volta, imposto l'ignore a false
+		// Se ho incontrato il nero, controllo il tempo, se passato il tempo necessario, in base a dove avevo svoltato l'ultima volta, imposto l'ignore a false
 		else if (just_found_black)
 		{
 			if (millis() > time_after_black_tile_ignore_false)
@@ -325,6 +270,12 @@ void Robot::Run()
 		// Controllo se devo girare
 		if (NeedToTurn())
 		{
+			if (cs->c_comp <= MIN_VALUE_BLUE_TILE && imu->y < 9 && imu->y > -9)
+			{
+				ms->StopMotors();
+				delay(5000);
+				on_blue_tile = false;
+			}
 			// Varco trovato!
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -433,9 +384,15 @@ void Robot::Run()
 		else
 		{
 			// Se non sono su una tile blue e sto ignorando il blue, toglo l'ignora blue
-			if (cs->c_comp > MIN_VALUE_BLUE_TILE && ignore_blue)
+			if (cs->c_comp > MIN_VALUE_BLUE_TILE && on_blue_tile)
 			{
-				ignore_blue = false;
+				ms->StopMotors();
+				delay(5000);
+				on_blue_tile = false;
+			}
+			else if(cs->c_comp <= MIN_VALUE_BLUE_TILE && !on_blue_tile && (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM))
+			{
+				on_blue_tile = true;
 			}
 			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
 			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM) && ignore_right)

@@ -44,7 +44,7 @@ private:
 	bool just_found_black = false;
 	uint32_t time_after_black_tile_ignore_false = 0;
 	// Blue tile variables
-	bool ignore_blue = false;
+	bool on_blue_tile = false;
 	// Turn variables
 	double desired_angle = 0;
 	bool ignore_right = false;
