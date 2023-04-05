@@ -65,7 +65,8 @@ private:
 	bool just_recived_from_openmv = false;
 	uint32_t time_to_wait_after_openmv_search_again = 0;
 	// victim functions
-	void DropKit(int8_t number_of_kits);
+	bool FoundVictim();
+	void DropKit(int8_t number_of_kits, bool left_victim);
 
 	/**
 	 * PID controller variables

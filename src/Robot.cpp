@@ -101,16 +101,25 @@ void Robot::Run()
 	if (!StopRobot()) // Robot in azione
 	{
 		// Victims detection
-		if (Serial2.available() > 0)
+		if (FoundVictim())
 		{
-			char data = Serial2.read();
-			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-			Serial.println(data);
-			// Controllo distanza dal muro laterale, se rilevo il muro con il sensore laser a destra proseguo con il drop dei kit
-			// se non trovo nessun muro laterale, scarto il valore
-			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+			char kits_number;
+			bool left_victim;
+			if (Serial2.available() > 0)
 			{
-				switch (data)
+				kits_number = Serial2.read();
+				left_victim = true;
+			}
+			else
+			{
+				kits_number = Serial8.read();
+				left_victim = false;
+			}
+			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
+			Serial.println(kits_number);
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && !left_victim) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && left_victim))
+			{
+				switch (kits_number)
 				{
 				case '0':
 					Serial.println("Vittima: 0 kit");
@@ -120,16 +129,16 @@ void Robot::Run()
 				case '1':
 					Serial.println("Vittima: 1 kit");
 					ms->StopMotors();
-					DropKit(1);
+					DropKit(1, left_victim);
 					break;
 				case '2':
 					ms->StopMotors();
-					DropKit(2);
+					DropKit(2, left_victim);
 					Serial.println("Vittima: 2 kit");
 					break;
 				case '3':
 					ms->StopMotors();
-					DropKit(3);
+					DropKit(3, left_victim);
 					Serial.println("Vittima: 3 kit");
 					break;
 				default:
@@ -137,12 +146,13 @@ void Robot::Run()
 					break;
 				}
 			}
-			just_recived_from_openmv = true;
-			time_to_wait_after_openmv_search_again = millis() + 500;
+		just_recived_from_openmv = true;
+		time_to_wait_after_openmv_search_again = millis() + 500;
 		}
 		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
 		{
 			just_recived_from_openmv = false;
+			Serial8.print('9');
 			Serial2.print('9');
 		}
 		
@@ -495,7 +505,12 @@ bool Robot::StopRobot()
 				{
 					Serial2.read();
 				}
+				while (Serial8.available())
+				{
+					Serial8.read();
+				}
 				Serial2.print('9');
+				Serial8.print('9');
 			}
 		}
 	}
@@ -506,7 +521,12 @@ bool Robot::StopRobot()
 	return stop_the_robot;
 }
 
-void Robot::DropKit(int8_t number_of_kits)
+bool Robot::FoundVictim()
+{
+	return Serial2.available() > 0 || Serial8.available() > 0;
+}
+
+void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
 	if (number_of_kits > 1)
 	{
@@ -514,7 +534,14 @@ void Robot::DropKit(int8_t number_of_kits)
 		delay(400);
 	}
 
-	Turn(-90);
+	int8_t side = 1;
+
+	if (left_victim)
+	{
+		side = -1;
+	}
+
+	Turn(-90 * side);
 	ms->SetPower(-90, -80);
 	delay(500);
 	ms->SetPower(40, 40);
@@ -529,7 +556,7 @@ void Robot::DropKit(int8_t number_of_kits)
 		delay(1000);
 	}
 
-	Turn(90);
+	Turn(90 * side);
 	delay(7000 - (2000 * number_of_kits));
 }
 

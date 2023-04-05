@@ -27,8 +27,8 @@ green =(30, 50, -100, -20, -20, 32) # generic_green_thresholds
 yellow=(50, 100, -10, 10, 30, 127) # generic_yellow_thresholds
 black=(0, 7, -5, 5, -10, 10) # generic_black_thresholds
 
-pixels_threshold = 80
-area_threshold = 200
+pixels_threshold = 10
+area_threshold = 10
 
 thresholds = [red, green, yellow, black]
 
@@ -82,7 +82,7 @@ while(True):
 
     print("%f <- value" % sharp_read) # read value, 0-4095
 
-    if (sharp_read > 500):
+    if (sharp_read > 350):
 
         img = sensor.snapshot() # Take a picture and return the image.
 
