@@ -19,18 +19,18 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 55
+#define SPEED 45
 #define TURN_SPEED 95
 #define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 90
-#define ADDITIONAL_ANGLE_TO_OVERCOME 5
+#define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
 #define MIN_VALUE_BLUE_TILE 18
 #define MIN_VALUE_BLACK_TILE 9
 // PID controller constants
-#define KP 0.5			 //.5 // Proportional gain
-#define KI 0.0000001 //.2 // Integral gain
+#define KP 0.45			 //.5 // Proportional gain
+#define KI 0.000000001 //.2 // Integral gain
 #define KD 0			 //.1 // Derivative gain
 
 	/**

@@ -223,10 +223,10 @@ while (true)
         {
             UpdateGyroBlocking();
             Serial.println("Gyro: ");
-            Serial.println(mpu_data.x);
+            Serial.println(imu->z);
 
             // Calculate error
-            PID_error = CalculateError(mpu_data.x);
+            PID_error = CalculateError(imu->z);
             // Calculate integral
             PID_integral += PID_error;
             // Calculate derivative
@@ -235,10 +235,10 @@ while (true)
             // Calculate output
             PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
             // Update motor powers and apply motor powers to left and right motors
-            double elapsed_seconds = millis() - PID_start_time;
+            double elapsed_seconds = micros() - PID_start_time;
 
             // Update start time
-            PID_start_time = millis();
+            PID_start_time = micros();
 
             Serial.println("PID_output: ");
             Serial.println(PID_output);
@@ -248,7 +248,7 @@ while (true)
             double corr = PID_output * elapsed_seconds;
             Serial.println(corr);
 
-            ms->SetPower(PID_output * elapsed_seconds, -PID_output * elapsed_seconds);
+            ms->SetPower(-PID_output * elapsed_seconds, +PID_output * elapsed_seconds);
         }
         if (newData == true) {
         Serial.print("This just in ... ");

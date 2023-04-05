@@ -19,6 +19,7 @@ void IMU_int()
 {
 	imu_dr = true;
 }
+
 // uint16_t times_per_second = 0;
 // uint32_t past_millis = 0;
 
@@ -59,10 +60,14 @@ void loop()
 	{
 		imu->UpdateData();
 		imu_dr = false;
-		rb->PrintSensorData();
 	}
-
+	rb->PrintSensorData();
 	rb->Run();
+	if (imu_dr)
+	{
+		imu->UpdateData();
+		imu_dr = false;
+	}
 	/*
 		times_per_second++;
 		if (past_millis + 1000 < millis())

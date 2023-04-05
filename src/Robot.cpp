@@ -9,9 +9,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		LOG("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-		delay(10);														 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
-		delay(10);														 // Wait for sensors to wake up (especially sensor 0)
+		delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+		delay(10);																					// Wait for sensors to wake up (especially sensor 0)
 		LOG("...done!");
 	}
 
@@ -32,7 +32,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	kit.write(0);
 	LOG("Finished servo setup!");
 
-	Wire2.begin();				 // Lasers
+	Wire2.begin();					 // Lasers
 	Wire2.setClock(1000000); // 1MHz
 
 	LOG("Laser sensors setup started");
@@ -48,9 +48,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(64, 15, ELIA::RangingMode::kContinuous);					 // 8*8, 15Hz
+	lasers->StartRanging(64, 15, ELIA::RangingMode::kContinuous);								// 8*8, 15Hz
 
-	Wire1.begin();				// Color sensor
+	Wire1.begin();					// Color sensor
 	Wire1.setClock(400000); // 400kHz
 
 	Serial.println("Initializing color sensor");
@@ -100,55 +100,6 @@ void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
 	{
-		bool newData = false;
-		while (true)
-		{
-			if (Serial.available() > 0)
-			{
-				ms->StopMotors();
-				desired_angle = Serial.parseInt();
-				newData = true;
-			}
-			else
-			{
-				UpdateGyroBlocking();
-				Serial.print("Gyro: ");
-				Serial.print(imu->z);
-				Serial.print("\tDesired angle: ");
-				Serial.print(desired_angle);
-
-				// Calculate error
-				PID_error = CalculateError(imu->z);
-				// Calculate integral
-				PID_integral += PID_error;
-				// Calculate derivative
-				double derivative = PID_error - PID_previous_error;
-				PID_previous_error = PID_error;
-				// Calculate output
-				PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
-				// Update motor powers and apply motor powers to left and right motors
-				uint32_t elapsed_seconds = micros() - PID_start_time;
-
-				// Update start time
-				PID_start_time = micros();
-
-				Serial.print("\tPID_output: ");
-				Serial.print(PID_output);
-				Serial.print("\tElapsed_seconds: ");
-				Serial.print(elapsed_seconds);
-				Serial.print("\tPID_output * elapsed_seconds: ");
-				double corr = PID_output * elapsed_seconds;
-				Serial.println(corr);
-
-				ms->SetPower(-PID_output * elapsed_seconds, PID_output * elapsed_seconds);
-			}
-			if (newData == true)
-			{
-				Serial.print("This just in ... ");
-				Serial.println(desired_angle);
-				newData = false;
-			}
-		}
 		// Victims detection
 		if (Serial2.available() > 0)
 		{
@@ -647,13 +598,17 @@ int16_t Robot::GetPIDOutputAndSec()
 	PID_previous_error = PID_error;
 	// Calculate output
 	PID_output = KP * PID_error + KI * PID_integral + KD * derivative;
-	// Update motor powers and apply motor powers to left and right motors
+	// e motor powers and apply motor powers to left and right motors
 	uint32_t elapsed_seconds = micros() - PID_start_time;
 
 	// Update start time
 	PID_start_time = micros();
 
-	Serial.print("PID_output: ");
+	Serial.print("Desired angle: ");
+	Serial.print(desired_angle);
+	Serial.print("\tGyro: ");
+	Serial.print(imu->z);
+	Serial.print("\tPID_output: ");
 	Serial.print(PID_output);
 	Serial.print(".\tElapsed_seconds: ");
 	Serial.print(elapsed_seconds);
@@ -666,19 +621,17 @@ int16_t Robot::GetPIDOutputAndSec()
 
 void Robot::MotorPowerZGyroAndPID()
 {
-	int16_t pid_speed = GetPIDOutputAndSec() / 95;
-	if (imu->y > 0)
-	{
-		ms->SetPower(SPEED - pid_speed + imu->y, SPEED + pid_speed + imu->y);
-	}
-	else if (imu->y < -10)
-	{
-		ms->SetPower(SPEED - pid_speed - 5, SPEED + pid_speed - 5);
-	}
-	else
-	{
-		ms->SetPower(SPEED - pid_speed, SPEED + pid_speed);
-	}
+	/*
+	int16_t pid_speed = GetPIDOutputAndSec() / 1100;
+	ms->SetPower(SPEED - pid_speed, SPEED + pid_speed);
+	*/
+	Serial.print("Desired angle: ");
+	Serial.print(desired_angle);
+	Serial.print("\tGyro: ");
+	Serial.println(imu->z);
+
+	int16_t gyro_diff = (desired_angle - imu->z);
+	ms->SetPower(SPEED - gyro_diff, SPEED + gyro_diff);
 }
 
 bool Robot::NeedToTurn()
@@ -752,33 +705,33 @@ void Robot::Turn(int16_t degree)
 	if (degree > 0) // Giro a destra
 	{
 		Serial.println("Giro destra ->");
-		while (imu->z <= desired_angle)
+		while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
-			Serial.println("Stiamo girando a destra");
-			Serial.print("Gyro: ");
-			Serial.println(imu->z);
-			Serial.print("Angolo desiderato: ");
+			Serial.print("Stiamo girando a destra");
+			Serial.print("\tGyro: ");
+			Serial.print(imu->z);
+			Serial.print("\tAngolo desiderato: ");
 			Serial.println(desired_angle);
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
-			ms->SetPower(-gyro_speed + imu->y, +gyro_speed - imu->y);
+			ms->SetPower(-gyro_speed, +gyro_speed);
 		}
 	}
 	else // Giro a sinistra o indietro
 	{
 		Serial.println("Giro sinistra <-");
-		while (imu->z >= desired_angle)
+		while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
-			Serial.println("Stiamo girando a sinistra");
-			Serial.print("Gyro: ");
-			Serial.println(imu->z);
-			Serial.print("Angolo desiderato: ");
+			Serial.print("Stiamo girando a sinistra");
+			Serial.print("\tGyro: ");
+			Serial.print(imu->z);
+			Serial.print("\tAngolo desiderato: ");
 			Serial.println(desired_angle);
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
-			ms->SetPower(-gyro_speed + imu->y, +gyro_speed - imu->y);
+			ms->SetPower(-gyro_speed, +gyro_speed);
 		}
 	}
 
@@ -816,9 +769,7 @@ uint8_t Robot::TrySensorDataUpdate()
 	{
 		imu->UpdateData();
 		*imu_data_ready = false;
-		status++;
 	}
-
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		if (lasers_data_ready[i])
@@ -827,13 +778,22 @@ uint8_t Robot::TrySensorDataUpdate()
 			lasers_data_ready[i] = false;
 			status |= 0b10000 << i;
 		}
+		if (imu_data_ready)
+		{
+			imu->UpdateData();
+			*imu_data_ready = false;
+		}
 	}
 
 	if (color_data_ready)
 	{
 		cs->getData();
 	}
-
+	if (imu_data_ready)
+	{
+		imu->UpdateData();
+		*imu_data_ready = false;
+	}
 	return status;
 }
 
@@ -841,6 +801,11 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 {
 	while (1)
 	{
+		if (imu_data_ready)
+		{
+			imu->UpdateData();
+			*imu_data_ready = false;
+		}
 		if (lasers_data_ready[num])
 		{
 			lasers->sensors[num]->UpdateData();
@@ -875,6 +840,7 @@ void Robot::PrintSensorData()
 	Serial.print("gyro.z: \t");
 	Serial.println(imu->z);
 
+	/*
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		const char arr[4] = {'F', 'B', 'S', 'D'};
@@ -900,6 +866,8 @@ void Robot::PrintSensorData()
 		}
 		Serial.println();
 	}
+	*/
+
 	Serial.print("c_comp:");
 	Serial.print(cs->c_comp);
 	Serial.print("\tr_comp: ");

@@ -27,7 +27,7 @@ gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), 
 	delay(10);
 	IMU->enableExternalClock();
 	delay(10);
-	IMU->setGyroFS(IMU->dps1000);
+	IMU->setGyroFS(IMU->dps500);
 	delay(10);
 	IMU->setGyroODR(IMU->odr200);
 	delay(10);
@@ -46,8 +46,6 @@ uint8_t gyro::UpdateData()
 	y += IMU->gyrY() * delta_micros / 1e6;
 	z -= IMU->gyrZ() * delta_micros / 1e6;
 	pastMicros = micros();
-	Serial.print("Delta: ");
-	Serial.println(delta_micros);
 	return status;
 }
 
