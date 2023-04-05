@@ -70,14 +70,6 @@ kits = -1 # -1 means that there is no victim
 
 while(True):
 
-    if uart.any():
-        data = uart.read().decode('utf-8').rstrip()
-        if data == '9':
-            kits = -1
-
-    if kits != -1:
-        continue
-
     sharp_read = analog_distance.read()
 
     print("%f <- value" % sharp_read) # read value, 0-4095
@@ -85,6 +77,8 @@ while(True):
     if (sharp_read > 350):
 
         img = sensor.snapshot() # Take a picture and return the image.
+
+        #img.negate()
 
         for i in thresholds:
             pixels_threshold = int(sharp_read * 0.17)
@@ -150,12 +144,6 @@ while(True):
 
         if kits >= 0:
             print(kits)
-            send = kits + 48
-            uart.writechar(send)
             green_led = LED(2)
+            kits =-1
             # Lampeggio -> Vittima
-            for i in range(0,6):
-                green_led.on()
-                time.sleep(.5)
-                green_led.off()
-                time.sleep(.5)
