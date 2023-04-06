@@ -22,9 +22,9 @@ uart.init(baudrate=115200, timeout_char=1)
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-red=(20, 50, 20, 127, 0, 90) # red_thresholds
+red=(35, 100, 30, 127, 30, 80) # red_thresholds
 green=(10, 40, -50, -15, 0, 40) # green_thresholds
-yellow=(50, 100, -25, 127, 40, 127) # yellow_thresholds
+yellow=(20, 70, -15, 30, 25, 127) # yellow_thresholds
 black=(0, 7, -128, 25, -128, 25) # black_thresholds
 
 pixels_threshold = 50

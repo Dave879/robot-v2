@@ -824,7 +824,6 @@ void Robot::PrintSensorData()
 	Serial.print("gyro.z: \t");
 	Serial.println(imu->z);
 
-	/*
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		const char arr[4] = {'F', 'B', 'S', 'D'};
@@ -850,7 +849,6 @@ void Robot::PrintSensorData()
 		}
 		Serial.println();
 	}
-	*/
 
 	Serial.print("c_comp:");
 	Serial.print(cs->c_comp);
