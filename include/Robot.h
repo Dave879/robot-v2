@@ -24,6 +24,7 @@ private:
 #define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
 #define MIN_DISTANCE_FROM_FRONT_WALL_MM 110
+#define MIN_DISTANCE_BUMP_BACK_WALL_MM 150
 #define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
 #define MIN_VALUE_BLUE_TILE 18
@@ -65,6 +66,8 @@ private:
 	// victim functions
 	bool FoundVictim();
 	void DropKit(int8_t number_of_kits, bool left_victim);
+	void DropKitNoTurn(int8_t number_of_kits);
+	void VictimVerify();
 
 	/**
 	 * PID controller variables

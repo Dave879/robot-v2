@@ -199,12 +199,14 @@ void Robot::Run()
 			{
 				just_found_black = false;
 			}
+			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
 			else if (cs->c_comp <= MIN_VALUE_BLUE_TILE && imu->y < 20 && imu->y > -20)
 			{
 				ms->StopMotors();
 				delay(5000);
 			}
 
+			// Per fermare il robot per 0.5s ogni tile (sono per fase di test)
 			// ms->StopMotors();
 			// delay(500);
 			
@@ -249,13 +251,6 @@ void Robot::Run()
 						{
 							// Giro a destra
 							TurnRight();
-
-							UpdateSensorNumBlocking(VL53L5CX::BW);
-							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
-							{
-								// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-								Straighten();
-							}
 						}
 					}
 					else
@@ -278,13 +273,6 @@ void Robot::Run()
 						{
 							// Giro a sinistra
 							TurnLeft();
-
-							UpdateSensorNumBlocking(VL53L5CX::BW);
-							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
-							{
-								// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-								Straighten();
-							}
 						}
 					}
 					else
@@ -399,6 +387,34 @@ bool Robot::FoundVictim()
 	return Serial2.available() > 0 || Serial8.available() > 0;
 }
 
+void Robot::VictimVerify()
+{
+	if (FoundVictim())
+	{
+		char kits_number;
+		if (Serial2.available() > 0)
+		{
+			kits_number = Serial2.read();
+			Serial2.print('9');
+			delay(500);
+			if (!Serial2.available())
+			{
+				DropKitNoTurn(kits_number);
+			}
+		}
+		else
+		{
+			kits_number = Serial8.read();
+			Serial8.print('9');
+			delay(500);
+			if (!Serial8.available())
+			{
+				DropKitNoTurn(kits_number);
+			}
+		}
+	}
+}
+
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
 	if (number_of_kits > 1)
@@ -439,7 +455,54 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 	Turn(90 * side);
 
-	delay(5000 - (1000 * number_of_kits));
+	int8_t seconds_to_wait = 5 - 1 * number_of_kits;
+	for (int8_t i = 0; i < seconds_to_wait; i++)
+	{
+		digitalWriteFast(R_LED1_PIN, HIGH);
+		digitalWriteFast(R_LED2_PIN, HIGH);
+		digitalWriteFast(R_LED3_PIN, HIGH);
+		digitalWriteFast(R_LED4_PIN, HIGH);
+		delay(500);
+		digitalWriteFast(R_LED1_PIN, LOW);
+		digitalWriteFast(R_LED2_PIN, LOW);
+		digitalWriteFast(R_LED3_PIN, LOW);
+		digitalWriteFast(R_LED4_PIN, LOW);
+		delay(500);
+	}
+}
+
+void Robot::DropKitNoTurn(int8_t number_of_kits)
+{
+	for (int8_t i = 0; i < number_of_kits; i++)
+	{
+		digitalWriteFast(R_LED1_PIN, HIGH);
+		digitalWriteFast(R_LED2_PIN, HIGH);
+		digitalWriteFast(R_LED3_PIN, HIGH);
+		digitalWriteFast(R_LED4_PIN, HIGH);
+		kit.write(180);
+		delay(1000);
+		kit.write(0);
+		digitalWriteFast(R_LED1_PIN, LOW);
+		digitalWriteFast(R_LED2_PIN, LOW);
+		digitalWriteFast(R_LED3_PIN, LOW);
+		digitalWriteFast(R_LED4_PIN, LOW);
+		delay(1000);
+	}
+
+	int8_t seconds_to_wait = 5 - 1 * number_of_kits;
+	for (int8_t i = 0; i < seconds_to_wait; i++)
+	{
+		digitalWriteFast(R_LED1_PIN, HIGH);
+		digitalWriteFast(R_LED2_PIN, HIGH);
+		digitalWriteFast(R_LED3_PIN, HIGH);
+		digitalWriteFast(R_LED4_PIN, HIGH);
+		delay(500);
+		digitalWriteFast(R_LED1_PIN, LOW);
+		digitalWriteFast(R_LED2_PIN, LOW);
+		digitalWriteFast(R_LED3_PIN, LOW);
+		digitalWriteFast(R_LED4_PIN, LOW);
+		delay(500);
+	}
 }
 
 void Robot::Straighten()
@@ -507,6 +570,17 @@ void Robot::TurnRight()
 
 	// Giro a destra (90°)
 	Turn(90);
+
+	// Controllo se posso adrizzare il robot dopo la svolta
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_BUMP_BACK_WALL_MM)
+	{
+		// Manovra da eseguire per ristabilizzare il robot e resettare il giro
+		Straighten();
+	}
+
+	// Controllo se sono presenti vittime, più eventuale conferma
+	VictimVerify();
 }
 
 void Robot::TurnLeft()
@@ -516,6 +590,17 @@ void Robot::TurnLeft()
 
 	// Giro a sinistra (-90°)
 	Turn(-90);
+
+	// Controllo se posso adrizzare il robot dopo la svolta
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_BUMP_BACK_WALL_MM)
+	{
+		// Manovra da eseguire per ristabilizzare il robot e resettare il giro
+		Straighten();
+	}
+
+	// Controllo se sono presenti vittime, più eventuale conferma
+	VictimVerify();
 }
 
 void Robot::TurnBack()
@@ -528,6 +613,9 @@ void Robot::TurnBack()
 
 	// Radrizzo il robot
 	Straighten();
+
+	// Controllo se sono presenti vittime, più eventuale conferma
+	VictimVerify();
 }
 
 void Robot::Turn(int16_t degree)
@@ -571,11 +659,10 @@ void Robot::Turn(int16_t degree)
 			ms->SetPower(-gyro_speed, +gyro_speed);
 		}
 	}
-
-	PID_integral = 0;
-
+	
 	// Stop dei motori
 	ms->StopMotors();
+	
 	PID_integral = 0;
 	Serial.println("Metodo Turn: giro completato!!!");
 }
