@@ -245,44 +245,20 @@ void Robot::Run()
 				// Giro a destra
 				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+					// Giro o continuo ad andare dritto
+					if (millis() % 2)
 					{
-						if (millis() % 2)
-						{
-							// Giro a destra
-							TurnRight();
-						}
-					}
-					else
-					{
-						// Output variabili varco
-						Serial.println("Varco Trovato!!!");
-						Serial.print("Distanza Destra: ");
-						Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
-
-						// Giro a destra(90°)
+						// Giro a destra
 						TurnRight();
 					}
 				}
 				// Giro a sinistra
 				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+					// Giro o continuo ad andare dritto
+					if (millis() % 2)
 					{
-						if (millis() % 2)
-						{
-							// Giro a sinistra
-							TurnLeft();
-						}
-					}
-					else
-					{
-						// Output variabili varco
-						Serial.println("Varco Trovato!!!");
-						Serial.print("Distanza Sinistra: ");
-						Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
-
-						// Giro a sinistra(-90°)
+						// Giro a sinistra
 						TurnLeft();
 					}
 				}
@@ -303,9 +279,11 @@ void Robot::Run()
 			digitalWriteFast(R_LED3_PIN, LOW);
 			digitalWriteFast(R_LED4_PIN, LOW);
 		}
+		// Proseguo diretto
 		else
 		{
-			ms->SetPower(SPEED, SPEED);
+			int16_t power_to_add = imu->y / 5;
+			ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
 		}
 	}
 	else // Roboto fermo
