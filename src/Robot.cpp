@@ -94,11 +94,15 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	// Inizializzazione canale di comunicazione con OpenMV DX, e primo avvio se presente un muro a destra alla partenza
 	Serial8.begin(115200);
 	Serial8.print('9');
+
+	// Initialize front/back distance to reach
+	front_distance_to_reach = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] - DISTANCE_TO_TILE;
+	back_distance_to_reach = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] + DISTANCE_TO_TILE;
 }
 
 void Robot::Run()
 {
-	if (!StopRobot()) // Robot in azione
+	if (!StopRobot()) // Robot in azionew
 	{
 		// Victims detection
 		if (FoundVictim())
@@ -146,8 +150,14 @@ void Robot::Run()
 					break;
 				}
 			}
+			else
+			{
+				just_recived_from_openmv = false;
+				Serial8.print('9');
+				Serial2.print('9');
+			}
 		just_recived_from_openmv = true;
-		time_to_wait_after_openmv_search_again = millis() + 500;
+		time_to_wait_after_openmv_search_again = millis() + 800;
 		}
 		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
 		{
@@ -157,7 +167,7 @@ void Robot::Run()
 		}
 		
 		// Black tile
-		if (cs->c_comp <= MIN_VALUE_BLACK_TILE && imu->y < 9 && imu->y > -9)
+		if (cs->c_comp <= MIN_VALUE_BLACK_TILE && imu->y < 20 && imu->y > -20)
 		{
 			Serial.println("Black tile");
 			// Torno in dietro fino a quando smetto di vedere nero
@@ -171,136 +181,47 @@ void Robot::Run()
 				}
 			}
 			// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
-			delay(300);
+			delay(400);
 			ms->StopMotors();
-			// Giro in base all'ultima svolta effettuata
-			if (last_turn_right)
-			{
-				// Controllo se ho la sinistra libera
-				UpdateSensorNumBlocking(VL53L5CX::BW);
-				UpdateSensorNumBlocking(VL53L5CX::SX);
-				if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro in dietro
-					TurnBack();
-				}
-				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro a sinistra
-					TurnLeft();
-
-					// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
-					just_found_black = true;
-					time_after_black_tile_ignore_false = millis() + 500;
-				}
-				else
-				{
-					// Giro a destra
-					TurnRight();
-				}
-			}
-			// Controllo se arrio da una U
-			else if (last_turn_back)
-			{
-				// Controllo se ho la destra o la sinistra libera
-				UpdateSensorNumBlocking(VL53L5CX::DX);
-				UpdateSensorNumBlocking(VL53L5CX::SX);
-				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro a destra
-					TurnRight();
-
-					// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
-					just_found_black = true;
-					time_after_black_tile_ignore_false = millis() + 500;
-				}
-				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro a sinistra
-					TurnLeft();
-
-					// Imposto le variabili neccessarie per cambiare l'ignore entro la prossima tile
-					just_found_black = true;
-					time_after_black_tile_ignore_false = millis() + 500;
-				}
-				else
-				{
-					// Giro in dietro
-					TurnBack();
-				}
-			}
-			else
-			{
-				// Controllo se ho la destra libera
-				UpdateSensorNumBlocking(VL53L5CX::DX);
-				UpdateSensorNumBlocking(VL53L5CX::BW);
-				if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro in dietro
-					TurnBack();
-				}
-				else if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro a destra
-					TurnRight();
-
-					// Nero prossima tile ignore = false
-					just_found_black = true;
-					time_after_black_tile_ignore_false = millis() + 500;
-				}
-				else
-				{
-					// Giro a sinistra
-					TurnLeft();
-				}
-			}
-			// Una volta svoltato aggiorno tutti i valori
-			UpdateSensorNumBlocking(VL53L5CX::SX);
-			UpdateSensorNumBlocking(VL53L5CX::DX);
-			UpdateSensorNumBlocking(VL53L5CX::FW);
-			UpdateSensorNumBlocking(VL53L5CX::BW);
+			Turn(-180);
+			just_found_black = true;
 		}
-		// Se ho incontrato il nero, controllo il tempo, se passato il tempo necessario, in base a dove avevo svoltato l'ultima volta, imposto l'ignore a false
-		else if (just_found_black)
+
+		// Controllo se ho raggiunto una nuova tile
+		if (NewTile() || lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_FROM_FRONT_WALL_MM || just_found_black)
 		{
-			if (millis() > time_after_black_tile_ignore_false)
+			digitalWriteFast(R_LED1_PIN, HIGH);
+			digitalWriteFast(R_LED2_PIN, HIGH);
+			digitalWriteFast(R_LED3_PIN, HIGH);
+			digitalWriteFast(R_LED4_PIN, HIGH);
+
+			if (just_found_black )
 			{
-				if (last_turn_right)
-				{
-					ignore_right = false;
-				}
-				else
-				{
-					ignore_left = false;
-				}
 				just_found_black = false;
 			}
-		}
-
-		// Controllo se devo girare
-		if (NeedToTurn())
-		{
-			if (cs->c_comp <= MIN_VALUE_BLUE_TILE && imu->y < 9 && imu->y > -9)
+			else if (cs->c_comp <= MIN_VALUE_BLUE_TILE && imu->y < 20 && imu->y > -20)
 			{
 				ms->StopMotors();
 				delay(5000);
-				on_blue_tile = false;
 			}
-			// Varco trovato!
+
+			// ms->StopMotors();
+			// delay(500);
+			
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
 
 			// Controllo se ho entrabi i lati liberi
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right) && (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_left))
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM) && (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM))
 			{
 				// Output variabili varco
 				Serial.println("Varco Trovato!!!");
 				// Varco Destra
 				Serial.print("Distanza Destra: ");
-				Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27]);
+				Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
 				// Varco Sinistra
 				Serial.print("Distanza Sinistra: ");
-				Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27]);
+				Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
 
 				// Scelgo quale direzione prendere tra destra e sinistra
 				if (millis() % 2)
@@ -317,12 +238,12 @@ void Robot::Run()
 				}
 			}
 			// Non è stato rilevato un varco simultaneo, ma solo a destra o sinistra
-			else if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_left))
+			else if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM))
 			{
 				// Giro a destra
-				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right)
+				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+					if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 					{
 						if (millis() % 2)
 						{
@@ -330,16 +251,11 @@ void Robot::Run()
 							TurnRight();
 
 							UpdateSensorNumBlocking(VL53L5CX::BW);
-							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 							{
 								// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 								Straighten();
 							}
-						}
-						else
-						{
-							ignore_right = true;
-							ignore_left = true;
 						}
 					}
 					else
@@ -347,16 +263,16 @@ void Robot::Run()
 						// Output variabili varco
 						Serial.println("Varco Trovato!!!");
 						Serial.print("Distanza Destra: ");
-						Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27]);
+						Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
 
 						// Giro a destra(90°)
 						TurnRight();
 					}
 				}
 				// Giro a sinistra
-				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_left)
+				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+					if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 					{
 						if (millis() % 2)
 						{
@@ -364,16 +280,11 @@ void Robot::Run()
 							TurnLeft();
 
 							UpdateSensorNumBlocking(VL53L5CX::BW);
-							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
+							if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
 							{
 								// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 								Straighten();
 							}
-						}
-						else
-						{
-							ignore_right = true;
-							ignore_left = true;
 						}
 					}
 					else
@@ -381,80 +292,32 @@ void Robot::Run()
 						// Output variabili varco
 						Serial.println("Varco Trovato!!!");
 						Serial.print("Distanza Sinistra: ");
-						Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27]);
+						Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
 
 						// Giro a sinistra(-90°)
 						TurnLeft();
 					}
 				}
 			}
-			// Non dovrebbe aver trovato varchi
+			else if ((lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5))
+			{
+				TurnBack();
+			}
+			
+			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateSensorNumBlocking(VL53L5CX::BW);
+			
+			front_distance_to_reach = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] - DISTANCE_TO_TILE;
+			back_distance_to_reach = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] + DISTANCE_TO_TILE;
+
+			digitalWriteFast(R_LED1_PIN, LOW);
+			digitalWriteFast(R_LED2_PIN, LOW);
+			digitalWriteFast(R_LED3_PIN, LOW);
+			digitalWriteFast(R_LED4_PIN, LOW);
 		}
-		// Se non devo girare, prosseguo dritto, e controllo la presenza di un muro frontale
 		else
 		{
-			// Se non sono su una tile blue e sto ignorando il blue, toglo l'ignora blue
-			if (cs->c_comp > MIN_VALUE_BLUE_TILE && on_blue_tile)
-			{
-				ms->StopMotors();
-				delay(5000);
-				on_blue_tile = false;
-			}
-			else if(cs->c_comp <= MIN_VALUE_BLUE_TILE && !on_blue_tile && (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM))
-			{
-				on_blue_tile = true;
-			}
-			// In presenza di un muro laterale a destra, cambio il vincolo sul varco applicato nella svolta
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM) && ignore_right)
-			{
-				ignore_right = false;
-			}
-			// In presenza di un muro laterale a sinistra, cambio il vincolo sul varco applicato nella svolta
-			if ((lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM) && ignore_left)
-			{
-				ignore_left = false;
-			}
-			// Controllo la distanza frontale
-			if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[27] <= MIN_DISTANCE_FROM_FRONT_WALL_MM)
-			{
-				ms->StopMotors();
-				UpdateSensorNumBlocking(VL53L5CX::SX);
-				UpdateSensorNumBlocking(VL53L5CX::DX);
-				// Valutazione azione da svolgere in presenza di muro frontale
-				// In presenza di varco a destra, svolterò per prosseguire verso quella direzione
-				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro a destra
-					TurnRight();
-
-					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-					Straighten();
-				}
-				// In presenza di varco a sinistra, svolterò per prosseguire verso quella direzione
-				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM)
-				{
-					// Giro a left
-					TurnLeft();
-
-					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-					Straighten();
-				}
-				// Avendo tutte le direzioni bloccate, quindi in presenza di una U, mi girerò del tutto
-				else
-				{
-					// Giro in dietro
-					TurnBack();
-
-					// Manovra da eseguire per ristabilizzare il robot e resettare il giro
-					Straighten();
-				}
-			}
-			// In assenza di muro frontale proseguiamo in modo rettilineo
-			else
-			{
-				Serial.println("Stiamo andando dritto");
-				MotorPowerZGyroAndPID();
-			}
+			ms->SetPower(SPEED, SPEED);
 		}
 	}
 	else // Roboto fermo
@@ -496,11 +359,10 @@ bool Robot::StopRobot()
 		if (!first_time_pressed)
 		{
 			stop_the_robot = !stop_the_robot;
-			first_time_pressed = true;
 			if (!stop_the_robot)
 			{
-				imu->ResetAxis();
-				desired_angle = 0;
+			}
+				// OpenMV discard old data
 				while (Serial2.available())
 				{
 					Serial2.read();
@@ -511,7 +373,13 @@ bool Robot::StopRobot()
 				}
 				Serial2.print('9');
 				Serial8.print('9');
-			}
+				// Reset gyro
+				imu->ResetAxis();
+				desired_angle = 0;
+				// Set new front/back distance to reach
+				front_distance_to_reach = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] - DISTANCE_TO_TILE;
+				back_distance_to_reach = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] + DISTANCE_TO_TILE;
+			first_time_pressed = true;
 		}
 	}
 	else
@@ -519,6 +387,11 @@ bool Robot::StopRobot()
 		first_time_pressed = false;
 	}
 	return stop_the_robot;
+}
+
+bool Robot::NewTile()
+{
+	return (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
 }
 
 bool Robot::FoundVictim()
@@ -550,14 +423,23 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 	for (int8_t i = 0; i < number_of_kits; i++)
 	{
+		digitalWriteFast(R_LED1_PIN, HIGH);
+		digitalWriteFast(R_LED2_PIN, HIGH);
+		digitalWriteFast(R_LED3_PIN, HIGH);
+		digitalWriteFast(R_LED4_PIN, HIGH);
 		kit.write(180);
 		delay(1000);
 		kit.write(0);
+		digitalWriteFast(R_LED1_PIN, LOW);
+		digitalWriteFast(R_LED2_PIN, LOW);
+		digitalWriteFast(R_LED3_PIN, LOW);
+		digitalWriteFast(R_LED4_PIN, LOW);
 		delay(1000);
 	}
 
 	Turn(90 * side);
-	delay(7000 - (2000 * number_of_kits));
+
+	delay(5000 - (1000 * number_of_kits));
 }
 
 void Robot::Straighten()
@@ -568,7 +450,7 @@ void Robot::Straighten()
 	imu->ResetAxis();
 	desired_angle = 0;
 	ms->SetPower(40, 40);
-	delay(500);
+	delay(400);
 }
 
 int16_t Robot::GetPIDOutputAndSec()
@@ -618,63 +500,34 @@ void Robot::MotorPowerZGyroAndPID()
 	ms->SetPower(SPEED - gyro_diff, SPEED + gyro_diff);
 }
 
-bool Robot::NeedToTurn()
-{
-	return (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_right) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM && !ignore_left);
-}
-
 void Robot::TurnRight()
 {
-	// Aggiorno i dati sull'ultima curva
-	last_turn_right = true;
-	last_turn_back = false;
-	just_found_black = false;
-
 	// Fermo il robot prima di girare
 	ms->StopMotors();
 
 	// Giro a destra (90°)
 	Turn(90);
-
-	// Imposto un vincolo sul varco a destra e snistra
-	ignore_right = true;
-	ignore_left = true;
 }
 
 void Robot::TurnLeft()
 {
-	// Aggiorno i dati sull'ultima curva
-	last_turn_right = false;
-	last_turn_back = false;
-	just_found_black = false;
-
 	// Fermo il robot prima di girare
 	ms->StopMotors();
 
 	// Giro a sinistra (-90°)
 	Turn(-90);
-
-	// Imposto un vincolo sul varco a destra e snistra
-	ignore_right = true;
-	ignore_left = true;
 }
 
 void Robot::TurnBack()
 {
-	// Aggiorno i dati sull'ultima curva
-	last_turn_right = false;
-	last_turn_back = true;
-	just_found_black = false;
-
 	// Fermo il robot prima di girare
 	ms->StopMotors();
 
 	// Giro totaale (-180°)
 	Turn(-180);
 
-	// Imposto un vincolo sul varco a destra e snistra
-	ignore_right = true;
-	ignore_left = true;
+	// Radrizzo il robot
+	Straighten();
 }
 
 void Robot::Turn(int16_t degree)
@@ -833,8 +686,8 @@ void Robot::PrintSensorData()
 
 		for (uint8_t j = 0; j < lasers->resolution; j++)
 		{
-			float how_many_tiles = lasers->sensors[i]->GetData()->distance_mm[j] / 300.0f;
-			Serial.print(how_many_tiles);
+			// float how_many_tiles = lasers->sensors[i]->GetData()->distance_mm[j] / 300.0f;
+			Serial.print(lasers->sensors[i]->GetData()->distance_mm[j]);
 			Serial.print(", \t");
 			if ((j + 1) % 8 == 0)
 			{

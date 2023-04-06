@@ -23,7 +23,7 @@ private:
 #define TURN_SPEED 95
 #define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 90
+#define MIN_DISTANCE_FROM_FRONT_WALL_MM 110
 #define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
 #define MIN_VALUE_BLUE_TILE 18
@@ -32,29 +32,27 @@ private:
 #define KP 0.45			 //.5 // Proportional gain
 #define KI 0.000000001 //.2 // Integral gain
 #define KD 0			 //.1 // Derivative gain
+// Tile to tile
+#define DISTANCE_SENSOR_CELL 27
+#define DISTANCE_TO_TILE  297
 
 	/**
 	 * Navigation variables
 	 */
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
-	bool last_turn_right = false;
-	bool last_turn_back = false;
-	// Black tile variables
 	bool just_found_black = false;
-	uint32_t time_after_black_tile_ignore_false = 0;
-	// Blue tile variables
-	bool on_blue_tile = false;
+	// Tile to tile variables
+	int32_t front_distance_to_reach = 0;
+	int32_t back_distance_to_reach = 0;
 	// Turn variables
 	double desired_angle = 0;
-	bool ignore_right = false;
-	bool ignore_left = false;
 
 	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
-	bool NeedToTurn();
+	bool NewTile();
 	void Turn(int16_t degree);
 	void Straighten();
 	void TurnRight();

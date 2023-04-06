@@ -152,10 +152,3 @@ while(True):
             print(kits)
             send = kits + 48
             uart.writechar(send)
-            green_led = LED(2)
-            # Lampeggio -> Vittima
-            for i in range(0,6):
-                green_led.on()
-                time.sleep(.5)
-                green_led.off()
-                time.sleep(.5)
