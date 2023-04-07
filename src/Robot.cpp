@@ -195,7 +195,7 @@ void Robot::Run()
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
 
-			if (just_found_black )
+			if (just_found_black)
 			{
 				just_found_black = false;
 			}
@@ -212,9 +212,10 @@ void Robot::Run()
 			
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
+			UpdateSensorNumBlocking(VL53L5CX::FW);
 
 			// Controllo se ho entrabi i lati liberi
-			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] >= MIN_DISTANCE_TO_TURN_MM) && (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM))
+			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM) && (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM))
 			{
 				// Output variabili varco
 				Serial.println("Varco Trovato!!!");
@@ -245,8 +246,16 @@ void Robot::Run()
 				// Giro a destra
 				if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					// Giro o continuo ad andare dritto
-					if (millis() % 2)
+					if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
+					{
+						// Giro o continuo ad andare dritto
+						if (millis() % 2)
+						{
+							// Giro a destra
+							TurnRight();
+						}
+					}
+					else
 					{
 						// Giro a destra
 						TurnRight();
@@ -255,8 +264,16 @@ void Robot::Run()
 				// Giro a sinistra
 				else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
 				{
-					// Giro o continuo ad andare dritto
-					if (millis() % 2)
+					if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
+					{
+						// Giro o continuo ad andare dritto
+						if (millis() % 2)
+						{
+							// Giro a sinistra
+							TurnLeft();
+						}
+					}
+					else
 					{
 						// Giro a sinistra
 						TurnLeft();
@@ -416,11 +433,13 @@ void Robot::RemoveFictimU()
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
+/*
 	if (number_of_kits > 1)
 	{
 		ms->SetPower(-50, -50);
 		delay(400);
 	}
+*/
 
 	int8_t side = 1;
 

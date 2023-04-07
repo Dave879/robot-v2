@@ -23,7 +23,7 @@ private:
 #define TURN_SPEED 95
 #define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 110
+#define MIN_DISTANCE_FROM_FRONT_WALL_MM 120
 #define MIN_DISTANCE_BUMP_BACK_WALL_MM 150
 #define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
@@ -43,7 +43,6 @@ private:
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
 	bool just_found_black = false;
-	bool on_blue_tile = false;
 	// Tile to tile variables
 	int32_t front_distance_to_reach = 0;
 	int32_t back_distance_to_reach = 0;
