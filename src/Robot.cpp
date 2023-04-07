@@ -128,7 +128,7 @@ void Robot::Run()
 				case '0':
 					Serial.println("Vittima: 0 kit");
 					ms->StopMotors();
-					delay(6000);
+					DropKitNoTurn(0);
 					break;
 				case '1':
 					Serial.println("Vittima: 1 kit");
@@ -369,26 +369,47 @@ void Robot::VictimVerify()
 {
 	if (FoundVictim())
 	{
-		char kits_number;
+		// Fermo il robot, in alcuni casi speciali potrebbe andare avanti e buttare kit se tolto
+		ms->StopMotors();
+		int kits_number;
 		if (Serial2.available() > 0)
 		{
-			kits_number = Serial2.read();
+			kits_number = int(Serial2.read() - '0');
 			Serial2.print('9');
-			delay(500);
+			delay(1000);
 			if (!Serial2.available())
 			{
+				Serial.println("Vittima dietro (prima a sinistra)");
 				DropKitNoTurn(kits_number);
 			}
 		}
 		else
 		{
-			kits_number = Serial8.read();
+			kits_number = int(Serial8.read() - '0');
 			Serial8.print('9');
-			delay(500);
+			delay(1000);
 			if (!Serial8.available())
 			{
+				Serial.println("Vittima dietro (prima a destra)");
 				DropKitNoTurn(kits_number);
 			}
+		}
+	}
+}
+
+void Robot::RemoveFictimU()
+{
+	if (FoundVictim())
+	{
+		if (Serial2.available() > 0)
+		{
+			Serial2.read();
+			Serial2.print('9');;
+		}
+		else
+		{
+			Serial8.read();
+			Serial8.print('9');
 		}
 	}
 }
@@ -417,6 +438,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 	for (int8_t i = 0; i < number_of_kits; i++)
 	{
+		Serial.println("Sono nel blocco del drop kit con svolta");
 		digitalWriteFast(R_LED1_PIN, HIGH);
 		digitalWriteFast(R_LED2_PIN, HIGH);
 		digitalWriteFast(R_LED3_PIN, HIGH);
@@ -451,8 +473,10 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 void Robot::DropKitNoTurn(int8_t number_of_kits)
 {
+	ms->StopMotors();
 	for (int8_t i = 0; i < number_of_kits; i++)
 	{
+		Serial.println("Sono nel blocco del drop kit senza svolta");
 		digitalWriteFast(R_LED1_PIN, HIGH);
 		digitalWriteFast(R_LED2_PIN, HIGH);
 		digitalWriteFast(R_LED3_PIN, HIGH);
@@ -491,7 +515,7 @@ void Robot::Straighten()
 	imu->ResetAxis();
 	desired_angle = 0;
 	ms->SetPower(40, 40);
-	delay(400);
+	delay(300);
 }
 
 int16_t Robot::GetPIDOutputAndSec()
@@ -591,9 +615,6 @@ void Robot::TurnBack()
 
 	// Radrizzo il robot
 	Straighten();
-
-	// Controllo se sono presenti vittime, più eventuale conferma
-	VictimVerify();
 }
 
 void Robot::Turn(int16_t degree)
@@ -635,6 +656,10 @@ void Robot::Turn(int16_t degree)
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(-gyro_speed, +gyro_speed);
+		}
+		if (degree == -180)
+		{
+			RemoveFictimU();
 		}
 	}
 	
