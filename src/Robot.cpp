@@ -121,6 +121,7 @@ void Robot::Run()
 			}
 			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 			Serial.println(kits_number);
+			just_recived_from_openmv = true;
 			if ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && !left_victim) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && left_victim))
 			{
 				switch (kits_number)
@@ -156,7 +157,6 @@ void Robot::Run()
 				Serial8.print('9');
 				Serial2.print('9');
 			}
-		just_recived_from_openmv = true;
 		time_to_wait_after_openmv_search_again = millis() + 800;
 		}
 		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)

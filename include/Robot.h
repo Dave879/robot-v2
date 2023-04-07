@@ -43,6 +43,7 @@ private:
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
 	bool just_found_black = false;
+	bool on_blue_tile = false;
 	// Tile to tile variables
 	int32_t front_distance_to_reach = 0;
 	int32_t back_distance_to_reach = 0;
