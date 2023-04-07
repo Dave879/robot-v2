@@ -299,7 +299,11 @@ void Robot::Run()
 		// Proseguo diretto
 		else
 		{
-			int16_t power_to_add = imu->y / 5;
+			int16_t power_to_add = imu->y / 2;
+			if (power_to_add < -5)
+			{
+				power_to_add = -5;
+			}
 			ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
 		}
 	}
