@@ -22,10 +22,11 @@ uart.init(baudrate=115200, timeout_char=1)
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-red=(35, 100, 30, 127, 30, 80) # red_thresholds
-green=(10, 40, -50, -15, 0, 40) # green_thresholds
+red=(10, 100, 20, 127, 0, 127) # red_thresholds
+green=(10, 50, -128, -25, -1, 127) # green_thresholds
 yellow=(20, 70, -15, 30, 25, 127) # yellow_thresholds
-black=(0, 7, -128, 25, -128, 25) # black_thresholds
+black=(0, 4, -20, 20, -20, 20) # black_thresholds
+
 
 pixels_threshold = 50
 area_threshold = 50
@@ -81,8 +82,8 @@ while(True):
         #img.negate()
 
         for i in thresholds:
-            pixels_threshold = int(sharp_read * 0.17)
-            area_threshold= int(sharp_read * 0.17)
+            pixels_threshold = int(sharp_read * 0.15)
+            area_threshold= int(sharp_read * 0.15)
 
             for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 

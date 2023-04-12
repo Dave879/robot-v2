@@ -20,14 +20,14 @@ private:
  * Global configuration variables
  */
 #define SPEED 45
-#define TURN_SPEED 95
+#define TURN_SPEED 75
 #define MIN_DISTANCE_TO_TURN_MM 220
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 120
-#define MIN_DISTANCE_BUMP_BACK_WALL_MM 150
+#define MIN_DISTANCE_FROM_FRONT_WALL_MM 90
+#define MIN_DISTANCE_BUMP_BACK_WALL_MM 180
 #define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
-#define MIN_VALUE_BLUE_TILE 18
+#define MIN_VALUE_BLUE_TILE 16
 #define MIN_VALUE_BLACK_TILE 9
 // PID controller constants
 #define KP 0.45			 //.5 // Proportional gain
@@ -56,10 +56,12 @@ private:
 	bool NewTile();
 	void Turn(int16_t degree);
 	void Straighten();
+	bool NotInRamp();
 	void TurnRight();
 	void TurnLeft();
 	void TurnBack();
 	void MotorPowerZGyroAndPID();
+	void FakeDelay(uint32_t time);
 	// victim variables
 	bool just_recived_from_openmv = false;
 	uint32_t time_to_wait_after_openmv_search_again = 0;
