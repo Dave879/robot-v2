@@ -16,9 +16,7 @@ if the device monitor doesn't pick up the correct serial port
 
 ## TODO
 
-1. Refactoring
 1. Fix data_formatter for ArduPlot
-1. OpenMV communication
 
 ## Done
 
