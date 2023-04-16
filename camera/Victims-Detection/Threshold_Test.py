@@ -25,7 +25,7 @@ uart.init(baudrate=115200, timeout_char=1)
 red=(10, 100, 20, 127, 0, 127) # red_thresholds
 green=(10, 50, -128, -25, -1, 127) # green_thresholds
 yellow=(20, 70, -15, 30, 25, 127) # yellow_thresholds
-black=(0, 4, -20, 20, -20, 20) # black_thresholds
+black=(0, 20, -20, 20, -20, 20) # black_thresholds
 
 
 pixels_threshold = 50
@@ -75,15 +75,17 @@ while(True):
 
     print("%f <- value" % sharp_read) # read value, 0-4095
 
-    if (sharp_read > 350):
+    if (sharp_read > 450):
 
         img = sensor.snapshot() # Take a picture and return the image.
 
         #img.negate()
 
         for i in thresholds:
-            pixels_threshold = int(sharp_read * 0.15)
-            area_threshold= int(sharp_read * 0.15)
+            pixels_threshold = int(sharp_read * 0.10 * math.log(sharp_read, 50))
+            area_threshold= int(sharp_read * 0.08)
+            print("Pixels: " + str(pixels_threshold))
+            print("Area: " + str(area_threshold))
 
             for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 
