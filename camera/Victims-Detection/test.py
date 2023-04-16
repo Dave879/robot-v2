@@ -73,10 +73,6 @@ while(True):
     if uart.any():
         data = uart.read().decode('utf-8').rstrip()
         if data == '9':
-            led = LED(1)
-            led.on()
-            sleep(0.1)
-            led.off()
             kits = -1
 
     if kits != -1:
@@ -93,8 +89,8 @@ while(True):
         for i in thresholds:
             pixels_threshold = int(sharp_read * 0.10 * math.log(sharp_read, 50))
             area_threshold= int(sharp_read * 0.08)
-            print("Pixels: " + str(pixels_threshold))
-            print("Area: " + str(area_threshold))
+            # print("Pixels: " + str(pixels_threshold))
+            # print("Area: " + str(area_threshold))
 
             for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 

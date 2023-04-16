@@ -156,8 +156,14 @@ void Robot::Run()
 			else
 			{
 				just_recived_from_openmv = false;
-				Serial8.print('9');
-				Serial2.print('9');
+				if (left_victim)
+				{
+					Serial2.print('9');
+				}
+				else
+				{
+					Serial8.print('9');
+				}
 			}
 		time_to_wait_after_openmv_search_again = millis() + 800;
 		}
@@ -183,9 +189,10 @@ void Robot::Run()
 				}
 			}
 			// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
-			FakeDelay(500);
+			FakeDelay(600);
 			ms->StopMotors();
 			
+			/*
 			UpdateSensorNumBlocking(VL53L5CX::DX);
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
@@ -202,6 +209,8 @@ void Robot::Run()
 			{
 				TurnBack();
 			}
+			*/
+			TurnBack();
 
 			just_found_black = true;
 		}
@@ -209,9 +218,9 @@ void Robot::Run()
 		// Se ho colpito un muretto con gli switch
 		if (digitalReadFast(R_COLLISION_SX_PIN) && NotInRamp())
 		{
-			ms->SetPower(-60, -80);
+			ms->SetPower(-30, -100);
 
-			FakeDelay(300);
+			FakeDelay(350);
 
 			ms->StopMotors();
 			UpdateGyroBlocking();
@@ -224,9 +233,9 @@ void Robot::Run()
 		}
 		else if (digitalReadFast(R_COLLISION_DX_PIN)  && NotInRamp())
 		{
-			ms->SetPower(-80, -60);
+			ms->SetPower(-100, -30);
 
-			FakeDelay(300);
+			FakeDelay(350);
 
 			ms->StopMotors();
 			UpdateGyroBlocking();
@@ -521,13 +530,12 @@ void Robot::RemoveFictimU()
 	}
 }
 
-void Robot::DropKit(int8_t number_of_kits, bool left_victim)
+void Robot::DropKit(int8_t number_of_kits, bool left_victim) 
 {
-
 	if (number_of_kits > 1)
 	{
-		ms->SetPower(-50, -50);
-		FakeDelay(350);
+		ms->SetPower(-45, -45);
+		FakeDelay(100);
 		ms->StopMotors();
 	}
 
@@ -555,10 +563,12 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 	}
 
 	Turn(-90 * side);
-	ms->SetPower(-90, -80);
+	ms->SetPower(-90, -90);
 	FakeDelay(500);
+
 	ms->SetPower(40, 40);
-	FakeDelay(200);
+	FakeDelay(50);
+
 	ms->StopMotors();
 
 	for (int8_t i = 0; i < number_of_kits; i++)
@@ -569,6 +579,9 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 		kit.write(0);
 		FakeDelay(1000);
 	}
+
+	ms->SetPower(45, 45);
+	FakeDelay(200);
 
 	Turn(90 * side);
 }
@@ -614,7 +627,7 @@ void Robot::Straighten()
 
 bool Robot::NotInRamp()
 {
-	return (imu->y < 5 && imu->y > -5);
+	return (imu->y < 10 && imu->y > -10);
 }
 
 int16_t Robot::GetPIDOutputAndSec()
@@ -712,8 +725,13 @@ void Robot::TurnBack()
 	// Giro totaale (-180°)
 	Turn(-180);
 
-	// Radrizzo il robot
-	Straighten();
+	// Controllo se posso adrizzare il robot dopo la svolta
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	if (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_BUMP_BACK_WALL_MM)
+	{
+		// Manovra da eseguire per ristabilizzare il robot e resettare il giro
+		Straighten();
+	}
 }
 
 void Robot::Turn(int16_t degree)
