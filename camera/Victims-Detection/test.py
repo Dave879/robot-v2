@@ -73,6 +73,10 @@ while(True):
     if uart.any():
         data = uart.read().decode('utf-8').rstrip()
         if data == '9':
+            led = LED(1)
+            led.on()
+            sleep(0.1)
+            led.off()
             kits = -1
 
     if kits != -1:

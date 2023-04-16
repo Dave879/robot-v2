@@ -207,7 +207,7 @@ void Robot::Run()
 		}
 
 		// Se ho colpito un muretto con gli switch
-		if (digitalReadFast(R_COLLISION_SX_PIN))
+		if (digitalReadFast(R_COLLISION_SX_PIN) && NotInRamp())
 		{
 			ms->SetPower(-60, -80);
 
@@ -222,7 +222,7 @@ void Robot::Run()
 			}
 			ms->StopMotors();
 		}
-		else if (digitalReadFast(R_COLLISION_DX_PIN))
+		else if (digitalReadFast(R_COLLISION_DX_PIN)  && NotInRamp())
 		{
 			ms->SetPower(-80, -60);
 
@@ -281,14 +281,38 @@ void Robot::Run()
 				if (millis() % 2)
 				// Giro a destra
 				{
-					// Giro a destra(90°)
-					TurnRight();
+					if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
+					{
+						// Giro o continuo ad andare dritto
+						if (millis() % 2)
+						{
+							// Giro a destra
+							TurnRight();
+						}
+					}
+					else
+					{
+						// Giro a destra
+						TurnRight();
+					}
 				}
 				// Giro a sinistra
 				else
 				{
-					// Giro a sinistra(-90°)
-					TurnLeft();
+					if (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= MIN_DISTANCE_TO_TURN_MM)
+					{
+						// Giro o continuo ad andare dritto
+						if (millis() % 2)
+						{
+							// Giro a sinistra
+							TurnLeft();
+						}
+					}
+					else
+					{
+						// Giro a sinistra
+						TurnLeft();
+					}
 				}
 			}
 			// Non è stato rilevato un varco simultaneo, ma solo a destra o sinistra
@@ -331,7 +355,7 @@ void Robot::Run()
 					}
 				}
 			}
-			else if ((lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5))
+			else if ((lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_TURN_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5))
 			{
 				TurnBack();
 			}
