@@ -25,7 +25,7 @@ uart.init(baudrate=115200, timeout_char=1)
 red=(10, 100, 20, 127, 0, 127) # red_thresholds
 green=(10, 50, -128, -25, -1, 127) # green_thresholds
 yellow=(20, 70, -15, 30, 25, 127) # yellow_thresholds
-black=(0, 20, -20, 20, -20, 20) # black_thresholds
+black=(0, 15, -10, 10, -10, 10) # black_thresholds
 
 pixels_threshold = 50
 area_threshold = 50

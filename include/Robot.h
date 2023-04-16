@@ -35,7 +35,7 @@ private:
 #define KD 0			 //.1 // Derivative gain
 // Tile to tile
 #define DISTANCE_SENSOR_CELL 27
-#define DISTANCE_TO_TILE  297
+#define DISTANCE_TO_TILE  300
 
 	/**
 	 * Navigation variables

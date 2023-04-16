@@ -535,7 +535,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 	if (number_of_kits > 1)
 	{
 		ms->SetPower(-45, -45);
-		FakeDelay(100);
+		FakeDelay(200);
 		ms->StopMotors();
 	}
 
