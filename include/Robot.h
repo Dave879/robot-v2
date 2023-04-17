@@ -54,6 +54,15 @@ private:
 	 */
 	bool StopRobot();
 	bool NewTile();
+	int16_t GetRightDistance();
+	int16_t GetLeftDistance();
+	int16_t GetFrontDistance();
+	int16_t GetBackDistance();
+	bool CanTurnRight();
+	bool CanTurnLeft();
+	bool CanGoOn();
+	bool CanBumpBack();
+	bool FrontWall();
 	void Turn(int16_t degree);
 	void Straighten();
 	bool NotInRamp();
