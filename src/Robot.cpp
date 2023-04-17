@@ -189,7 +189,7 @@ void Robot::Run()
 				}
 			}
 			// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
-			FakeDelay(500);
+			FakeDelay(320);
 			ms->StopMotors();
 
 			TurnBack();
@@ -610,15 +610,12 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 	Turn(-90 * side);
 	bool bumped = false;
+	UpdateSensorNumBlocking(VL53L5CX::BW);
 	if (CanBumpBack())
 	{
 		ms->SetPower(-90, -90);
 		FakeDelay(500);
-
-		ms->SetPower(40, 40);
-		FakeDelay(50);
 		ms->StopMotors();
-
 		bumped = true;
 	}
 
@@ -635,7 +632,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 	if (bumped)
 	{
 		ms->SetPower(45, 45);
-		FakeDelay(200);
+		FakeDelay(250);
 	}
 	
 	Turn(90 * side);
