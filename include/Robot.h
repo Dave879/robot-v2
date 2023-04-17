@@ -63,6 +63,8 @@ private:
 	bool CanGoOn();
 	bool CanBumpBack();
 	bool FrontWall();
+	bool BlackTile();
+	bool BlueTile();
 	void Turn(int16_t degree);
 	void Straighten();
 	bool NotInRamp();

@@ -124,7 +124,7 @@ void Robot::Run()
 			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 			Serial.println(kits_number);
 			just_recived_from_openmv = true;
-			if (NotInRamp() && ((lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && !left_victim) || (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[27] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM && left_victim)))
+			if (NotInRamp() && ((!CanTurnRight() && !left_victim) || (!CanTurnLeft() && left_victim)))
 			{
 				switch (kits_number)
 				{
@@ -175,11 +175,11 @@ void Robot::Run()
 		}
 		
 		// Black tile
-		if (cs->c_comp <= MIN_VALUE_BLACK_TILE && NotInRamp())
+		if (BlackTile() && NotInRamp())
 		{
 			Serial.println("Black tile");
 			// Torno in dietro fino a quando smetto di vedere nero
-			ms->SetPower(-40, -40);
+			ms->SetPower(-45, -45);
 			while (cs->c_comp <= MIN_VALUE_BLACK_TILE)
 			{
 				if (color_data_ready)
@@ -189,27 +189,9 @@ void Robot::Run()
 				}
 			}
 			// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
-			FakeDelay(600);
+			FakeDelay(500);
 			ms->StopMotors();
-			
-			/*
-			UpdateSensorNumBlocking(VL53L5CX::DX);
-			UpdateSensorNumBlocking(VL53L5CX::SX);
-			if (lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
-			{
-				TurnLeft();
-				TurnLeft();
-			}
-			else if (lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM)
-			{
-				TurnRight();
-				TurnRight();
-			}
-			else
-			{
-				TurnBack();
-			}
-			*/
+
 			TurnBack();
 
 			just_found_black = true;
@@ -260,7 +242,7 @@ void Robot::Run()
 				just_found_black = false;
 			}
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
-			else if (cs->c_comp <= MIN_VALUE_BLUE_TILE && NotInRamp())
+			else if (BlueTile() && NotInRamp())
 			{
 				ms->StopMotors();
 				FakeDelay(5000);
@@ -516,9 +498,19 @@ bool Robot::FrontWall()
 	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM;
 }
 
+bool Robot::BlackTile()
+{
+	return cs->c_comp <= MIN_VALUE_BLACK_TILE;
+}
+
+bool Robot::BlueTile()
+{
+	return cs->c_comp <= MIN_VALUE_BLUE_TILE;
+}
+
 bool Robot::NewTile()
 {
-	return (lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
+	return (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
 }
 
 bool Robot::FoundVictim()
