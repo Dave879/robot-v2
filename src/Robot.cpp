@@ -98,8 +98,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	Serial8.print('9');
 
 	// Initialize front/back distance to reach
-	front_distance_to_reach = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] - DISTANCE_TO_TILE;
-	back_distance_to_reach = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] + DISTANCE_TO_TILE;
+	SetNewTileDistances();
 }
 
 void Robot::Run()
@@ -188,13 +187,13 @@ void Robot::Run()
 					color_data_ready = false;
 				}
 			}
-			// Mando il robot indietro ancorà di più, così da alontanarlo dalla tile nera
-			FakeDelay(320);
-			ms->StopMotors();
 
+			// Mando il robot indietro al centro della tile
 			TurnBack();
-
-			just_found_black = true;
+			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateSensorNumBlocking(VL53L5CX::BW);
+			front_distance_to_reach = (((GetFrontDistance()/ 300)) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+			back_distance_to_reach = (((GetBackDistance()/ 300)) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 		}
 
 		// Se ho colpito un muretto con gli switch
@@ -230,19 +229,15 @@ void Robot::Run()
 		}
 
 		// Controllo se ho raggiunto una nuova tile
-		if ((NewTile() && NotInRamp()) || FrontWall() || just_found_black)
+		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
 
-			if (just_found_black)
-			{
-				just_found_black = false;
-			}
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
-			else if (BlueTile() && NotInRamp())
+			if (BlueTile() && NotInRamp())
 			{
 				ms->StopMotors();
 				FakeDelay(5000);
@@ -350,13 +345,9 @@ void Robot::Run()
 			{
 				TurnBack();
 			}
-			
-			UpdateSensorNumBlocking(VL53L5CX::FW);
-			UpdateSensorNumBlocking(VL53L5CX::BW);
-			
-			front_distance_to_reach = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] - DISTANCE_TO_TILE;
-			back_distance_to_reach = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] + DISTANCE_TO_TILE;
 
+			SetNewTileDistances();
+			
 			digitalWriteFast(R_LED1_PIN, LOW);
 			digitalWriteFast(R_LED2_PIN, LOW);
 			digitalWriteFast(R_LED3_PIN, LOW);
@@ -441,8 +432,7 @@ bool Robot::StopRobot()
 				imu->ResetZ();
 				desired_angle = 0;
 				// Set new front/back distance to reach
-				front_distance_to_reach = lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] - DISTANCE_TO_TILE;
-				back_distance_to_reach = lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL] + DISTANCE_TO_TILE;
+				SetNewTileDistances();
 			first_time_pressed = true;
 		}
 	}
@@ -471,6 +461,14 @@ int16_t Robot::GetFrontDistance()
 int16_t Robot::GetBackDistance()
 {
 	return lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
+}
+
+void Robot::SetNewTileDistances()
+{
+	UpdateSensorNumBlocking(VL53L5CX::FW);
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 }
 
 bool Robot::CanTurnRight()

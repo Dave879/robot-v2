@@ -35,7 +35,7 @@ private:
 #define KD 0			 //.1 // Derivative gain
 // Tile to tile
 #define DISTANCE_SENSOR_CELL 27
-#define DISTANCE_TO_TILE  297
+#define DISTANCE_FRONT_AND_BACK_CENTER_TILE  6
 
 	/**
 	 * Navigation variables
@@ -58,6 +58,7 @@ private:
 	int16_t GetLeftDistance();
 	int16_t GetFrontDistance();
 	int16_t GetBackDistance();
+	void SetNewTileDistances();
 	bool CanTurnRight();
 	bool CanTurnLeft();
 	bool CanGoOn();
