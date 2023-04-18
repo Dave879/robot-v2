@@ -82,7 +82,9 @@ private:
 	void DropKit(int8_t number_of_kits, bool left_victim);
 	void DropKitNoTurn(int8_t number_of_kits);
 	void VictimVerify();
-	void RemoveFictimU();
+	void RemoveVictimU();
+
+	double old_gyro_value; 
 
 	/**
 	 * PID controller variables

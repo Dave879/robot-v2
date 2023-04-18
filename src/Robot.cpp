@@ -97,6 +97,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	Serial8.begin(115200);
 	Serial8.print('9');
 
+	// Get first old_gyro value for check drift
+	old_gyro_value = imu->z;
+
 	// Initialize front/back distance to reach
 	SetNewTileDistances();
 }
@@ -235,9 +238,6 @@ void Robot::Run()
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
-
-			ms->StopMotors();
-			FakeDelay(10000);
 
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
 			if (BlueTile() && NotInRamp())
@@ -382,6 +382,12 @@ void Robot::Run()
 	{
 		ms->StopMotors();
 		Serial.println("Premere il pulsante per far partire il robot!");
+		UpdateGyroBlocking();
+		if (imu->z - old_gyro_value > 0.1 || imu->z - old_gyro_value < -0.1)
+		{
+			digitalToggleFast(R_LED3_PIN);
+			old_gyro_value = imu->z;
+		}
 	}
 }
 
@@ -417,9 +423,6 @@ bool Robot::StopRobot()
 		if (!first_time_pressed)
 		{
 			stop_the_robot = !stop_the_robot;
-			if (!stop_the_robot)
-			{
-			}
 				// OpenMV discard old data
 				while (Serial2.available())
 				{
@@ -436,7 +439,12 @@ bool Robot::StopRobot()
 				desired_angle = 0;
 				// Set new front/back distance to reach
 				SetNewTileDistances();
-			first_time_pressed = true;
+				first_time_pressed = true;
+				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+				front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+				back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+				digitalWriteFast(R_LED3_PIN, LOW);
 		}
 	}
 	else
@@ -560,7 +568,7 @@ void Robot::VictimVerify()
 	}
 }
 
-void Robot::RemoveFictimU()
+void Robot::RemoveVictimU()
 {
 	if (FoundVictim())
 	{
@@ -674,8 +682,6 @@ void Robot::Straighten()
 	ms->StopMotors();
 	imu->ResetZ();
 	desired_angle = 0;
-	ms->SetPower(SPEED, SPEED);
-	FakeDelay(250);
 }
 
 bool Robot::NotInRamp()
@@ -829,7 +835,7 @@ void Robot::Turn(int16_t degree)
 		}
 		if (degree == -180)
 		{
-			RemoveFictimU();
+			RemoveVictimU();
 		}
 	}
 	
