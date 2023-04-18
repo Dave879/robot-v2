@@ -77,7 +77,6 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	/**
 	 * Robot ready signal
 	 */
-
 	pinMode(R_LED1_PIN, OUTPUT);
 	pinMode(R_LED2_PIN, OUTPUT);
 	pinMode(R_LED3_PIN, OUTPUT);
@@ -167,7 +166,7 @@ void Robot::Run()
 					Serial8.print('9');
 				}
 			}
-		time_to_wait_after_openmv_search_again = millis() + 800;
+			time_to_wait_after_openmv_search_again = millis() + 800;
 		}
 		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
 		{
@@ -176,6 +175,35 @@ void Robot::Run()
 			Serial2.print('9');
 		}
 		
+		/*
+		if (!NotInRamp())
+		{
+			if (!was_in_ramp)
+			{
+				was_in_ramp = true;
+				time_in_ramp = millis();
+			}
+			Serial.println("Rampa");
+		}
+		else if(was_in_ramp)
+		{
+			if (millis() - time_in_ramp > 1500)
+			{
+				ms->SetPower(45,45);
+				while (imu->z > 2 || imu->z < -2)
+				{
+					UpdateGyroBlocking();
+				}
+				Serial.println(imu->y);
+				ms->StopMotors();
+				Serial.println("Rampa fatta");
+				FakeDelay(1000);
+				SetCurrentTileDistances();
+			}
+			was_in_ramp = false;
+		}
+		*/
+
 		// Black tile
 		if (BlackTile() && NotInRamp())
 		{
@@ -193,10 +221,7 @@ void Robot::Run()
 
 			// Mando il robot indietro al centro della tile
 			TurnBack();
-			UpdateSensorNumBlocking(VL53L5CX::FW);
-			UpdateSensorNumBlocking(VL53L5CX::BW);
-			front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-			back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+			SetCurrentTileDistances();
 		}
 
 		// Se ho colpito un muretto con gli switch
@@ -440,10 +465,7 @@ bool Robot::StopRobot()
 				// Set new front/back distance to reach
 				SetNewTileDistances();
 				first_time_pressed = true;
-				UpdateSensorNumBlocking(VL53L5CX::FW);
-				UpdateSensorNumBlocking(VL53L5CX::BW);
-				front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-				back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+				SetCurrentTileDistances();
 				digitalWriteFast(R_LED3_PIN, LOW);
 		}
 	}
@@ -480,6 +502,14 @@ void Robot::SetNewTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+}
+
+void Robot::SetCurrentTileDistances()
+{
+	UpdateSensorNumBlocking(VL53L5CX::FW);
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 }
 
 bool Robot::CanTurnRight()
@@ -534,7 +564,7 @@ void Robot::VictimVerify()
 		// Fermo il robot, in alcuni casi speciali potrebbe andare avanti e buttare kit se tolto
 		ms->StopMotors();
 		ms->SetPower(-45, -45);
-		FakeDelay(200);
+		FakeDelay(100);
 		ms->StopMotors();
 		int kits_number;
 		if (Serial2.available() > 0)
@@ -645,6 +675,11 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 	}
 	
 	Turn(90 * side);
+
+	UpdateSensorNumBlocking(VL53L5CX::FW);
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	UpdateSensorNumBlocking(VL53L5CX::SX);
+	UpdateSensorNumBlocking(VL53L5CX::DX);
 }
 
 void Robot::DropKitNoTurn(int8_t number_of_kits)
@@ -682,11 +717,19 @@ void Robot::Straighten()
 	ms->StopMotors();
 	imu->ResetZ();
 	desired_angle = 0;
+	SetCurrentTileDistances();
+	ms->SetPower(45, 45);
+	while (!NewTile())
+	{
+		UpdateSensorNumBlocking(VL53L5CX::FW);
+		UpdateSensorNumBlocking(VL53L5CX::BW);
+	}
+	
 }
 
 bool Robot::NotInRamp()
 {
-	return (imu->y < 10 && imu->y > -10);
+	return (imu->y <= 10 && imu->y >= -10);
 }
 
 int16_t Robot::GetPIDOutputAndSec()

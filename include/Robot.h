@@ -36,6 +36,7 @@ private:
 // Tile to tile
 #define DISTANCE_SENSOR_CELL 27
 #define DISTANCE_FRONT_AND_BACK_CENTER_TILE  60
+#define MIN_TIME_RAMP 3000
 
 	/**
 	 * Navigation variables
@@ -43,6 +44,8 @@ private:
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
 	bool just_found_black = false;
+	uint32_t time_in_ramp = 0;
+	bool was_in_ramp = false;
 	// Tile to tile variables
 	int32_t front_distance_to_reach = 0;
 	int32_t back_distance_to_reach = 0;
@@ -59,6 +62,7 @@ private:
 	int16_t GetFrontDistance();
 	int16_t GetBackDistance();
 	void SetNewTileDistances();
+	void SetCurrentTileDistances();
 	bool CanTurnRight();
 	bool CanTurnLeft();
 	bool CanGoOn();
