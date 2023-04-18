@@ -52,7 +52,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(64, 15, ELIA::RangingMode::kContinuous);								// 8*8, 15Hz
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 15Hz
 
 	Wire1.begin();					// Color sensor
 	Wire1.setClock(400000); // 400kHz
@@ -192,8 +192,8 @@ void Robot::Run()
 			TurnBack();
 			UpdateSensorNumBlocking(VL53L5CX::FW);
 			UpdateSensorNumBlocking(VL53L5CX::BW);
-			front_distance_to_reach = (((GetFrontDistance()/ 300)) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-			back_distance_to_reach = (((GetBackDistance()/ 300)) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+			front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+			back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 		}
 
 		// Se ho colpito un muretto con gli switch
@@ -235,6 +235,9 @@ void Robot::Run()
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
+
+			ms->StopMotors();
+			FakeDelay(10000);
 
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
 			if (BlueTile() && NotInRamp())
@@ -467,8 +470,8 @@ void Robot::SetNewTileDistances()
 {
 	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
-	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 32 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 }
 
 bool Robot::CanTurnRight()
