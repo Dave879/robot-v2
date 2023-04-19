@@ -23,12 +23,14 @@ try:
 except Exception as e:
     raise Exception('Failed to load "labels.txt", did you copy the .tflite and labels.txt file onto the mass-storage device? (' + str(e) + ')')
 
+low_threshold = (0, 35)
+
 clock = time.clock()
 while(True):
     clock.tick()
 
     img = sensor.snapshot()
-
+    #img.binary([low_threshold], invert = 1)
     # default settings just do one detection... change them to search the image...
     for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
         print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
