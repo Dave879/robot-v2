@@ -23,8 +23,8 @@ uart.init(baudrate=115200, timeout_char=1)
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
 red=(10, 100, 20, 127, 0, 127) # red_thresholds
-green=(10, 50, -128, -25, -1, 127) # green_thresholds
-yellow=(20, 70, -15, 30, 25, 127) # yellow_thresholds
+green=(10, 50, -128, -20, -1, 127) # green_thresholds
+yellow=(20, 70, -15, 30, 20, 127) # yellow_thresholds
 black=(0, 15, -10, 10, -10, 10) # black_thresholds
 
 pixels_threshold = 50
@@ -95,15 +95,15 @@ while(True):
             for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 
                     # These values depend on the blob not being circular - otherwise they will be shaky.
-                    if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
-                        img.draw_edges(blob.min_corners(), color=(255,0,0))
-                        img.draw_line(blob.major_axis_line(), color=(0,255,0))
-                        img.draw_line(blob.minor_axis_line(), color=(0,0,255))
-                    # These values are stable all the time.
-                    img.draw_rectangle(blob.rect())
-                    img.draw_cross(blob.cx(), blob.cy())
-                    # Note - the blob rotation is unique to 0-180 only.
-                    img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
+                    #if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
+                    #    img.draw_edges(blob.min_corners(), color=(255,0,0))
+                    #    img.draw_line(blob.major_axis_line(), color=(0,255,0))
+                    #    img.draw_line(blob.minor_axis_line(), color=(0,0,255))
+                    ## These values are stable all the time.
+                    #img.draw_rectangle(blob.rect())
+                    #img.draw_cross(blob.cx(), blob.cy())
+                    ## Note - the blob rotation is unique to 0-180 only.
+                    #img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
 
                     # Black detected
                     if i == black:
@@ -112,7 +112,7 @@ while(True):
 
                         for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
                             print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
-                            img.draw_rectangle(obj.rect())
+                            #img.draw_rectangle(obj.rect())
                             # This combines the labels and confidence values into a list of tuples
                             predictions_list = list(zip(labels, obj.output()))
 

@@ -11,7 +11,7 @@ sensor.set_pixformat(sensor.GRAYSCALE)
 sensor.skip_frames(time = 2000)
 clock = time.clock()
 
-low_threshold = (0, 40)
+low_threshold = (0, 20)
 
 while(True):
 
