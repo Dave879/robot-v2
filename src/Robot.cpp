@@ -52,23 +52,23 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 15Hz
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 12Hz
 
 	Wire1.begin();					// Color sensor
 	Wire1.setClock(400000); // 400kHz
 
-	Serial.println("Initializing color sensor");
+	LOG("Initializing color sensor");
 	cs = new Color();
 	if (cs->begin(&Wire1))
 	{
-		Serial.println("Initialized color sensor!");
+		LOG("Initialized color sensor!");
 		pinMode(R_PIN_COLOR_INT, INPUT_PULLUP);
 		attachInterrupt(R_PIN_COLOR_INT, R_TCS34725_int, FALLING);
 		cs->ClearInterrupt();
 	}
 	else
 	{
-		Serial.println("Failed to initialize color sensor!");
+		LOG("Failed to initialize color sensor!");
 	}
 
 	pinMode(R_SW_START_PIN, INPUT);
@@ -175,7 +175,7 @@ void Robot::Run()
 			Serial2.print('9');
 		}
 		
-		/*
+
 		if (!NotInRamp())
 		{
 			if (!was_in_ramp)
@@ -190,7 +190,7 @@ void Robot::Run()
 			if (millis() - time_in_ramp > 1500)
 			{
 				ms->SetPower(45,45);
-				while (imu->z > 2 || imu->z < -2)
+				while (imu->y > 2 || imu->y < -2)
 				{
 					UpdateGyroBlocking();
 				}
@@ -202,7 +202,6 @@ void Robot::Run()
 			}
 			was_in_ramp = false;
 		}
-		*/
 
 		// Black tile
 		if (BlackTile() && NotInRamp())
@@ -210,7 +209,7 @@ void Robot::Run()
 			Serial.println("Black tile");
 			// Torno in dietro fino a quando smetto di vedere nero
 			ms->SetPower(-45, -45);
-			while (cs->c_comp <= MIN_VALUE_BLACK_TILE)
+			while (cs->c_comp <= MIN_VALUE_BLUE_TILE)
 			{
 				if (color_data_ready)
 				{
@@ -958,7 +957,8 @@ uint8_t Robot::TrySensorDataUpdate()
 
 void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 {
-	while (1)
+	uint32_t time_end = millis() + 500;
+	while (millis() < time_end)
 	{
 		if (imu_data_ready)
 		{
@@ -969,9 +969,49 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 		{
 			lasers->sensors[num]->UpdateData();
 			lasers_data_ready[num] = false;
-			break;
+			return;
 		}
 	}
+
+	ms->StopMotors();
+
+	digitalWriteFast(R_LED1_PIN, LOW);
+	digitalWriteFast(R_LED2_PIN, LOW);
+	digitalWriteFast(R_LED3_PIN, LOW);
+	digitalWriteFast(R_LED4_PIN, HIGH);
+
+	LOG("Disabling and then enabling sensors power supply...");
+	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
+	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
+	delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+	delay(10);																					// Wait for sensors to wake up (especially sensor 0)
+	LOG("...done!");
+
+	LOG("Laser sensors setup started");
+	lasers = new VL53L5CX_manager(Wire2, true);
+	LOG("Laser sensors setup finished");	
+
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 12Hz
+
+	LOG("Initializing color sensor");
+	cs = new Color();
+	if (cs->begin(&Wire1))
+	{
+		LOG("Initialized color sensor!");
+		cs->ClearInterrupt();
+	}
+	else
+	{
+		LOG("Failed to initialize color sensor!");
+	}
+
+	digitalWriteFast(R_LED4_PIN, LOW);
+
+	imu->ResetZ();	
+	
+	// Initialize front/back distance to reach
+	SetCurrentTileDistances();
 }
 
 void Robot::UpdateGyroBlocking()
