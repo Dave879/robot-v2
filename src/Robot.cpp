@@ -183,22 +183,42 @@ void Robot::Run()
 				was_in_ramp = true;
 				time_in_ramp = millis();
 			}
+			if (imu->y < -10)
+			{
+				going_down_ramp = true;
+			}
 			Serial.println("Rampa");
 		}
 		else if(was_in_ramp)
 		{
-			if (millis() - time_in_ramp > 1500)
+			if (millis() - time_in_ramp > /*3900*/ 1000)
 			{
 				ms->SetPower(45,45);
-				while (imu->y > 2 || imu->y < -2)
+				while (imu->y > 0.5 || imu->y < -0.5)
 				{
 					UpdateGyroBlocking();
 				}
 				Serial.println(imu->y);
+				FakeDelay(350);
+
 				ms->StopMotors();
 				Serial.println("Rampa fatta");
 				FakeDelay(1000);
+
+
+				//SetNewTileDistances();
 				SetCurrentTileDistances();
+				if (going_down_ramp)
+				{
+					going_down_ramp = false;				
+					back_distance_to_reach = 260/*326*/ /*+ *RAMP_BACK_DIST*/;
+				}
+				Serial.println("Distanze per nuova tile");
+				Serial.print("Front to reach: ");
+				Serial.print(front_distance_to_reach);
+				Serial.print("\tBack to reach: ");
+				Serial.print(back_distance_to_reach);
+				//FakeDelay(1000);
 			}
 			was_in_ramp = false;
 		}
@@ -273,10 +293,33 @@ void Robot::Run()
 			// Per fermare il robot per 0.5s ogni tile (sono per fase di test)
 			// ms->StopMotors();
 			// FakeDelay(500);
-			
-			UpdateSensorNumBlocking(VL53L5CX::SX);
-			UpdateSensorNumBlocking(VL53L5CX::DX);
-			UpdateSensorNumBlocking(VL53L5CX::FW);
+
+			Serial.println("Nuova tile");
+			Serial.print("Front: ");
+			Serial.print(GetFrontDistance());
+			Serial.print("\tRight: ");
+			Serial.print(GetRightDistance());
+			Serial.print("\tLeft: ");
+			Serial.print(GetLeftDistance());
+			Serial.print("\tBack: ");
+			Serial.println(GetBackDistance());
+
+			Serial.println("Distanze per nuova tile");
+			Serial.print("Front to reach: ");
+			Serial.print(front_distance_to_reach);
+			Serial.print("\tBack to reach: ");
+			Serial.print(back_distance_to_reach);
+
+			ms->StopMotors();
+			FakeDelay(500);
+
+
+
+		UpdateSensorNumBlocking(VL53L5CX::SX);
+		UpdateSensorNumBlocking(VL53L5CX::DX);
+		UpdateSensorNumBlocking(VL53L5CX::FW);
+		UpdateSensorNumBlocking(VL53L5CX::BW);
+
 
 			// Controllo se ho entrabi i lati liberi
 			if (CanTurnRight() && CanTurnLeft())
@@ -383,16 +426,29 @@ void Robot::Run()
 		// Proseguo diretto
 		else
 		{
-			int16_t power_to_add = imu->y / 2;
-			if (power_to_add < -5)
+			int16_t power_to_add = imu->y / 1.5;
+			if (power_to_add < -10)
 			{
-				power_to_add = -5;
+				power_to_add = -10;
 			}
-			if (imu->z > desired_angle + 15)
+			if (imu->z > desired_angle + 3)
+			{
+				ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
+			}
+			else if(imu->z < desired_angle - 3)
+			{
+				ms->SetPower(SPEED + power_to_add - 5, SPEED + power_to_add + 5);
+			}
+			else
+			{
+				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
+			}
+			/*
+			if (imu->z > desired_angle + 10)
 			{
 				ms->SetPower(SPEED + power_to_add + 20, SPEED + power_to_add);
 			}
-			else if (imu->z < desired_angle - 15)
+			else if (imu->z < desired_angle - 10)
 			{
 				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add + 20);
 			}
@@ -400,6 +456,7 @@ void Robot::Run()
 			{
 				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
 			}
+			*/
 		}
 	}
 	else // Roboto fermo
@@ -501,6 +558,13 @@ void Robot::SetNewTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300)
+	{
+		back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+		ms->StopMotors();
+		digitalWriteFast(R_LED2_PIN, LOW);
+		FakeDelay(200);
+	}
 }
 
 void Robot::SetCurrentTileDistances()
@@ -509,6 +573,12 @@ void Robot::SetCurrentTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300)
+	{
+		back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+		ms->StopMotors();
+		FakeDelay(200);
+	}
 }
 
 bool Robot::CanTurnRight()
@@ -560,6 +630,7 @@ void Robot::VictimVerify()
 {
 	if (FoundVictim())
 	{
+		Serial.println("Verifico vittima");
 		// Fermo il robot, in alcuni casi speciali potrebbe andare avanti e buttare kit se tolto
 		ms->StopMotors();
 		ms->SetPower(-45, -45);
@@ -616,7 +687,9 @@ void Robot::RemoveVictimU()
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim) 
 {
-	if (number_of_kits > 1)
+	Serial8.print('7');
+	Serial2.print('7');	
+	if (number_of_kits > 1 && kits_dropped < 12)
 	{
 		ms->SetPower(-45, -45);
 		FakeDelay(200);
@@ -624,7 +697,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 	}
 
 
-	int8_t seconds_to_wait = 5;
+	int8_t seconds_to_wait = 6;
 	for (int8_t i = 0; i < seconds_to_wait; i++)
 	{
 		digitalWriteFast(R_LED1_PIN, HIGH);
@@ -638,42 +711,55 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 		digitalWriteFast(R_LED4_PIN, LOW);
 		FakeDelay(500);
 	}
-
-	int8_t side = 1;
-
-	if (left_victim)
-	{
-		side = -1;
-	}
-
-	Turn(-90 * side);
-	bool bumped = false;
-	UpdateSensorNumBlocking(VL53L5CX::BW);
-	if (CanBumpBack())
-	{
-		ms->SetPower(-90, -90);
-		FakeDelay(500);
-		ms->StopMotors();
-		bumped = true;
-	}
-
-
-	for (int8_t i = 0; i < number_of_kits; i++)
-	{
-		Serial.println("Sono nel blocco del drop kit con svolta");
-		kit.write(180);
-		FakeDelay(1000);
-		kit.write(0);
-		FakeDelay(1000);
-	}
-
-	if (bumped)
-	{
-		ms->SetPower(45, 45);
-		FakeDelay(250);
-	}
 	
-	Turn(90 * side);
+	if (kits_dropped < 12)
+	{
+		int8_t side = 1;
+
+		if (left_victim)
+		{
+			side = -1;
+		}
+
+		Turn(-90 * side);
+		bool bumped = false;
+		UpdateSensorNumBlocking(VL53L5CX::BW);
+		if (CanBumpBack())
+		{
+			ms->SetPower(-90, -90);
+			FakeDelay(500);
+			ms->StopMotors();
+			bumped = true;
+		}
+
+
+		for (int8_t i = 0; i < number_of_kits; i++)
+		{
+			Serial.println("Sono nel blocco del drop kit con svolta");
+			kit.write(180);
+			FakeDelay(1000);
+			kit.write(0);
+			FakeDelay(1000);
+			kits_dropped++;
+		}
+
+		if (bumped)
+		{
+			ms->SetPower(45, 45);
+			FakeDelay(250);
+		}
+		
+		Turn(90 * side);
+
+		if (left_victim)
+		{
+			Serial8.print('9');
+		}
+		else
+		{
+			Serial2.print('9');
+		}
+	}
 
 	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
@@ -683,7 +769,8 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 void Robot::DropKitNoTurn(int8_t number_of_kits)
 {
-	int8_t seconds_to_wait = 5;
+	ms->StopMotors();
+	int8_t seconds_to_wait = 6;
 	for (int8_t i = 0; i < seconds_to_wait; i++)
 	{
 		digitalWriteFast(R_LED1_PIN, HIGH);
@@ -698,14 +785,17 @@ void Robot::DropKitNoTurn(int8_t number_of_kits)
 		FakeDelay(500);
 	}
 
-	ms->StopMotors();
-	for (int8_t i = 0; i < number_of_kits; i++)
+	if (kits_dropped < 12)
 	{
-		Serial.println("Sono nel blocco del drop kit senza svolta");
-		kit.write(180);
-		FakeDelay(1000);
-		kit.write(0);
-		FakeDelay(1000);
+		for (int8_t i = 0; i < number_of_kits; i++)
+		{
+			Serial.println("Sono nel blocco del drop kit senza svolta");
+			kit.write(180);
+			FakeDelay(1000);
+			kit.write(0);
+			FakeDelay(1000);
+			kits_dropped++;
+		}
 	}
 }
 
@@ -823,8 +913,30 @@ void Robot::TurnBack()
 	// Fermo il robot prima di girare
 	ms->StopMotors();
 
-	// Giro totaale (-180°)
-	Turn(-180);
+	// Giro totale (-180°)
+	//Turn(-180);
+	//New solution
+	Turn(-90);
+	RemoveVictimU();
+	FakeDelay(500);
+	if (FoundVictim())
+	{
+		Serial.println("Cerco vittima in U");
+		// Fermo il robot, in alcuni casi speciali potrebbe andare avanti e buttare kit se tolto
+		ms->StopMotors();
+		ms->SetPower(-45, -45);
+		FakeDelay(100);
+		ms->StopMotors();
+		int kits_number;
+		if (Serial8.available() > 0)
+		{
+			kits_number = int(Serial8.read() - '0');
+			DropKit(kits_number, false);
+		}
+	}
+	Turn(-90);
+	Serial8.print('9');
+
 
 	// Controllo se posso adrizzare il robot dopo la svolta
 	UpdateSensorNumBlocking(VL53L5CX::BW);
@@ -875,10 +987,12 @@ void Robot::Turn(int16_t degree)
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(-gyro_speed, +gyro_speed);
 		}
+		/*
 		if (degree == -180)
 		{
 			RemoveVictimU();
 		}
+		*/
 	}
 	
 	// Stop dei motori
