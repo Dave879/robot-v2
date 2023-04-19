@@ -201,10 +201,11 @@ void Robot::Run()
 				Serial.println(imu->y);
 				FakeDelay(350);
 
+/*
 				ms->StopMotors();
 				Serial.println("Rampa fatta");
 				FakeDelay(1000);
-
+*/
 
 				//SetNewTileDistances();
 				SetCurrentTileDistances();
@@ -278,10 +279,12 @@ void Robot::Run()
 		// Controllo se ho raggiunto una nuova tile
 		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
+			/*
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
+			*/
 
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
 			if (BlueTile() && NotInRamp())
@@ -310,10 +313,10 @@ void Robot::Run()
 			Serial.print("\tBack to reach: ");
 			Serial.print(back_distance_to_reach);
 
+/*
 			ms->StopMotors();
 			FakeDelay(500);
-
-
+*/
 
 		UpdateSensorNumBlocking(VL53L5CX::SX);
 		UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -561,9 +564,6 @@ void Robot::SetNewTileDistances()
 	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300)
 	{
 		back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
-		ms->StopMotors();
-		digitalWriteFast(R_LED2_PIN, LOW);
-		FakeDelay(200);
 	}
 }
 
@@ -576,8 +576,6 @@ void Robot::SetCurrentTileDistances()
 	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300)
 	{
 		back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
-		ms->StopMotors();
-		FakeDelay(200);
 	}
 }
 
@@ -918,7 +916,7 @@ void Robot::TurnBack()
 	//New solution
 	Turn(-90);
 	RemoveVictimU();
-	FakeDelay(500);
+	FakeDelay(1000);
 	if (FoundVictim())
 	{
 		Serial.println("Cerco vittima in U");
