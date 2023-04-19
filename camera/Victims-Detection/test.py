@@ -74,8 +74,8 @@ while(True):
         data = uart.read().decode('utf-8').rstrip()
         if data == '9':
             kits = -1
-        elif data =='7'
-            kits == 7
+        elif data == '7':
+            kits = 7
 
     if kits != -1:
         continue
