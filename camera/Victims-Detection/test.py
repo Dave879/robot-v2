@@ -24,7 +24,7 @@ uart.init(baudrate=115200, timeout_char=1)
 # The below thresholds track in general red/green/black/yellow things.
 red=(10, 100, 20, 127, 0, 127) # red_thresholds
 green=(10, 50, -128, -20, -1, 127) # green_thresholds
-yellow=(20, 60, -15, 30, 20, 127) # yellow_thresholds
+yellow=(20, 65, -15, 30, 40, 127) # yellow_thresholds
 black=(0, 15, -10, 10, -10, 10) # black_thresholds
 
 pixels_threshold = 50
@@ -68,7 +68,15 @@ time.sleep(0.01)
 # Number of kits to drop : 0 kit(is not the same as -1), 1 kit, 2 kits or 3 kits
 kits = -1 # -1 means that there is no victim
 
+red_led = pyb.LED(1)
+green_led = pyb.LED(2)
+blue_led = pyb.LED(3)
+
 while(True):
+
+    red_led.off()
+    green_led.off()
+    blue_led.off()
 
     if uart.any():
         data = uart.read().decode('utf-8').rstrip()
@@ -79,6 +87,10 @@ while(True):
 
     if kits != -1:
         continue
+
+    red_led.on()
+    green_led.on()
+    blue_led.on()
 
     sharp_read = analog_distance.read()
 
