@@ -166,7 +166,7 @@ void Robot::Run()
 					Serial8.print('9');
 				}
 			}
-			time_to_wait_after_openmv_search_again = millis() + 800;
+			time_to_wait_after_openmv_search_again = millis() + 2000;
 		}
 		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
 		{
@@ -191,10 +191,10 @@ void Robot::Run()
 		}
 		else if(was_in_ramp)
 		{
-			if (millis() - time_in_ramp > /*3900*/ 1000)
+			if (millis() - time_in_ramp > 2500)
 			{
 				ms->SetPower(45,45);
-				while (imu->y > 0.5 || imu->y < -0.5)
+				while (imu->y > 1 || imu->y < -1)
 				{
 					UpdateGyroBlocking();
 				}
@@ -211,8 +211,9 @@ void Robot::Run()
 				SetCurrentTileDistances();
 				if (going_down_ramp)
 				{
-					going_down_ramp = false;				
-					back_distance_to_reach = 260/*326*/ /*+ *RAMP_BACK_DIST*/;
+					going_down_ramp = false;
+					UpdateSensorNumBlocking(VL53L5CX::BW);			
+					back_distance_to_reach = GetBackDistance() + 60 /*260*/;
 				}
 				Serial.println("Distanze per nuova tile");
 				Serial.print("Front to reach: ");
@@ -279,15 +280,14 @@ void Robot::Run()
 		// Controllo se ho raggiunto una nuova tile
 		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
-			/*
+
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
-			*/
 
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
-			if (BlueTile() && NotInRamp())
+			if (BlueTile())
 			{
 				ms->StopMotors();
 				FakeDelay(5000);
@@ -313,10 +313,10 @@ void Robot::Run()
 			Serial.print("\tBack to reach: ");
 			Serial.print(back_distance_to_reach);
 
-/*
+
 			ms->StopMotors();
 			FakeDelay(500);
-*/
+
 
 		UpdateSensorNumBlocking(VL53L5CX::SX);
 		UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -561,7 +561,7 @@ void Robot::SetNewTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300)
+	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
 	}
@@ -573,7 +573,7 @@ void Robot::SetCurrentTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300)
+	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
 	}
@@ -581,22 +581,22 @@ void Robot::SetCurrentTileDistances()
 
 bool Robot::CanTurnRight()
 {
-	return GetRightDistance() >= MIN_DISTANCE_TO_TURN_MM;
+	return GetRightDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::DX]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
 }
 
 bool Robot::CanTurnLeft()
 {
-	return GetLeftDistance() >= MIN_DISTANCE_TO_TURN_MM;
+	return GetLeftDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::SX]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
 }
 
 bool Robot::CanGoOn()
 {
-	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM;
+	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
 }
 
 bool Robot::CanBumpBack()
 {
-	return GetBackDistance() <= MIN_DISTANCE_BUMP_BACK_WALL_MM;
+	return GetBackDistance() <= MIN_DISTANCE_BUMP_BACK_WALL_MM && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5;
 }
 
 bool Robot::FrontWall()

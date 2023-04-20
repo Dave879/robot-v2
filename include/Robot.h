@@ -27,8 +27,8 @@ private:
 #define MIN_DISTANCE_BUMP_BACK_WALL_MM 180
 #define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
-#define MIN_VALUE_BLUE_TILE 16
-#define MIN_VALUE_BLACK_TILE 9
+#define MIN_VALUE_BLUE_TILE 22
+#define MIN_VALUE_BLACK_TILE 10
 // PID controller constants
 #define KP 0.45			 //.5 // Proportional gain
 #define KI 0.000000001 //.2 // Integral gain
