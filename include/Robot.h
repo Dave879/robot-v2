@@ -12,6 +12,7 @@
 #include "Sensors/VL53L5CX_manager.h"
 #include "Sensors/Color.h"
 #include "data_formatter.h"
+#include "map.h"
 
 class Robot
 {
@@ -57,17 +58,39 @@ private:
 	// Turn variables
 	double desired_angle = 0;
 
+	// Mapping
+	/*
+	Direction può essere FW = 0, DX = 1, BW = 2, SX = 3
+	*/
+	enum dir {
+		FW,
+		DX,
+		BW,
+		SX
+	};
+	Map *maze;
+	int8_t direction = 0;
+	int16_t current_x = 0;
+	int16_t current_y = 0;
+	void GoToDIrection(int8_t direction_to_go);
+
 	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
 	bool NewTile();
+
 	int16_t GetRightDistance();
 	int16_t GetLeftDistance();
 	int16_t GetFrontDistance();
 	int16_t GetBackDistance();
 	void SetNewTileDistances();
 	void SetCurrentTileDistances();
+	void ChangeMapX(bool increment);
+	void ChangeMapY(bool increment);
+	void ChangeMapPosition();
+	void IncreaseDirection();
+	void DecreaseDirection();
 	bool CanTurnRight();
 	bool CanTurnLeft();
 	bool CanGoOn();

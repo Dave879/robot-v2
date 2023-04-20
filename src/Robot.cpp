@@ -88,6 +88,10 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 
 	imu->ResetZ();
 
+	maze = new Map();
+
+	FakeDelay(2000);
+
 	// Inizializzazione canale di comunicazione con OpenMV SX, e primo avvio se presente un muro a destra alla partenza
 	Serial2.begin(115200);
 	Serial2.print('9');
@@ -208,12 +212,17 @@ void Robot::Run()
 */
 
 				//SetNewTileDistances();
+				/*
+				maze->clear();
+				current_x = 0;
+				current_y = 0;
+				*/
 				SetCurrentTileDistances();
 				if (going_down_ramp)
 				{
 					going_down_ramp = false;
-					UpdateSensorNumBlocking(VL53L5CX::BW);			
-					back_distance_to_reach = GetBackDistance() + 60 /*260*/;
+					UpdateSensorNumBlocking(VL53L5CX::BW);
+					back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;                                      					//back_distance_to_reach = GetBackDistance() + 60 /*260*/;
 				}
 				Serial.println("Distanze per nuova tile");
 				Serial.print("Front to reach: ");
@@ -239,6 +248,34 @@ void Robot::Run()
 					color_data_ready = false;
 				}
 			}
+			SetCurrentTileDistances();
+			while (NewTile())
+			{
+				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+			}
+			
+			if (direction == 0)
+			{
+				int16_t black_tile_y = current_x + 1;
+				maze->push({current_x , black_tile_y, current_x, current_y});
+			}
+			else if (direction == 1)
+			{
+				int16_t black_tile_x = current_x + 1;
+				maze->push({black_tile_x, current_y, current_x, current_y});
+			}
+			else if (direction == 2)
+			{
+				int16_t black_tile_y = current_x -1;
+				maze->push({current_x , black_tile_y, current_x, current_y});
+			}
+			else if (direction == 3)
+			{
+				int16_t black_tile_x = current_x - 1;
+				maze->push({black_tile_x, current_y, current_x, current_y});
+			}
+
 
 			// Mando il robot indietro al centro della tile
 			TurnBack();
@@ -287,11 +324,19 @@ void Robot::Run()
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
 			*/
+			int16_t old_tile_x = current_x;
+			int16_t old_tile_y = current_y;
+			ChangeMapPosition();
+			Serial.print("Direction: ");
+			Serial.println(direction);
+			maze->push({current_x, current_y, old_tile_x, old_tile_y});
 
-			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
+			maze->print();
+
 			if (BlueTile())
 			{
 				ms->StopMotors();
+				Serial.println("Tile blue");
 				FakeDelay(5000);
 			}
 
@@ -315,19 +360,86 @@ void Robot::Run()
 			Serial.print("\tBack to reach: ");
 			Serial.print(back_distance_to_reach);
 
-
 			ms->StopMotors();
 			FakeDelay(250);
 
+			UpdateSensorNumBlocking(VL53L5CX::SX);
+			UpdateSensorNumBlocking(VL53L5CX::DX);
+			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateSensorNumBlocking(VL53L5CX::BW);
 
-		UpdateSensorNumBlocking(VL53L5CX::SX);
-		UpdateSensorNumBlocking(VL53L5CX::DX);
-		UpdateSensorNumBlocking(VL53L5CX::FW);
-		UpdateSensorNumBlocking(VL53L5CX::BW);
+			int16_t next_tile = 0;
+			bool right_already_visited = false;
+			bool left_already_visited = false;
+			bool front_already_visited = false;
+			if (direction == 0)
+			{
+				next_tile = current_x + 1;
+				right_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+				next_tile = current_x - 1;
+				left_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+				next_tile = current_y + 1;
+				front_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
+			}
+			else if (direction == 1)
+			{
+				next_tile = current_y - 1;
+				right_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
+				next_tile = current_y + 1;
+				left_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
+				next_tile = current_x + 1;
+				front_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+			}
+			else if (direction == 2)
+			{
+				next_tile = current_x - 1;
+				right_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+				next_tile = current_x + 1;
+				left_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+				next_tile = current_y - 1;
+				front_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
+			}
+			else if (direction == 3)
+			{
+				next_tile = current_y + 1;
+				right_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
+				next_tile = current_y - 1;
+				left_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
+				next_tile = current_x - 1;
+				front_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+			}
+			
+			bool right_blocked = !CanTurnRight() || right_already_visited;
+			bool left_blocked = !CanTurnLeft() || left_already_visited;
+			bool front_blocked = !CanGoOn() || front_already_visited;
 
-
-			// Controllo se ho entrabi i lati liberi
-			if (CanTurnRight() && CanTurnLeft())
+			if (right_blocked && left_blocked && front_blocked)
+			{
+				Tile previus_tile = maze->get({current_x, current_y, old_tile_x, old_tile_y});
+				if (current_x == previus_tile.a)
+				{
+					if (current_y > previus_tile.b)
+					{
+						GoToDIrection(2);
+					}
+					else
+					{
+						GoToDIrection(0);
+					}
+				}
+				else
+				{
+					if (current_x > previus_tile.x)
+					{
+						GoToDIrection(1);
+					}
+					else
+					{
+						GoToDIrection(3);
+					}
+				}
+			}
+			else if (!right_blocked && !left_blocked)
 			{
 				// Output variabili varco
 				Serial.println("Varco Trovato!!!");
@@ -342,7 +454,7 @@ void Robot::Run()
 				if (millis() % 2)
 				// Giro a destra
 				{
-					if (CanGoOn())
+					if (!front_blocked)
 					{
 						// Giro o continuo ad andare dritto
 						if (millis() % 2)
@@ -360,7 +472,7 @@ void Robot::Run()
 				// Giro a sinistra
 				else
 				{
-					if (CanGoOn())
+					if (!front_blocked)
 					{
 						// Giro o continuo ad andare dritto
 						if (millis() % 2)
@@ -377,12 +489,12 @@ void Robot::Run()
 				}
 			}
 			// Non è stato rilevato un varco simultaneo, ma solo a destra o sinistra
-			else if (CanTurnRight() || CanTurnLeft())
+			else if (!right_blocked || ! left_blocked)
 			{
 				// Giro a destra
-				if (CanTurnRight())
+				if (!right_blocked)
 				{
-					if (CanGoOn())
+					if (!front_blocked)
 					{
 						// Giro o continuo ad andare dritto
 						if (millis() % 2)
@@ -398,9 +510,9 @@ void Robot::Run()
 					}
 				}
 				// Giro a sinistra
-				else if (CanTurnLeft())
+				else if (!left_blocked)
 				{
-					if (CanGoOn())
+					if (!front_blocked)
 					{
 						// Giro o continuo ad andare dritto
 						if (millis() % 2)
@@ -416,10 +528,12 @@ void Robot::Run()
 					}
 				}
 			}
+			/*
 			else if (!CanGoOn() && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 			{
 				TurnBack();
 			}
+			*/
 
 			FakeDelay(250);
 			SetNewTileDistances();
@@ -437,6 +551,10 @@ void Robot::Run()
 			{
 				power_to_add = -10;
 			}
+			if (imu->y > 15)
+			{
+				power_to_add = 25;
+			}
 			if (imu->z > desired_angle + 3)
 			{
 				ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
@@ -449,20 +567,6 @@ void Robot::Run()
 			{
 				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
 			}
-			/*
-			if (imu->z > desired_angle + 10)
-			{
-				ms->SetPower(SPEED + power_to_add + 20, SPEED + power_to_add);
-			}
-			else if (imu->z < desired_angle - 10)
-			{
-				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add + 20);
-			}
-			else
-			{
-				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
-			}
-			*/
 		}
 	}
 	else // Roboto fermo
@@ -524,6 +628,11 @@ bool Robot::StopRobot()
 				// Reset gyro
 				imu->ResetZ();
 				desired_angle = 0;
+
+				current_x = 0;
+				current_y = 0;
+				direction = 0;
+				maze->clear();
 				// Set new front/back distance to reach
 				SetNewTileDistances();
 				first_time_pressed = true;
@@ -579,6 +688,79 @@ void Robot::SetCurrentTileDistances()
 	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+	}
+}
+
+void Robot::ChangeMapX(bool increment)
+{
+	if (increment)
+	{
+		current_x++;
+	}
+	else
+	{
+		current_x--;
+	}
+
+}
+
+void Robot::ChangeMapY(bool increment)
+{
+	if (increment)
+	{
+		current_y++;
+	}
+	else
+	{
+		current_y--;
+	}
+}
+
+void Robot::ChangeMapPosition()
+{
+	switch (direction)
+	{
+	case 0:
+		ChangeMapY(true);
+		break;
+	case 1:
+		ChangeMapX(true);
+		break;
+	case 2:
+		ChangeMapY(false);
+		break;
+	case 3:
+		ChangeMapX(false);
+		break;
+	}
+}
+
+void Robot::IncreaseDirection()
+{
+	direction++;
+	direction %= 4;
+}
+
+void Robot::DecreaseDirection()
+{
+	direction += 3;
+	direction %= 4;
+}
+
+void Robot::GoToDIrection(int8_t direction_to_go)
+{
+	int8_t delta_dir = direction - direction_to_go;
+	if (abs(delta_dir) == 2)
+	{
+		TurnBack();
+	}
+	else if (delta_dir == -3 || delta_dir == 1)
+	{
+		TurnLeft();
+	}
+	else if (delta_dir == 3 || delta_dir == -1)
+	{
+		TurnRight();
 	}
 }
 
@@ -877,6 +1059,8 @@ void Robot::TurnRight()
 	// Giro a destra (90°)
 	Turn(90);
 
+	IncreaseDirection();
+
 	// Controllo se posso adrizzare il robot dopo la svolta
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	if (CanBumpBack())
@@ -896,6 +1080,8 @@ void Robot::TurnLeft()
 
 	// Giro a sinistra (-90°)
 	Turn(-90);
+
+	DecreaseDirection();
 
 	// Controllo se posso adrizzare il robot dopo la svolta
 	UpdateSensorNumBlocking(VL53L5CX::BW);
@@ -935,9 +1121,11 @@ void Robot::TurnBack()
 			DropKit(kits_number, false);
 		}
 	}
+
 	Turn(-90);
 	Serial8.print('9');
-
+	DecreaseDirection();
+	DecreaseDirection();
 
 	// Controllo se posso adrizzare il robot dopo la svolta
 	UpdateSensorNumBlocking(VL53L5CX::BW);
@@ -963,11 +1151,13 @@ void Robot::Turn(int16_t degree)
 		while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
+			/*
 			Serial.print("Stiamo girando a destra");
 			Serial.print("\tGyro: ");
 			Serial.print(imu->z);
 			Serial.print("\tAngolo desiderato: ");
 			Serial.println(desired_angle);
+			*/
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(-gyro_speed, +gyro_speed);
