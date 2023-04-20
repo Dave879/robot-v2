@@ -16,6 +16,6 @@ public:
 	double x, y, z;
 	gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin);
 	uint8_t UpdateData();
-	void ResetAxis();
+	void ResetZ();
 	~gyro();
 };

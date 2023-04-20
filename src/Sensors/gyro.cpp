@@ -27,11 +27,11 @@ gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), 
 	delay(10);
 	IMU->enableExternalClock();
 	delay(10);
-	IMU->setGyroFS(IMU->dps500);
+	IMU->setGyroFS(IMU->dps1000);
 	delay(10);
-	IMU->setGyroODR(IMU->odr200);
+	IMU->setGyroODR(IMU->odr1k);
 	delay(10);
-	IMU->setAccelODR(IMU->odr200);
+	IMU->setAccelODR(IMU->odr1k);
 	delay(10);
 	IMU->enableAccelGyroLN();
 	delay(10);
@@ -42,17 +42,19 @@ uint8_t gyro::UpdateData()
 {
 	uint8_t status = IMU->getAGT();
 	uint32_t delta_micros = micros() - pastMicros;
-	x += IMU->gyrX() * delta_micros / 1e6;
-	y += IMU->gyrY() * delta_micros / 1e6;
+	double est_x_acc_rad = atanf(IMU->accY() / IMU->accZ());
+	double est_y_acc_rad = -asinf(IMU->accX());
 	z -= IMU->gyrZ() * delta_micros / 1e6;
+	//y += IMU->gyrY() * delta_micros / 1e6;
+	//x += IMU->gyrX() * delta_micros / 1e6;
+	x = est_x_acc_rad * 57.296;
+	y = est_y_acc_rad * 57.296;
 	pastMicros = micros();
 	return status;
 }
 
-void gyro::ResetAxis()
+void gyro::ResetZ()
 {
-	x = 0.0f;
-	y = 0.0f;
 	z = 0.0f;
 }
 

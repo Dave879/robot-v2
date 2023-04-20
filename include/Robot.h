@@ -20,53 +20,81 @@ private:
  * Global configuration variables
  */
 #define SPEED 45
-#define TURN_SPEED 95
-#define MIN_DISTANCE_TO_TURN_MM 220
+#define TURN_SPEED 75
+#define MIN_DISTANCE_TO_TURN_MM 210
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 90
+#define MIN_DISTANCE_FROM_FRONT_WALL_MM 80
+#define MIN_DISTANCE_BUMP_BACK_WALL_MM 180
 #define ADDITIONAL_ANGLE_TO_OVERCOME 3
 // Colored tile
-#define MIN_VALUE_BLUE_TILE 18
-#define MIN_VALUE_BLACK_TILE 9
+#define MIN_VALUE_BLUE_TILE 22
+#define MIN_VALUE_BLACK_TILE 11
 // PID controller constants
 #define KP 0.45			 //.5 // Proportional gain
 #define KI 0.000000001 //.2 // Integral gain
 #define KD 0			 //.1 // Derivative gain
+// Tile to tile
+#define DISTANCE_SENSOR_CELL 27
+#define DISTANCE_FRONT_AND_BACK_CENTER_TILE  60
+#define MIN_TIME_RAMP 3000
+#define RAMP_BACK_DIST 100
 
 	/**
 	 * Navigation variables
 	 */
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
-	bool last_turn_right = false;
-	bool last_turn_back = false;
-	// Black tile variables
 	bool just_found_black = false;
-	uint32_t time_after_black_tile_ignore_false = 0;
-	// Blue tile variables
-	bool on_blue_tile = false;
+	uint32_t time_in_ramp = 0;
+	bool was_in_ramp = false;
+	bool going_down_ramp = false;
+/*
+	bool dont_look_back = false;
+*/
+	// Tile to tile variables
+	int32_t front_distance_to_reach = 0;
+	int32_t back_distance_to_reach = 0;
 	// Turn variables
 	double desired_angle = 0;
-	bool ignore_right = false;
-	bool ignore_left = false;
 
 	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
-	bool NeedToTurn();
+	bool NewTile();
+	int16_t GetRightDistance();
+	int16_t GetLeftDistance();
+	int16_t GetFrontDistance();
+	int16_t GetBackDistance();
+	void SetNewTileDistances();
+	void SetCurrentTileDistances();
+	bool CanTurnRight();
+	bool CanTurnLeft();
+	bool CanGoOn();
+	bool CanBumpBack();
+	bool FrontWall();
+	bool BlackTile();
+	bool BlueTile();
 	void Turn(int16_t degree);
 	void Straighten();
+	bool NotInRamp();
 	void TurnRight();
 	void TurnLeft();
 	void TurnBack();
 	void MotorPowerZGyroAndPID();
+	void FakeDelay(uint32_t time);
 	// victim variables
 	bool just_recived_from_openmv = false;
 	uint32_t time_to_wait_after_openmv_search_again = 0;
+	int8_t kits_dropped = 0;
 	// victim functions
 	bool FoundVictim();
 	void DropKit(int8_t number_of_kits, bool left_victim);
+	void DropKitNoTurn(int8_t number_of_kits);
+	void VictimVerify();
+	void RemoveVictimU();
+
+	double old_gyro_value; 
 
 	/**
 	 * PID controller variables
