@@ -166,7 +166,7 @@ void Robot::Run()
 					Serial8.print('9');
 				}
 			}
-			time_to_wait_after_openmv_search_again = millis() + 2000;
+			time_to_wait_after_openmv_search_again = millis() + 2500;
 		}
 		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
 		{
@@ -281,10 +281,12 @@ void Robot::Run()
 		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
 
+			/*
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
+			*/
 
 			// Non è in un if suo pk nn entro nella tile nera(+ di metà robot quindi se sono sulla tile blue non essendo già uscito, i 5s di fermo gli ho fatti all'andata)
 			if (BlueTile())
@@ -315,7 +317,7 @@ void Robot::Run()
 
 
 			ms->StopMotors();
-			FakeDelay(500);
+			FakeDelay(250);
 
 
 		UpdateSensorNumBlocking(VL53L5CX::SX);
@@ -419,6 +421,7 @@ void Robot::Run()
 				TurnBack();
 			}
 
+			FakeDelay(250);
 			SetNewTileDistances();
 			
 			digitalWriteFast(R_LED1_PIN, LOW);

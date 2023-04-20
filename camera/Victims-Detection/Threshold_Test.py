@@ -24,7 +24,7 @@ uart.init(baudrate=115200, timeout_char=1)
 # The below thresholds track in general red/green/black/yellow things.
 red=(10, 100, 20, 127, 0, 127) # red_thresholds
 green=(10, 50, -128, -20, -1, 127) # green_thresholds
-yellow=(20, 70, -15, 30, 20, 127) # yellow_thresholds
+yellow=(20, 60, -15, 30, 20, 127) # yellow_thresholds
 black=(0, 15, -10, 10, -10, 10) # black_thresholds
 
 
@@ -82,7 +82,7 @@ while(True):
         #img.negate()
 
         for i in thresholds:
-            pixels_threshold = int(sharp_read * 0.10 * math.log(sharp_read, 100))
+            pixels_threshold = int(sharp_read * 0.10 * math.log(sharp_read, 50))
             area_threshold= int(sharp_read * 0.08)
             #print("Pixels: " + str(pixels_threshold))
             #print("Area: " + str(area_threshold))
