@@ -20,7 +20,7 @@ private:
 /**
  * Global configuration variables
  */
-#define SPEED 45
+#define SPEED 47
 #define TURN_SPEED 75
 #define MIN_DISTANCE_TO_TURN_MM 210
 #define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
@@ -32,7 +32,7 @@ private:
 #define MIN_VALUE_BLACK_TILE 11
 // PID controller constants
 #define KP 0.45			 //.5 // Proportional gain
-#define KI 0.000000001 //.2 // Integral gain
+#define KI 0.00000001 //.2 // Integral gain
 #define KD 0			 //.1 // Derivative gain
 // Tile to tile
 #define DISTANCE_SENSOR_CELL 27
@@ -70,9 +70,9 @@ private:
 	};
 	Map *maze;
 	int8_t direction = 0;
-	int16_t current_x = 0;
-	int16_t current_y = 0;
-	void GoToDIrection(int8_t direction_to_go);
+	int16_t current_x = 1000;
+	int16_t current_y = 1000;
+	void GoToDirection(int8_t direction_to_go);
 
 	/**
 	 * Navigation utility functions

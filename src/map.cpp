@@ -42,12 +42,12 @@ void Map::print()
     Serial.print(i);
     Serial.print("]");
     Serial.print("\t");
-    Serial.print(map[i].x);
+    Serial.print(map[i].x - 1000);
     Serial.print(",\t");
-    Serial.print(map[i].y);
+    Serial.print(map[i].y  - 1000);
     Serial.print(",\t");
-    Serial.print(map[i].a);
+    Serial.print(map[i].a - 1000);
     Serial.print(",\t");
-    Serial.println(map[i].b);
+    Serial.println(map[i].b - 1000);
   } 
 }

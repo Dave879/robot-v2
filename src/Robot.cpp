@@ -178,7 +178,6 @@ void Robot::Run()
 			Serial8.print('9');
 			Serial2.print('9');
 		}
-		
 
 		if (!NotInRamp())
 		{
@@ -193,17 +192,17 @@ void Robot::Run()
 			}
 			Serial.println("Rampa");
 		}
-		else if(was_in_ramp)
+		else if (was_in_ramp)
 		{
-			if (millis() - time_in_ramp > 2500)
+			if (millis() - time_in_ramp > 3000)
 			{
-				ms->SetPower(45,45);
+				ms->SetPower(45, 45);
 				while (imu->y > 1 || imu->y < -1)
 				{
 					UpdateGyroBlocking();
 				}
 				Serial.println(imu->y);
-				FakeDelay(350);
+				FakeDelay(250);
 
 /*
 				ms->StopMotors();
@@ -211,7 +210,7 @@ void Robot::Run()
 				FakeDelay(1000);
 */
 
-				//SetNewTileDistances();
+				// SetNewTileDistances();
 				/*
 				maze->clear();
 				current_x = 0;
@@ -222,14 +221,14 @@ void Robot::Run()
 				{
 					going_down_ramp = false;
 					UpdateSensorNumBlocking(VL53L5CX::BW);
-					back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;                                      					//back_distance_to_reach = GetBackDistance() + 60 /*260*/;
+					back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320; // back_distance_to_reach = GetBackDistance() + 60 /*260*/;
 				}
 				Serial.println("Distanze per nuova tile");
 				Serial.print("Front to reach: ");
 				Serial.print(front_distance_to_reach);
 				Serial.print("\tBack to reach: ");
 				Serial.print(back_distance_to_reach);
-				//FakeDelay(1000);
+				// FakeDelay(1000);
 			}
 			was_in_ramp = false;
 		}
@@ -254,29 +253,31 @@ void Robot::Run()
 				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
-			
+			ms->SetPower(SPEED, SPEED);
+			SetCurrentTileDistances();
+			while (!NewTile())
+			{
+				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+			}
+
+
 			if (direction == 0)
 			{
-				int16_t black_tile_y = current_x + 1;
-				maze->push({current_x , black_tile_y, current_x, current_y});
+				maze->push({current_x, ++current_y, current_x, current_y});
 			}
 			else if (direction == 1)
 			{
-				int16_t black_tile_x = current_x + 1;
-				maze->push({black_tile_x, current_y, current_x, current_y});
+				maze->push({++current_x, current_y, current_x, current_y});
 			}
 			else if (direction == 2)
 			{
-				int16_t black_tile_y = current_x -1;
-				maze->push({current_x , black_tile_y, current_x, current_y});
+				maze->push({current_x, --current_y, current_x, current_y});
 			}
 			else if (direction == 3)
 			{
-				int16_t black_tile_x = current_x - 1;
-				maze->push({black_tile_x, current_y, current_x, current_y});
+				maze->push({--current_x, current_y, current_x, current_y});
 			}
-
-
 			// Mando il robot indietro al centro della tile
 			TurnBack();
 			SetCurrentTileDistances();
@@ -298,7 +299,7 @@ void Robot::Run()
 			}
 			ms->StopMotors();
 		}
-		else if (digitalReadFast(R_COLLISION_DX_PIN)  && NotInRamp())
+		else if (digitalReadFast(R_COLLISION_DX_PIN) && NotInRamp())
 		{
 			ms->SetPower(-100, -30);
 
@@ -307,7 +308,7 @@ void Robot::Run()
 			ms->StopMotors();
 			UpdateGyroBlocking();
 			while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
-			{	
+			{
 				UpdateGyroBlocking();
 				ms->SetPower(TURN_SPEED, -TURN_SPEED);
 			}
@@ -329,6 +330,10 @@ void Robot::Run()
 			ChangeMapPosition();
 			Serial.print("Direction: ");
 			Serial.println(direction);
+			Serial.print("current x: ");
+			Serial.print(current_x);
+			Serial.print("\tcurrent y: ");
+			Serial.println(current_y);
 			maze->push({current_x, current_y, old_tile_x, old_tile_y});
 
 			maze->print();
@@ -358,7 +363,7 @@ void Robot::Run()
 			Serial.print("Front to reach: ");
 			Serial.print(front_distance_to_reach);
 			Serial.print("\tBack to reach: ");
-			Serial.print(back_distance_to_reach);
+			Serial.println(back_distance_to_reach);
 
 			ms->StopMotors();
 			FakeDelay(250);
@@ -372,70 +377,96 @@ void Robot::Run()
 			bool right_already_visited = false;
 			bool left_already_visited = false;
 			bool front_already_visited = false;
-			if (direction == 0)
+			switch (direction)
 			{
+			case 0:
 				next_tile = current_x + 1;
 				right_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
 				next_tile = current_x - 1;
 				left_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
 				next_tile = current_y + 1;
 				front_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-			}
-			else if (direction == 1)
-			{
+				break;
+			case 1:
 				next_tile = current_y - 1;
 				right_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
 				next_tile = current_y + 1;
 				left_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
 				next_tile = current_x + 1;
 				front_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-			}
-			else if (direction == 2)
-			{
+				break;
+			case 2:
 				next_tile = current_x - 1;
 				right_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
 				next_tile = current_x + 1;
 				left_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
 				next_tile = current_y - 1;
 				front_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-			}
-			else if (direction == 3)
-			{
+				break;
+			case 3:
 				next_tile = current_y + 1;
 				right_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
 				next_tile = current_y - 1;
 				left_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
 				next_tile = current_x - 1;
 				front_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
+				break;
+			default:
+				break;
 			}
-			
+
 			bool right_blocked = !CanTurnRight() || right_already_visited;
 			bool left_blocked = !CanTurnLeft() || left_already_visited;
 			bool front_blocked = !CanGoOn() || front_already_visited;
 
+			Serial.print("Right blocked: ");
+			Serial.print(right_blocked);
+			Serial.print("\tleft blocked: ");
+			Serial.print(left_blocked);
+			Serial.print("\tfront blocked: ");
+			Serial.println(front_blocked);
+
+
 			if (right_blocked && left_blocked && front_blocked)
 			{
-				Tile previus_tile = maze->get({current_x, current_y, old_tile_x, old_tile_y});
-				if (current_x == previus_tile.a)
+				Tile previous_tile = maze->get({current_x, current_y, old_tile_x, old_tile_y});
+				if (previous_tile.a == 1000 && previous_tile.b == 1000)
 				{
-					if (current_y > previus_tile.b)
+					ms->StopMotors();
+					for (int8_t i = 0; i < 5; i++)
 					{
-						GoToDIrection(2);
+						digitalWriteFast(R_LED1_PIN, HIGH);
+						digitalWriteFast(R_LED2_PIN, HIGH);
+						digitalWriteFast(R_LED3_PIN, HIGH);
+						digitalWriteFast(R_LED4_PIN, HIGH);
+						FakeDelay(500);
+						digitalWriteFast(R_LED1_PIN, LOW);
+						digitalWriteFast(R_LED2_PIN, LOW);
+						digitalWriteFast(R_LED3_PIN, LOW);
+						digitalWriteFast(R_LED4_PIN, LOW);
+						FakeDelay(500);
+					}
+				}
+				if (current_x == previous_tile.a)
+				{
+					if (current_y > previous_tile.b)
+					{
+						GoToDirection(2);
 					}
 					else
 					{
-						GoToDIrection(0);
+						GoToDirection(0);
 					}
 				}
 				else
 				{
-					if (current_x > previus_tile.x)
+					if (current_x > previous_tile.a)
 					{
-						GoToDIrection(1);
+						GoToDirection(3);
 					}
 					else
 					{
-						GoToDIrection(3);
+						GoToDirection(1);
 					}
 				}
 			}
@@ -489,7 +520,7 @@ void Robot::Run()
 				}
 			}
 			// Non è stato rilevato un varco simultaneo, ma solo a destra o sinistra
-			else if (!right_blocked || ! left_blocked)
+			else if (!right_blocked || !left_blocked)
 			{
 				// Giro a destra
 				if (!right_blocked)
@@ -537,7 +568,7 @@ void Robot::Run()
 
 			FakeDelay(250);
 			SetNewTileDistances();
-			
+
 			digitalWriteFast(R_LED1_PIN, LOW);
 			digitalWriteFast(R_LED2_PIN, LOW);
 			digitalWriteFast(R_LED3_PIN, LOW);
@@ -559,7 +590,7 @@ void Robot::Run()
 			{
 				ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
 			}
-			else if(imu->z < desired_angle - 3)
+			else if (imu->z < desired_angle - 3)
 			{
 				ms->SetPower(SPEED + power_to_add - 5, SPEED + power_to_add + 5);
 			}
@@ -572,7 +603,6 @@ void Robot::Run()
 	else // Roboto fermo
 	{
 		ms->StopMotors();
-		Serial.println("Premere il pulsante per far partire il robot!");
 		UpdateGyroBlocking();
 		if (imu->z - old_gyro_value > 0.1 || imu->z - old_gyro_value < -0.1)
 		{
@@ -614,30 +644,31 @@ bool Robot::StopRobot()
 		if (!first_time_pressed)
 		{
 			stop_the_robot = !stop_the_robot;
-				// OpenMV discard old data
-				while (Serial2.available())
-				{
-					Serial2.read();
-				}
-				while (Serial8.available())
-				{
-					Serial8.read();
-				}
-				Serial2.print('9');
-				Serial8.print('9');
-				// Reset gyro
-				imu->ResetZ();
-				desired_angle = 0;
+			// OpenMV discard old data
+			while (Serial2.available())
+			{
+				Serial2.read();
+			}
+			while (Serial8.available())
+			{
+				Serial8.read();
+			}
+			Serial2.print('9');
+			Serial8.print('9');
+			// Reset gyro
+			imu->ResetZ();
+			desired_angle = 0;
 
-				current_x = 0;
-				current_y = 0;
-				direction = 0;
-				maze->clear();
-				// Set new front/back distance to reach
-				SetNewTileDistances();
-				first_time_pressed = true;
-				SetCurrentTileDistances();
-				digitalWriteFast(R_LED3_PIN, LOW);
+			
+			current_x = 1000;
+			current_y = 1000;
+			direction = 0;
+			maze->clear();
+			// Set new front/back distance to reach
+			SetNewTileDistances();
+			first_time_pressed = true;
+			SetCurrentTileDistances();
+			digitalWriteFast(R_LED3_PIN, LOW);
 		}
 	}
 	else
@@ -671,11 +702,11 @@ void Robot::SetNewTileDistances()
 {
 	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
-	front_distance_to_reach = (((GetFrontDistance()/ 300) - 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
-		back_distance_to_reach = (((GetBackDistance()/ 300) + 1) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+		back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
 	}
 }
 
@@ -683,11 +714,11 @@ void Robot::SetCurrentTileDistances()
 {
 	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
-	front_distance_to_reach = (((GetFrontDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
-		back_distance_to_reach = (((GetBackDistance()/ 300)) * 320 ) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+		back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
 	}
 }
 
@@ -701,7 +732,6 @@ void Robot::ChangeMapX(bool increment)
 	{
 		current_x--;
 	}
-
 }
 
 void Robot::ChangeMapY(bool increment)
@@ -747,20 +777,72 @@ void Robot::DecreaseDirection()
 	direction %= 4;
 }
 
-void Robot::GoToDIrection(int8_t direction_to_go)
+void Robot::GoToDirection(int8_t direction_to_go)
 {
 	int8_t delta_dir = direction - direction_to_go;
-	if (abs(delta_dir) == 2)
+	if (delta_dir != 0)
 	{
-		TurnBack();
-	}
-	else if (delta_dir == -3 || delta_dir == 1)
-	{
-		TurnLeft();
-	}
-	else if (delta_dir == 3 || delta_dir == -1)
-	{
-		TurnRight();
+		switch (direction)
+		{
+		case 0:
+			if (delta_dir == -1)
+			{
+				TurnRight();
+			}
+			else if (delta_dir == -3)
+			{
+				TurnLeft();
+			}
+			else if (delta_dir == -2)
+			{
+				TurnBack();
+			}
+			break;
+		case 1:
+			if (delta_dir == -1)
+			{
+				TurnRight();
+			}
+			else if (delta_dir == 1)
+			{
+				TurnLeft();
+			}
+			else if (delta_dir == -2)
+			{
+				TurnBack();
+			}
+			break;
+		case 2:
+			if (delta_dir == -1)
+			{
+				TurnRight();
+			}
+			else if (delta_dir == 1)
+			{
+				TurnLeft();
+			}
+			else if (delta_dir == 2)
+			{
+				TurnBack();
+			}
+			break;
+		case 3:
+			if (delta_dir == 3)
+			{
+				TurnRight();
+			}
+			else if (delta_dir == 1)
+			{
+				TurnLeft();
+			}
+			else if (delta_dir == 2)
+			{
+				TurnBack();
+			}
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -858,7 +940,8 @@ void Robot::RemoveVictimU()
 		if (Serial2.available() > 0)
 		{
 			Serial2.read();
-			Serial2.print('9');;
+			Serial2.print('9');
+			;
 		}
 		else
 		{
@@ -868,17 +951,16 @@ void Robot::RemoveVictimU()
 	}
 }
 
-void Robot::DropKit(int8_t number_of_kits, bool left_victim) 
+void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
 	Serial8.print('7');
-	Serial2.print('7');	
+	Serial2.print('7');
 	if (number_of_kits > 1 && kits_dropped < 12)
 	{
 		ms->SetPower(-45, -45);
 		FakeDelay(200);
 		ms->StopMotors();
 	}
-
 
 	int8_t seconds_to_wait = 6;
 	for (int8_t i = 0; i < seconds_to_wait; i++)
@@ -894,7 +976,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 		digitalWriteFast(R_LED4_PIN, LOW);
 		FakeDelay(500);
 	}
-	
+
 	if (kits_dropped < 12)
 	{
 		int8_t side = 1;
@@ -915,7 +997,6 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 			bumped = true;
 		}
 
-
 		for (int8_t i = 0; i < number_of_kits; i++)
 		{
 			Serial.println("Sono nel blocco del drop kit con svolta");
@@ -931,7 +1012,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 			ms->SetPower(45, 45);
 			FakeDelay(250);
 		}
-		
+
 		Turn(90 * side);
 
 		if (left_victim)
@@ -996,7 +1077,6 @@ void Robot::Straighten()
 		UpdateSensorNumBlocking(VL53L5CX::FW);
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
-	
 }
 
 bool Robot::NotInRamp()
@@ -1021,17 +1101,19 @@ int16_t Robot::GetPIDOutputAndSec()
 	// Update start time
 	PID_start_time = micros();
 
-	Serial.print("Desired angle: ");
-	Serial.print(desired_angle);
-	Serial.print("\tGyro: ");
-	Serial.print(imu->z);
-	Serial.print("\tPID_output: ");
-	Serial.print(PID_output);
-	Serial.print(".\tElapsed_seconds: ");
-	Serial.print(elapsed_seconds);
-	Serial.print(".\tPID_output * elapsed_seconds: ");
+	/*
+		Serial.print("Desired angle: ");
+		Serial.print(desired_angle);
+		Serial.print("\tGyro: ");
+		Serial.print(imu->z);
+		Serial.print("\tPID_output: ");
+		Serial.print(PID_output);
+		Serial.print(".\tElapsed_seconds: ");
+		Serial.print(elapsed_seconds);
+		Serial.print(".\tPID_output * elapsed_seconds: ");
+	*/
 	int16_t corr = PID_output * elapsed_seconds;
-	Serial.println(corr);
+	//	Serial.println(corr);
 
 	return corr;
 }
@@ -1101,8 +1183,8 @@ void Robot::TurnBack()
 	ms->StopMotors();
 
 	// Giro totale (-180°)
-	//Turn(-180);
-	//New solution
+	// Turn(-180);
+	// New solution
 	Turn(-90);
 	RemoveVictimU();
 	FakeDelay(1000);
@@ -1169,11 +1251,13 @@ void Robot::Turn(int16_t degree)
 		while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
-			Serial.print("Stiamo girando a sinistra");
-			Serial.print("\tGyro: ");
-			Serial.print(imu->z);
-			Serial.print("\tAngolo desiderato: ");
-			Serial.println(desired_angle);
+			/*
+				Serial.print("Stiamo girando a sinistra");
+				Serial.print("\tGyro: ");
+				Serial.print(imu->z);
+				Serial.print("\tAngolo desiderato: ");
+				Serial.println(desired_angle);
+			*/
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(-gyro_speed, +gyro_speed);
@@ -1185,10 +1269,10 @@ void Robot::Turn(int16_t degree)
 		}
 		*/
 	}
-	
+
 	// Stop dei motori
 	ms->StopMotors();
-	
+
 	PID_integral = 0;
 	Serial.println("Metodo Turn: giro completato!!!");
 }
@@ -1295,9 +1379,9 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 
 	LOG("Laser sensors setup started");
 	lasers = new VL53L5CX_manager(Wire2, true);
-	LOG("Laser sensors setup finished");	
+	LOG("Laser sensors setup finished");
 
-	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 12Hz
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous); // 8*8, 12Hz
 
 	LOG("Initializing color sensor");
 	cs = new Color();
@@ -1313,8 +1397,8 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 
 	digitalWriteFast(R_LED4_PIN, LOW);
 
-	imu->ResetZ();	
-	
+	imu->ResetZ();
+
 	// Initialize front/back distance to reach
 	SetCurrentTileDistances();
 }
