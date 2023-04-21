@@ -211,11 +211,11 @@ void Robot::Run()
 */
 
 				// SetNewTileDistances();
-				/*
+			
 				maze->clear();
-				current_x = 0;
-				current_y = 0;
-				*/
+				current_x = 1000;
+				current_y = 1000;
+			
 				SetCurrentTileDistances();
 				if (going_down_ramp)
 				{
@@ -430,10 +430,11 @@ void Robot::Run()
 			if (right_blocked && left_blocked && front_blocked)
 			{
 				Tile previous_tile = maze->get({current_x, current_y, old_tile_x, old_tile_y});
+				/*
 				if (previous_tile.a == 1000 && previous_tile.b == 1000)
 				{
 					ms->StopMotors();
-					for (int8_t i = 0; i < 5; i++)
+					for (int8_t i = 0; i < 10; i++)
 					{
 						digitalWriteFast(R_LED1_PIN, HIGH);
 						digitalWriteFast(R_LED2_PIN, HIGH);
@@ -447,6 +448,7 @@ void Robot::Run()
 						FakeDelay(500);
 					}
 				}
+				*/
 				if (current_x == previous_tile.a)
 				{
 					if (current_y > previous_tile.b)

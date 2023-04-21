@@ -32,7 +32,7 @@ private:
 #define MIN_VALUE_BLACK_TILE 11
 // PID controller constants
 #define KP 0.45			 //.5 // Proportional gain
-#define KI 0.00000001 //.2 // Integral gain
+#define KI 0.0000001 //.2 // Integral gain
 #define KD 0			 //.1 // Derivative gain
 // Tile to tile
 #define DISTANCE_SENSOR_CELL 27
