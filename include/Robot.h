@@ -116,6 +116,7 @@ private:
 	void DropKitNoTurn(int8_t number_of_kits);
 	void VictimVerify();
 	void RemoveVictimU();
+	void AfterTurnVictimDetection();
 
 	double old_gyro_value; 
 

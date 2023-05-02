@@ -111,74 +111,6 @@ void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azionew
 	{
-		// Victims detection
-		if (FoundVictim())
-		{
-			char kits_number;
-			bool left_victim;
-			if (Serial2.available() > 0)
-			{
-				kits_number = Serial2.read();
-				left_victim = true;
-			}
-			else
-			{
-				kits_number = Serial8.read();
-				left_victim = false;
-			}
-			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-			Serial.println(kits_number);
-			just_recived_from_openmv = true;
-			if (NotInRamp() && ((!CanTurnRight() && !left_victim) || (!CanTurnLeft() && left_victim)))
-			{
-				switch (kits_number)
-				{
-				case '0':
-					Serial.println("Vittima: 0 kit");
-					ms->StopMotors();
-					DropKitNoTurn(0);
-					break;
-				case '1':
-					Serial.println("Vittima: 1 kit");
-					ms->StopMotors();
-					DropKit(1, left_victim);
-					break;
-				case '2':
-					ms->StopMotors();
-					DropKit(2, left_victim);
-					Serial.println("Vittima: 2 kit");
-					break;
-				case '3':
-					ms->StopMotors();
-					DropKit(3, left_victim);
-					Serial.println("Vittima: 3 kit");
-					break;
-				default:
-					Serial.println("No vittima");
-					break;
-				}
-			}
-			else
-			{
-				just_recived_from_openmv = false;
-				if (left_victim)
-				{
-					Serial2.print('9');
-				}
-				else
-				{
-					Serial8.print('9');
-				}
-			}
-			time_to_wait_after_openmv_search_again = millis() + 2500;
-		}
-		else if (just_recived_from_openmv && millis() > time_to_wait_after_openmv_search_again)
-		{
-			just_recived_from_openmv = false;
-			Serial8.print('9');
-			Serial2.print('9');
-		}
-
 		if (!NotInRamp())
 		{
 			if (!was_in_ramp)
@@ -260,8 +192,7 @@ void Robot::Run()
 				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
-
-
+			// Adding the black tile into the map
 			if (direction == 0)
 			{
 				maze->push({current_x, ++current_y, current_x, current_y});
@@ -287,9 +218,7 @@ void Robot::Run()
 		if (digitalReadFast(R_COLLISION_SX_PIN) && NotInRamp())
 		{
 			ms->SetPower(-30, -100);
-
 			FakeDelay(350);
-
 			ms->StopMotors();
 			UpdateGyroBlocking();
 			while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
@@ -318,13 +247,22 @@ void Robot::Run()
 		// Controllo se ho raggiunto una nuova tile
 		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
-
 			/*
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
 			*/
+			// Send signal to watch for victims to OpenMV
+			UpdateSensorNumBlocking(VL53L5CX::SX);
+			UpdateSensorNumBlocking(VL53L5CX::DX);
+			if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM){
+				Serial8.print('9');
+			}
+			if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM){
+				Serial2.print('9');
+			}
+			// Mapping things
 			int16_t old_tile_x = current_x;
 			int16_t old_tile_y = current_y;
 			ChangeMapPosition();
@@ -335,9 +273,8 @@ void Robot::Run()
 			Serial.print("\tcurrent y: ");
 			Serial.println(current_y);
 			maze->push({current_x, current_y, old_tile_x, old_tile_y});
-
 			maze->print();
-
+			// Blue tile check
 			if (BlueTile())
 			{
 				ms->StopMotors();
@@ -367,6 +304,70 @@ void Robot::Run()
 
 			ms->StopMotors();
 			FakeDelay(250);
+
+			// Victims detection
+			while (FoundVictim())
+			{
+				char kits_number;
+				bool left_victim;
+				if (Serial2.available() > 0)
+				{
+					kits_number = Serial2.read();
+					left_victim = true;
+				}
+				else
+				{
+					kits_number = Serial8.read();
+					left_victim = false;
+				}
+				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
+				Serial.println(kits_number);
+				just_recived_from_openmv = true;
+				if (NotInRamp() && ((!CanTurnRight() && !left_victim) || (!CanTurnLeft() && left_victim)))
+				{
+					switch (kits_number)
+					{
+					case '0':
+						Serial.println("Vittima: 0 kit");
+						ms->StopMotors();
+						DropKitNoTurn(0);
+						break;
+					case '1':
+						Serial.println("Vittima: 1 kit");
+						ms->StopMotors();
+						DropKit(1, left_victim);
+						break;
+					case '2':
+						ms->StopMotors();
+						DropKit(2, left_victim);
+						Serial.println("Vittima: 2 kit");
+						break;
+					case '3':
+						ms->StopMotors();
+						DropKit(3, left_victim);
+						Serial.println("Vittima: 3 kit");
+						break;
+					default:
+						Serial.println("No vittima");
+						break;
+					}
+				}
+				else
+				{
+					just_recived_from_openmv = false;
+					if (left_victim)
+					{
+						Serial2.print('9');
+					}
+					else
+					{
+						Serial8.print('9');
+					}
+				}
+				time_to_wait_after_openmv_search_again = millis() + 2500;
+			}
+			Serial8.print('7');
+			Serial2.print('7');
 
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -426,29 +427,28 @@ void Robot::Run()
 			Serial.print("\tfront blocked: ");
 			Serial.println(front_blocked);
 
-
 			if (right_blocked && left_blocked && front_blocked)
 			{
 				Tile previous_tile = maze->get({current_x, current_y, old_tile_x, old_tile_y});
-				/*
 				if (previous_tile.a == 1000 && previous_tile.b == 1000)
 				{
 					ms->StopMotors();
 					for (int8_t i = 0; i < 10; i++)
 					{
 						digitalWriteFast(R_LED1_PIN, HIGH);
-						digitalWriteFast(R_LED2_PIN, HIGH);
-						digitalWriteFast(R_LED3_PIN, HIGH);
-						digitalWriteFast(R_LED4_PIN, HIGH);
-						FakeDelay(500);
+						FakeDelay(250);
 						digitalWriteFast(R_LED1_PIN, LOW);
+						digitalWriteFast(R_LED2_PIN, HIGH);
+						FakeDelay(250);
 						digitalWriteFast(R_LED2_PIN, LOW);
+						digitalWriteFast(R_LED3_PIN, HIGH);
+						FakeDelay(250);
 						digitalWriteFast(R_LED3_PIN, LOW);
+						digitalWriteFast(R_LED4_PIN, HIGH);
+						FakeDelay(250);
 						digitalWriteFast(R_LED4_PIN, LOW);
-						FakeDelay(500);
 					}
 				}
-				*/
 				if (current_x == previous_tile.a)
 				{
 					if (current_y > previous_tile.b)
@@ -494,12 +494,16 @@ void Robot::Run()
 						{
 							// Giro a destra
 							TurnRight();
+							ms->StopMotors();
+							AfterTurnVictimDetection();
 						}
 					}
 					else
 					{
 						// Giro a destra
 						TurnRight();
+						ms->StopMotors();
+						AfterTurnVictimDetection();
 					}
 				}
 				// Giro a sinistra
@@ -512,12 +516,16 @@ void Robot::Run()
 						{
 							// Giro a sinistra
 							TurnLeft();
+							ms->StopMotors();
+							AfterTurnVictimDetection();
 						}
 					}
 					else
 					{
 						// Giro a sinistra
 						TurnLeft();
+						ms->StopMotors();
+						AfterTurnVictimDetection();
 					}
 				}
 			}
@@ -534,12 +542,16 @@ void Robot::Run()
 						{
 							// Giro a destra
 							TurnRight();
+							ms->StopMotors();
+							AfterTurnVictimDetection();
 						}
 					}
 					else
 					{
 						// Giro a destra
 						TurnRight();
+						ms->StopMotors();
+						AfterTurnVictimDetection();
 					}
 				}
 				// Giro a sinistra
@@ -552,12 +564,16 @@ void Robot::Run()
 						{
 							// Giro a sinistra
 							TurnLeft();
+							ms->StopMotors();
+							AfterTurnVictimDetection();
 						}
 					}
 					else
 					{
 						// Giro a sinistra
 						TurnLeft();
+						ms->StopMotors();
+						AfterTurnVictimDetection();
 					}
 				}
 			}
@@ -571,10 +587,12 @@ void Robot::Run()
 			FakeDelay(250);
 			SetNewTileDistances();
 
+			/*
 			digitalWriteFast(R_LED1_PIN, LOW);
 			digitalWriteFast(R_LED2_PIN, LOW);
 			digitalWriteFast(R_LED3_PIN, LOW);
 			digitalWriteFast(R_LED4_PIN, LOW);
+			*/
 		}
 		// Proseguo diretto
 		else
@@ -655,22 +673,18 @@ bool Robot::StopRobot()
 			{
 				Serial8.read();
 			}
-			Serial2.print('9');
-			Serial8.print('9');
 			// Reset gyro
 			imu->ResetZ();
 			desired_angle = 0;
-
 			
 			current_x = 1000;
 			current_y = 1000;
 			direction = 0;
 			maze->clear();
-			// Set new front/back distance to reach
-			SetNewTileDistances();
-			first_time_pressed = true;
+			// Set current front/back distance to reach
 			SetCurrentTileDistances();
 			digitalWriteFast(R_LED3_PIN, LOW);
+			first_time_pressed = true;
 		}
 	}
 	else
@@ -893,64 +907,79 @@ bool Robot::FoundVictim()
 	return Serial2.available() > 0 || Serial8.available() > 0;
 }
 
-void Robot::VictimVerify()
+void Robot::AfterTurnVictimDetection()
 {
-	if (FoundVictim())
+	UpdateSensorNumBlocking(VL53L5CX::SX);
+	UpdateSensorNumBlocking(VL53L5CX::DX);
+	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM){
+		Serial8.print('9');
+	}
+	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM){
+		Serial2.print('9');
+	}
+	FakeDelay(250);
+	while (FoundVictim())
 	{
-		Serial.println("Verifico vittima");
-		// Fermo il robot, in alcuni casi speciali potrebbe andare avanti e buttare kit se tolto
-		ms->StopMotors();
-		ms->SetPower(-45, -45);
-		FakeDelay(100);
-		ms->StopMotors();
-		int kits_number;
+		char kits_number;
+		bool left_victim;
 		if (Serial2.available() > 0)
 		{
-			kits_number = int(Serial2.read() - '0');
-			Serial2.print('9');
-			FakeDelay(1000);
-			if (!Serial2.available())
+			kits_number = Serial2.read();
+			left_victim = true;
+		}
+		else
+		{
+			kits_number = Serial8.read();
+			left_victim = false;
+		}
+		Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
+		Serial.println(kits_number);
+		just_recived_from_openmv = true;
+		if (NotInRamp() && ((!CanTurnRight() && !left_victim) || (!CanTurnLeft() && left_victim)))
+		{
+			switch (kits_number)
 			{
-				Serial.println("Vittima dietro (prima a sinistra)");
-				DropKitNoTurn(kits_number);
-				ms->SetPower(45, 45);
-				FakeDelay(200);
+			case '0':
+				Serial.println("Vittima: 0 kit");
 				ms->StopMotors();
+				DropKitNoTurn(0);
+				break;
+			case '1':
+				Serial.println("Vittima: 1 kit");
+				ms->StopMotors();
+				DropKit(1, left_victim);
+				break;
+			case '2':
+				ms->StopMotors();
+				DropKit(2, left_victim);
+				Serial.println("Vittima: 2 kit");
+				break;
+			case '3':
+				ms->StopMotors();
+				DropKit(3, left_victim);
+				Serial.println("Vittima: 3 kit");
+				break;
+			default:
+				Serial.println("No vittima");
+				break;
 			}
 		}
 		else
 		{
-			kits_number = int(Serial8.read() - '0');
-			Serial8.print('9');
-			FakeDelay(1000);
-			if (!Serial8.available())
+			just_recived_from_openmv = false;
+			if (left_victim)
 			{
-				Serial.println("Vittima dietro (prima a destra)");
-				DropKitNoTurn(kits_number);
-				ms->SetPower(45, 45);
-				FakeDelay(200);
-				ms->StopMotors();
+				Serial2.print('9');
+			}
+			else
+			{
+				Serial8.print('9');
 			}
 		}
+		time_to_wait_after_openmv_search_again = millis() + 2500;
 	}
-}
-
-void Robot::RemoveVictimU()
-{
-	if (FoundVictim())
-	{
-		if (Serial2.available() > 0)
-		{
-			Serial2.read();
-			Serial2.print('9');
-			;
-		}
-		else
-		{
-			Serial8.read();
-			Serial8.print('9');
-		}
-	}
+	Serial8.print('7');
+	Serial2.print('7');
 }
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
@@ -1152,9 +1181,6 @@ void Robot::TurnRight()
 		// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 		Straighten();
 	}
-
-	// Controllo se sono presenti vittime, più eventuale conferma
-	VictimVerify();
 }
 
 void Robot::TurnLeft()
@@ -1174,9 +1200,6 @@ void Robot::TurnLeft()
 		// Manovra da eseguire per ristabilizzare il robot e resettare il giro
 		Straighten();
 	}
-
-	// Controllo se sono presenti vittime, più eventuale conferma
-	VictimVerify();
 }
 
 void Robot::TurnBack()
@@ -1185,10 +1208,11 @@ void Robot::TurnBack()
 	ms->StopMotors();
 
 	// Giro totale (-180°)
-	// Turn(-180);
-	// New solution
 	Turn(-90);
-	RemoveVictimU();
+	UpdateSensorNumBlocking(VL53L5CX::DX);
+	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM){
+		Serial8.print('9');
+	}
 	FakeDelay(1000);
 	if (FoundVictim())
 	{
@@ -1205,9 +1229,9 @@ void Robot::TurnBack()
 			DropKit(kits_number, false);
 		}
 	}
+	Serial8.print('7');
 
 	Turn(-90);
-	Serial8.print('9');
 	DecreaseDirection();
 	DecreaseDirection();
 
@@ -1264,12 +1288,6 @@ void Robot::Turn(int16_t degree)
 			// Potenza gestita da PID e Gyro-z
 			ms->SetPower(-gyro_speed, +gyro_speed);
 		}
-		/*
-		if (degree == -180)
-		{
-			RemoveVictimU();
-		}
-		*/
 	}
 
 	// Stop dei motori
