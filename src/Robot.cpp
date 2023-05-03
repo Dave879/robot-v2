@@ -208,7 +208,7 @@ void Robot::Run()
 				maze->push({--current_x, current_y, current_x, current_y});
 			}
 			// Mando il robot indietro al centro della tile
-			//TurnBack();
+			TurnBack();
 			SetCurrentTileDistances();
 		}
 
@@ -444,15 +444,6 @@ void Robot::Run()
 			}
 			else if (!right_blocked && !left_blocked)
 			{
-				// Output variabili varco
-				Serial.println("Varco Trovato!!!");
-				// Varco Destra
-				Serial.print("Distanza Destra: ");
-				Serial.println(lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
-				// Varco Sinistra
-				Serial.print("Distanza Sinistra: ");
-				Serial.println(lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL]);
-
 				// Scelgo quale direzione prendere tra destra e sinistra
 				if (millis() % 2)
 				// Giro a destra
@@ -690,7 +681,7 @@ void Robot::SetNewTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 150 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = ((((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE));
 	}
@@ -702,7 +693,7 @@ void Robot::SetCurrentTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 150 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE));
 	}
@@ -1025,7 +1016,7 @@ void Robot::Straighten()
 
 bool Robot::NotInRamp()
 {
-	return (imu->y <= 10 && imu->y >= -10);
+	return (imu->y <= 20 && imu->y >= -20);
 }
 
 int16_t Robot::GetPIDOutputAndSec()
