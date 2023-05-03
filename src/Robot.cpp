@@ -115,6 +115,7 @@ void Robot::Run()
 		{
 			if (!was_in_ramp)
 			{
+				digitalWriteFast(R_LED3_PIN, HIGH);
 				was_in_ramp = true;
 				time_in_ramp = millis();
 			}
@@ -126,43 +127,40 @@ void Robot::Run()
 		}
 		else if (was_in_ramp)
 		{
+			digitalWriteFast(R_LED3_PIN, LOW);
+			was_in_ramp = false;
 			if (millis() - time_in_ramp > 3000)
 			{
 				ms->SetPower(45, 45);
-				while (imu->y > 1 || imu->y < -1)
+				while (imu->y > 0.5 || imu->y < -0.5)
 				{
 					UpdateGyroBlocking();
 				}
 				Serial.println(imu->y);
-				FakeDelay(250);
-
 /*
 				ms->StopMotors();
 				Serial.println("Rampa fatta");
 				FakeDelay(1000);
-*/
 
-				// SetNewTileDistances();
-			
 				maze->clear();
 				current_x = 1000;
 				current_y = 1000;
-			
+*/
 				SetCurrentTileDistances();
 				if (going_down_ramp)
 				{
 					going_down_ramp = false;
 					UpdateSensorNumBlocking(VL53L5CX::BW);
-					back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320; // back_distance_to_reach = GetBackDistance() + 60 /*260*/;
+					back_distance_to_reach = DISTANCE_FRONT_AND_BACK_CENTER_TILE + (GetBackDistance() - DISTANCE_FRONT_AND_BACK_CENTER_TILE);
 				}
+/*
 				Serial.println("Distanze per nuova tile");
 				Serial.print("Front to reach: ");
 				Serial.print(front_distance_to_reach);
 				Serial.print("\tBack to reach: ");
 				Serial.print(back_distance_to_reach);
-				// FakeDelay(1000);
+*/
 			}
-			was_in_ramp = false;
 		}
 
 		// Black tile
@@ -210,7 +208,7 @@ void Robot::Run()
 				maze->push({--current_x, current_y, current_x, current_y});
 			}
 			// Mando il robot indietro al centro della tile
-			TurnBack();
+			//TurnBack();
 			SetCurrentTileDistances();
 		}
 
@@ -221,7 +219,7 @@ void Robot::Run()
 			FakeDelay(350);
 			ms->StopMotors();
 			UpdateGyroBlocking();
-			while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
+			while (imu->z <= desired_angle /*- ADDITIONAL_ANGLE_TO_OVERCOME*/)
 			{
 				UpdateGyroBlocking();
 				ms->SetPower(-TURN_SPEED, TURN_SPEED);
@@ -236,7 +234,7 @@ void Robot::Run()
 
 			ms->StopMotors();
 			UpdateGyroBlocking();
-			while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
+			while (imu->z >= desired_angle /*+ ADDITIONAL_ANGLE_TO_OVERCOME*/)
 			{
 				UpdateGyroBlocking();
 				ms->SetPower(TURN_SPEED, -TURN_SPEED);
@@ -247,12 +245,12 @@ void Robot::Run()
 		// Controllo se ho raggiunto una nuova tile
 		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
-			/*
+/*
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
-			*/
+*/
 			// Send signal to watch for victims to OpenMV
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -266,12 +264,14 @@ void Robot::Run()
 			int16_t old_tile_x = current_x;
 			int16_t old_tile_y = current_y;
 			ChangeMapPosition();
+/*
 			Serial.print("Direction: ");
 			Serial.println(direction);
 			Serial.print("current x: ");
 			Serial.print(current_x);
 			Serial.print("\tcurrent y: ");
 			Serial.println(current_y);
+*/
 			maze->push({current_x, current_y, old_tile_x, old_tile_y});
 			maze->print();
 			// Blue tile check
@@ -279,7 +279,19 @@ void Robot::Run()
 			{
 				ms->StopMotors();
 				Serial.println("Tile blue");
-				FakeDelay(5000);
+				for (int8_t i = 0; i < 5; i++)
+				{
+					digitalWriteFast(R_LED2_PIN, HIGH);
+					digitalWriteFast(R_LED4_PIN, HIGH);
+					FakeDelay(500);
+					digitalWriteFast(R_LED1_PIN, HIGH);
+					digitalWriteFast(R_LED3_PIN, HIGH);
+					FakeDelay(500);
+					digitalWriteFast(R_LED1_PIN, LOW);
+					digitalWriteFast(R_LED2_PIN, LOW);
+					digitalWriteFast(R_LED3_PIN, LOW);
+					digitalWriteFast(R_LED4_PIN, LOW);
+				}
 			}
 
 			// Per fermare il robot per 0.5s ogni tile (sono per fase di test)
@@ -308,63 +320,21 @@ void Robot::Run()
 			// Victims detection
 			while (FoundVictim())
 			{
-				char kits_number;
+				int kits_number;
 				bool left_victim;
 				if (Serial2.available() > 0)
 				{
-					kits_number = Serial2.read();
+					kits_number = int(Serial2.read() - '0');
 					left_victim = true;
 				}
 				else
 				{
-					kits_number = Serial8.read();
+					kits_number = int(Serial8.read() - '0');
 					left_victim = false;
 				}
 				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 				Serial.println(kits_number);
-				just_recived_from_openmv = true;
-				if (NotInRamp() && ((!CanTurnRight() && !left_victim) || (!CanTurnLeft() && left_victim)))
-				{
-					switch (kits_number)
-					{
-					case '0':
-						Serial.println("Vittima: 0 kit");
-						ms->StopMotors();
-						DropKitNoTurn(0);
-						break;
-					case '1':
-						Serial.println("Vittima: 1 kit");
-						ms->StopMotors();
-						DropKit(1, left_victim);
-						break;
-					case '2':
-						ms->StopMotors();
-						DropKit(2, left_victim);
-						Serial.println("Vittima: 2 kit");
-						break;
-					case '3':
-						ms->StopMotors();
-						DropKit(3, left_victim);
-						Serial.println("Vittima: 3 kit");
-						break;
-					default:
-						Serial.println("No vittima");
-						break;
-					}
-				}
-				else
-				{
-					just_recived_from_openmv = false;
-					if (left_victim)
-					{
-						Serial2.print('9');
-					}
-					else
-					{
-						Serial8.print('9');
-					}
-				}
-				time_to_wait_after_openmv_search_again = millis() + 2500;
+				DropKit(kits_number, left_victim);
 			}
 			Serial8.print('7');
 			Serial2.print('7');
@@ -437,15 +407,15 @@ void Robot::Run()
 					{
 						digitalWriteFast(R_LED1_PIN, HIGH);
 						FakeDelay(250);
-						digitalWriteFast(R_LED1_PIN, LOW);
 						digitalWriteFast(R_LED2_PIN, HIGH);
 						FakeDelay(250);
-						digitalWriteFast(R_LED2_PIN, LOW);
-						digitalWriteFast(R_LED3_PIN, HIGH);
-						FakeDelay(250);
-						digitalWriteFast(R_LED3_PIN, LOW);
 						digitalWriteFast(R_LED4_PIN, HIGH);
 						FakeDelay(250);
+						digitalWriteFast(R_LED3_PIN, HIGH);
+						FakeDelay(250);
+						digitalWriteFast(R_LED1_PIN, LOW);
+						digitalWriteFast(R_LED2_PIN, LOW);
+						digitalWriteFast(R_LED3_PIN, LOW);
 						digitalWriteFast(R_LED4_PIN, LOW);
 					}
 				}
@@ -577,22 +547,22 @@ void Robot::Run()
 					}
 				}
 			}
-			/*
+/*
 			else if (!CanGoOn() && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 			{
 				TurnBack();
 			}
-			*/
+*/
 
 			FakeDelay(250);
 			SetNewTileDistances();
 
-			/*
+/*
 			digitalWriteFast(R_LED1_PIN, LOW);
 			digitalWriteFast(R_LED2_PIN, LOW);
 			digitalWriteFast(R_LED3_PIN, LOW);
 			digitalWriteFast(R_LED4_PIN, LOW);
-			*/
+*/
 		}
 		// Proseguo diretto
 		else
@@ -663,6 +633,7 @@ bool Robot::StopRobot()
 	{
 		if (!first_time_pressed)
 		{
+			first_time_pressed = true;
 			stop_the_robot = !stop_the_robot;
 			// OpenMV discard old data
 			while (Serial2.available())
@@ -676,7 +647,7 @@ bool Robot::StopRobot()
 			// Reset gyro
 			imu->ResetZ();
 			desired_angle = 0;
-			
+			// Reset Map
 			current_x = 1000;
 			current_y = 1000;
 			direction = 0;
@@ -684,7 +655,6 @@ bool Robot::StopRobot()
 			// Set current front/back distance to reach
 			SetCurrentTileDistances();
 			digitalWriteFast(R_LED3_PIN, LOW);
-			first_time_pressed = true;
 		}
 	}
 	else
@@ -720,9 +690,9 @@ void Robot::SetNewTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 150 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
-		back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+		back_distance_to_reach = ((((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE));
 	}
 }
 
@@ -732,9 +702,9 @@ void Robot::SetCurrentTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if (GetBackDistance() - (GetBackDistance() / 300) * 320 > 300 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 150 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
-		back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE + GetBackDistance() - (GetBackDistance() / 300) * 320;
+		back_distance_to_reach = (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE));
 	}
 }
 
@@ -884,7 +854,7 @@ bool Robot::CanBumpBack()
 
 bool Robot::FrontWall()
 {
-	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM;
+	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5;
 }
 
 bool Robot::BlackTile()
@@ -920,63 +890,21 @@ void Robot::AfterTurnVictimDetection()
 	FakeDelay(250);
 	while (FoundVictim())
 	{
-		char kits_number;
+		int kits_number;
 		bool left_victim;
 		if (Serial2.available() > 0)
 		{
-			kits_number = Serial2.read();
+			kits_number = int(Serial2.read() - '0');
 			left_victim = true;
 		}
 		else
 		{
-			kits_number = Serial8.read();
+			kits_number = int(Serial8.read() - '0');
 			left_victim = false;
 		}
 		Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 		Serial.println(kits_number);
-		just_recived_from_openmv = true;
-		if (NotInRamp() && ((!CanTurnRight() && !left_victim) || (!CanTurnLeft() && left_victim)))
-		{
-			switch (kits_number)
-			{
-			case '0':
-				Serial.println("Vittima: 0 kit");
-				ms->StopMotors();
-				DropKitNoTurn(0);
-				break;
-			case '1':
-				Serial.println("Vittima: 1 kit");
-				ms->StopMotors();
-				DropKit(1, left_victim);
-				break;
-			case '2':
-				ms->StopMotors();
-				DropKit(2, left_victim);
-				Serial.println("Vittima: 2 kit");
-				break;
-			case '3':
-				ms->StopMotors();
-				DropKit(3, left_victim);
-				Serial.println("Vittima: 3 kit");
-				break;
-			default:
-				Serial.println("No vittima");
-				break;
-			}
-		}
-		else
-		{
-			just_recived_from_openmv = false;
-			if (left_victim)
-			{
-				Serial2.print('9');
-			}
-			else
-			{
-				Serial8.print('9');
-			}
-		}
-		time_to_wait_after_openmv_search_again = millis() + 2500;
+		DropKit(kits_number, left_victim);
 	}
 	Serial8.print('7');
 	Serial2.print('7');
@@ -984,31 +912,50 @@ void Robot::AfterTurnVictimDetection()
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
+	// TODO: Verificare se tenere o meno le due righe sotto
 	Serial8.print('7');
 	Serial2.print('7');
-	if (number_of_kits > 1 && kits_dropped < 12)
-	{
-		ms->SetPower(-45, -45);
-		FakeDelay(200);
-		ms->StopMotors();
-	}
+	// -------------------
 
 	int8_t seconds_to_wait = 6;
-	for (int8_t i = 0; i < seconds_to_wait; i++)
+	if (left_victim)
 	{
-		digitalWriteFast(R_LED1_PIN, HIGH);
-		digitalWriteFast(R_LED2_PIN, HIGH);
-		digitalWriteFast(R_LED3_PIN, HIGH);
-		digitalWriteFast(R_LED4_PIN, HIGH);
-		FakeDelay(500);
-		digitalWriteFast(R_LED1_PIN, LOW);
-		digitalWriteFast(R_LED2_PIN, LOW);
-		digitalWriteFast(R_LED3_PIN, LOW);
-		digitalWriteFast(R_LED4_PIN, LOW);
-		FakeDelay(500);
+		for (int8_t i = 0; i < seconds_to_wait; i++)
+		{
+			digitalWriteFast(R_LED1_PIN, HIGH);
+			digitalWriteFast(R_LED2_PIN, HIGH);
+			FakeDelay(250);
+			digitalWriteFast(R_LED3_PIN, HIGH);
+			digitalWriteFast(R_LED4_PIN, HIGH);
+			FakeDelay(250);
+			digitalWriteFast(R_LED1_PIN, LOW);
+			digitalWriteFast(R_LED2_PIN, LOW);
+			FakeDelay(250);
+			digitalWriteFast(R_LED3_PIN, LOW);
+			digitalWriteFast(R_LED4_PIN, LOW);
+			FakeDelay(250);
+		}
+	}
+	else
+	{
+		for (int8_t i = 0; i < seconds_to_wait; i++)
+		{
+			digitalWriteFast(R_LED3_PIN, HIGH);
+			digitalWriteFast(R_LED4_PIN, HIGH);
+			FakeDelay(250);
+			digitalWriteFast(R_LED1_PIN, HIGH);
+			digitalWriteFast(R_LED2_PIN, HIGH);
+			FakeDelay(250);
+			digitalWriteFast(R_LED3_PIN, LOW);
+			digitalWriteFast(R_LED4_PIN, LOW);
+			FakeDelay(250);
+			digitalWriteFast(R_LED1_PIN, LOW);
+			digitalWriteFast(R_LED2_PIN, LOW);
+			FakeDelay(250);
+		}
 	}
 
-	if (kits_dropped < 12)
+	if (kits_dropped < 12 && number_of_kits > 0)
 	{
 		int8_t side = 1;
 
@@ -1030,7 +977,6 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 		for (int8_t i = 0; i < number_of_kits; i++)
 		{
-			Serial.println("Sono nel blocco del drop kit con svolta");
 			kit.write(180);
 			FakeDelay(1000);
 			kit.write(0);
@@ -1040,58 +986,24 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 		if (bumped)
 		{
-			ms->SetPower(45, 45);
-			FakeDelay(250);
+			SetCurrentTileDistances();
+			ms->SetPower(SPEED, SPEED);
+			while (!NewTile())
+			{
+				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+			}
+			ms->StopMotors();
 		}
 
 		Turn(90 * side);
-
-		if (left_victim)
-		{
-			Serial8.print('9');
-		}
-		else
-		{
-			Serial2.print('9');
-		}
 	}
-
+	// TODO: Verificare se tenere o meno le due righe sotto
 	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	UpdateSensorNumBlocking(VL53L5CX::SX);
 	UpdateSensorNumBlocking(VL53L5CX::DX);
-}
-
-void Robot::DropKitNoTurn(int8_t number_of_kits)
-{
-	ms->StopMotors();
-	int8_t seconds_to_wait = 6;
-	for (int8_t i = 0; i < seconds_to_wait; i++)
-	{
-		digitalWriteFast(R_LED1_PIN, HIGH);
-		digitalWriteFast(R_LED2_PIN, HIGH);
-		digitalWriteFast(R_LED3_PIN, HIGH);
-		digitalWriteFast(R_LED4_PIN, HIGH);
-		FakeDelay(500);
-		digitalWriteFast(R_LED1_PIN, LOW);
-		digitalWriteFast(R_LED2_PIN, LOW);
-		digitalWriteFast(R_LED3_PIN, LOW);
-		digitalWriteFast(R_LED4_PIN, LOW);
-		FakeDelay(500);
-	}
-
-	if (kits_dropped < 12)
-	{
-		for (int8_t i = 0; i < number_of_kits; i++)
-		{
-			Serial.println("Sono nel blocco del drop kit senza svolta");
-			kit.write(180);
-			FakeDelay(1000);
-			kit.write(0);
-			FakeDelay(1000);
-			kits_dropped++;
-		}
-	}
+	// -------------------
 }
 
 void Robot::Straighten()
@@ -1102,12 +1014,13 @@ void Robot::Straighten()
 	imu->ResetZ();
 	desired_angle = 0;
 	SetCurrentTileDistances();
-	ms->SetPower(45, 45);
+	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
 		UpdateSensorNumBlocking(VL53L5CX::FW);
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
+	ms->StopMotors();
 }
 
 bool Robot::NotInRamp()
@@ -1147,21 +1060,6 @@ int16_t Robot::GetPIDOutputAndSec()
 	//	Serial.println(corr);
 
 	return corr;
-}
-
-void Robot::MotorPowerZGyroAndPID()
-{
-	/*
-	int16_t pid_speed = GetPIDOutputAndSec() / 1100;
-	ms->SetPower(SPEED - pid_speed, SPEED + pid_speed);
-	*/
-	Serial.print("Desired angle: ");
-	Serial.print(desired_angle);
-	Serial.print("\tGyro: ");
-	Serial.println(imu->z);
-
-	int16_t gyro_diff = (desired_angle - imu->z);
-	ms->SetPower(SPEED - gyro_diff, SPEED + gyro_diff);
 }
 
 void Robot::TurnRight()
@@ -1214,14 +1112,9 @@ void Robot::TurnBack()
 		Serial8.print('9');
 	}
 	FakeDelay(1000);
-	if (FoundVictim())
+	while (FoundVictim())
 	{
 		Serial.println("Cerco vittima in U");
-		// Fermo il robot, in alcuni casi speciali potrebbe andare avanti e buttare kit se tolto
-		ms->StopMotors();
-		ms->SetPower(-45, -45);
-		FakeDelay(100);
-		ms->StopMotors();
 		int kits_number;
 		if (Serial8.available() > 0)
 		{
@@ -1447,7 +1340,7 @@ void Robot::PrintSensorData()
 	Serial.print(" \t");
 	Serial.print("gyro.z: \t");
 	Serial.println(imu->z);
-
+/*
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		const char arr[4] = {'F', 'B', 'S', 'D'};
@@ -1488,6 +1381,7 @@ void Robot::PrintSensorData()
 
 	Serial.print("Serial2 bits available for read (OpenMV SX): ");
 	Serial.println(Serial2.available());
+*/
 }
 
 Robot::~Robot()

@@ -65,12 +65,11 @@ kits = 0 # -1 means that there is no victim
 red_led = pyb.LED(1)
 green_led = pyb.LED(2)
 blue_led = pyb.LED(3)
+red_led.on()
+green_led.on()
+blue_led.on()
 
 while(True):
-
-    red_led.off()
-    green_led.off()
-    blue_led.off()
 
     if uart.any():
         data = uart.read().decode('utf-8').rstrip()
@@ -80,9 +79,11 @@ while(True):
             kits = 7
 
     if kits != -1:
+        green_led.off()
+        blue_led.off()
         continue
 
-    red_led.on()
+
     green_led.on()
     blue_led.on()
 
