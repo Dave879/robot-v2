@@ -25,28 +25,28 @@ void IMU_int()
 
 void setup()
 {
-	LOG("Robot initialization starting... 1");
-	LOG("Robot initialization starting... 2");
-	LOG("Robot initialization starting... 3");
+	PRINTLN("Robot initialization starting... 1");
+	PRINTLN("Robot initialization starting... 2");
+	PRINTLN("Robot initialization starting... 3");
 	delay(3000);
-	LOG("Robot initialization starting... 4");
+	PRINTLN("Robot initialization starting... 4");
 
 	if (CrashReport)
 	{
 		delay(5000);
-		Serial.print(CrashReport);
+		PRINT(CrashReport);
 		delay(5000);
 	}
 	else
 	{
-		LOG("Good news! No crash report found!");
+		PRINTLN("Good news! No crash report found!");
 	}
 
-	LOG("Gyro setup started");
+	PRINTLN("Gyro setup started");
 	imu_dr = false;
 	imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
 	attachInterrupt(R_IMU_INT_SPI_PIN, IMU_int, RISING);
-	LOG("Finished gyro setup!");
+	PRINTLN("Finished gyro setup!");
 
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
 	rb = new Robot(imu, &imu_dr, true);
@@ -72,8 +72,8 @@ void loop()
 		times_per_second++;
 		if (past_millis + 1000 < millis())
 		{
-			Serial.print("Times per second: ");
-			Serial.println(times_per_second);
+			PRINT("Times per second: ");
+			PRINTLN(times_per_second);
 			times_per_second = 0;
 			past_millis = millis();
 		}
@@ -89,6 +89,6 @@ void loop()
 	doc[fm.AddLineGraph("Noise1")] = 30;
 	doc[fm.AddLineGraph("Noise2")] = 20;
 	serializeJson(doc, res);
-	Serial.println(res);
+	PRINTLN(res);
 	*/
 }

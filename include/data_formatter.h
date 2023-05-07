@@ -1,12 +1,17 @@
 #ifndef DATAFORMATTER_H
 #define DATAFORMATTER_H
 
-#include <sstream>
 #include <string>
-#include <iomanip>
+#include <stdio.h>
 
-#define PRINT(x)   Serial.print("{\"0:s\":\""); Serial.print(x);   Serial.print("\"}");
-#define PRINTLN(x)   Serial.print("{\"0:s\":\""); Serial.print(x);   Serial.print("\\n\"}");
+#define PRINT(x)                \
+	Serial.print("{\"0£s\":\""); \
+	Serial.print(x);             \
+	Serial.print("\"}");
+#define PRINTLN(x)              \
+	Serial.print("{\"0£s\":\""); \
+	Serial.print(x);             \
+	Serial.print("\\n\"}");
 
 enum color
 {
@@ -18,11 +23,14 @@ enum color
 class DataFormatter
 {
 private:
-	uint16_t graph_index_;
-	uint16_t heatmap_index_;
-	std::stringstream tmp_ss_;
-	uint64_t pkt_idx_;
-	void CleanStreamAndIncrementIndex(uint16_t &idx);
+	unsigned int graph_index_;
+	unsigned int heatmap_index_;
+	unsigned long long pkt_idx_;
+	char numstr_[21];
+	char numstr__[21];
+	char numstr___[21];
+	char numstr____[21];
+	char numstr_____[21];
 
 public:
 	DataFormatter();
@@ -31,9 +39,10 @@ public:
 	std::string AddStringLog();
 	std::string AddPacketIndex();
 	std::string AddLineGraph(std::string name);
-	std::string AddLineGraph(std::string name, int64_t min, int64_t max);
-	std::string AddHeatmap(std::string name, uint16_t sizex, uint16_t sizey, int32_t min, int32_t max);
-	uint64_t GetPacketIdx();
+	std::string AddLineGraph(std::string name, int min, int max);
+	std::string AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey, int min, int max);
+	std::string AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey);
+	uint64_t GetAndIncrementPacketIdx();
 	void ResetIdx();
 	~DataFormatter();
 };

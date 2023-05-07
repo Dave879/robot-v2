@@ -33,10 +33,9 @@ gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), 
 	delay(10);
 	IMU->setAccelODR(IMU->odr1k);
 	delay(10);
-	IMU->setAccelFS(IMU->gpm2);
-	delay(10);
 	IMU->enableAccelGyroLN();
 	delay(10);
+	FusionAhrsInitialise(&ahrs);
 	pastMicros = micros();
 }
 
@@ -44,13 +43,20 @@ uint8_t gyro::UpdateData()
 {
 	uint8_t status = IMU->getAGT();
 	uint32_t delta_micros = micros() - pastMicros;
-	double est_x_acc_rad = atanf(IMU->accY() / IMU->accZ());
-	double est_y_acc_rad = -asinf(IMU->accX());
-	z -= IMU->gyrZ() * delta_micros / 1e6;
-	//y += IMU->gyrY() * delta_micros / 1e6;
-	//x += IMU->gyrX() * delta_micros / 1e6;
-	x = est_x_acc_rad * 57.296;
-	y = est_y_acc_rad * 57.296;
+	// double est_x_acc_rad = atanf(IMU->accY() / IMU->accZ());
+	// double est_y_acc_rad = -asinf(IMU->accX()); // Works only if stationary
+	delta_seconds = delta_micros / 1e6;
+	z -= IMU->gyrZ() * delta_seconds;
+	gyroscope.axis = {IMU->gyrX(), IMU->gyrY(), IMU->gyrZ()};
+	accelerometer.axis = {IMU->accX(), IMU->accY(), IMU->accZ()};
+	FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, delta_seconds);
+	euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+
+	// printf("Roll %0.1f, Pitch %0.1f, Yaw %0.1f\n", euler.angle.roll, euler.angle.pitch, euler.angle.yaw);
+	//  y += IMU->gyrY() * delta_micros / 1e6;
+	//  x += IMU->gyrX() * delta_micros / 1e6;
+	x = euler.angle.roll;
+	y = euler.angle.pitch;
 	pastMicros = micros();
 	return status;
 }

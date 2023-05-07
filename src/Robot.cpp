@@ -3,45 +3,45 @@
 Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 {
 
-	LOG("Servo setup started");
+	PRINTLN("Servo setup started");
 	kit.attach(R_PIN_SERVO);
 	kit.write(0);
-	LOG("Finished servo setup!");
+	PRINTLN("Finished servo setup!");
 
 	this->imu = imu;
 	imu_data_ready = imu_dr;
 	if (cold_start)
 	{
-		LOG("Disabling and then enabling sensors power supply...");
+		PRINTLN("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
 		delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
 		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
 		delay(10);																					// Wait for sensors to wake up (especially sensor 0)
-		LOG("...done!");
+		PRINTLN("...done!");
 	}
 
 	/*
-		LOG("Gyro setup started");
+		PRINTLN("Gyro setup started");
 		imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
 		imu_data_ready = false;
 		attachInterrupt(R_IMU_INT_SPI_PIN, R_IMU_int, RISING);
-		LOG("Finished gyro setup!");
+		PRINTLN("Finished gyro setup!");
 	*/
 
 	pinMode(R_COLLISION_SX_PIN, INPUT);
 	pinMode(R_COLLISION_DX_PIN, INPUT);
 
-	LOG("Motor setup started");
+	PRINTLN("Motor setup started");
 	ms = new Motors();
-	LOG("Finished motor setup!");
+	PRINTLN("Finished motor setup!");
 
 	Wire2.begin();					 // Lasers
 	Wire2.setClock(1000000); // 1MHz
 
-	LOG("Laser sensors setup started");
+	PRINTLN("Laser sensors setup started");
 	lasers = new VL53L5CX_manager(Wire2, cold_start);
-	LOG("Laser sensors setup finished");
+	PRINTLN("Laser sensors setup finished");
 
 	/*
 		Interrupts *MUST* be attached after the VL53L5CX_manager is instantiated,
@@ -57,18 +57,18 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	Wire1.begin();					// Color sensor
 	Wire1.setClock(400000); // 400kHz
 
-	LOG("Initializing color sensor");
+	PRINTLN("Initializing color sensor");
 	cs = new Color();
 	if (cs->begin(&Wire1))
 	{
-		LOG("Initialized color sensor!");
+		PRINTLN("Initialized color sensor!");
 		pinMode(R_PIN_COLOR_INT, INPUT_PULLUP);
 		attachInterrupt(R_PIN_COLOR_INT, R_TCS34725_int, FALLING);
 		cs->ClearInterrupt();
 	}
 	else
 	{
-		LOG("Failed to initialize color sensor!");
+		PRINTLN("Failed to initialize color sensor!");
 	}
 
 	pinMode(R_SW_START_PIN, INPUT);
@@ -123,7 +123,7 @@ void Robot::Run()
 			{
 				going_down_ramp = true;
 			}
-			Serial.println("Rampa");
+			PRINTLN("Rampa");
 		}
 		else if (was_in_ramp)
 		{
@@ -136,10 +136,10 @@ void Robot::Run()
 				{
 					UpdateGyroBlocking();
 				}
-				Serial.println(imu->y);
+				//PRINTLN(imu->y);
 /*
 				ms->StopMotors();
-				Serial.println("Rampa fatta");
+				PRINTLN("Rampa fatta");
 				FakeDelay(1000);
 
 				maze->clear();
@@ -154,11 +154,11 @@ void Robot::Run()
 					back_distance_to_reach = DISTANCE_FRONT_AND_BACK_CENTER_TILE + (GetBackDistance() - DISTANCE_FRONT_AND_BACK_CENTER_TILE);
 				}
 /*
-				Serial.println("Distanze per nuova tile");
-				Serial.print("Front to reach: ");
-				Serial.print(front_distance_to_reach);
-				Serial.print("\tBack to reach: ");
-				Serial.print(back_distance_to_reach);
+				PRINTLN("Distanze per nuova tile");
+				PRINT("Front to reach: ");
+				PRINT(front_distance_to_reach);
+				PRINT("\tBack to reach: ");
+				PRINT(back_distance_to_reach);
 */
 			}
 		}
@@ -166,7 +166,7 @@ void Robot::Run()
 		// Black tile
 		if (BlackTile() && NotInRamp())
 		{
-			Serial.println("Black tile");
+			PRINTLN("Black tile");
 			// Torno in dietro fino a quando smetto di vedere nero
 			ms->SetPower(-45, -45);
 			while (cs->c_comp <= MIN_VALUE_BLUE_TILE)
@@ -265,12 +265,12 @@ void Robot::Run()
 			int16_t old_tile_y = current_y;
 			ChangeMapPosition();
 /*
-			Serial.print("Direction: ");
-			Serial.println(direction);
-			Serial.print("current x: ");
-			Serial.print(current_x);
-			Serial.print("\tcurrent y: ");
-			Serial.println(current_y);
+			PRINT("Direction: ");
+			PRINTLN(direction);
+			PRINT("current x: ");
+			PRINT(current_x);
+			PRINT("\tcurrent y: ");
+			PRINTLN(current_y);
 */
 			maze->push({current_x, current_y, old_tile_x, old_tile_y});
 			maze->print();
@@ -278,7 +278,7 @@ void Robot::Run()
 			if (BlueTile())
 			{
 				ms->StopMotors();
-				Serial.println("Tile blue");
+				PRINTLN("Tile blue");
 				for (int8_t i = 0; i < 5; i++)
 				{
 					digitalWriteFast(R_LED2_PIN, HIGH);
@@ -298,21 +298,21 @@ void Robot::Run()
 			// ms->StopMotors();
 			// FakeDelay(500);
 
-			Serial.println("Nuova tile");
-			Serial.print("Front: ");
-			Serial.print(GetFrontDistance());
-			Serial.print("\tRight: ");
-			Serial.print(GetRightDistance());
-			Serial.print("\tLeft: ");
-			Serial.print(GetLeftDistance());
-			Serial.print("\tBack: ");
-			Serial.println(GetBackDistance());
+			PRINTLN("Nuova tile");
+			PRINT("Front: ");
+			PRINT(GetFrontDistance());
+			PRINT("\tRight: ");
+			PRINT(GetRightDistance());
+			PRINT("\tLeft: ");
+			PRINT(GetLeftDistance());
+			PRINT("\tBack: ");
+			PRINTLN(GetBackDistance());
 
-			Serial.println("Distanze per nuova tile");
-			Serial.print("Front to reach: ");
-			Serial.print(front_distance_to_reach);
-			Serial.print("\tBack to reach: ");
-			Serial.println(back_distance_to_reach);
+			PRINTLN("Distanze per nuova tile");
+			PRINT("Front to reach: ");
+			PRINT(front_distance_to_reach);
+			PRINT("\tBack to reach: ");
+			PRINTLN(back_distance_to_reach);
 
 			ms->StopMotors();
 			FakeDelay(250);
@@ -332,8 +332,8 @@ void Robot::Run()
 					kits_number = int(Serial8.read() - '0');
 					left_victim = false;
 				}
-				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-				Serial.println(kits_number);
+				PRINT("Teensy 4.1 ha ricevuto in seriale: ");
+				PRINTLN(kits_number);
 				DropKit(kits_number, left_victim);
 			}
 			Serial8.print('7');
@@ -390,12 +390,12 @@ void Robot::Run()
 			bool left_blocked = !CanTurnLeft() || left_already_visited;
 			bool front_blocked = !CanGoOn() || front_already_visited;
 
-			Serial.print("Right blocked: ");
-			Serial.print(right_blocked);
-			Serial.print("\tleft blocked: ");
-			Serial.print(left_blocked);
-			Serial.print("\tfront blocked: ");
-			Serial.println(front_blocked);
+			PRINT("Right blocked: ");
+			PRINT(right_blocked);
+			PRINT("\tleft blocked: ");
+			PRINT(left_blocked);
+			PRINT("\tfront blocked: ");
+			PRINTLN(front_blocked);
 
 			if (right_blocked && left_blocked && front_blocked)
 			{
@@ -893,8 +893,8 @@ void Robot::AfterTurnVictimDetection()
 			kits_number = int(Serial8.read() - '0');
 			left_victim = false;
 		}
-		Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-		Serial.println(kits_number);
+		PRINT("Teensy 4.1 ha ricevuto in seriale: ");
+		PRINTLN(kits_number);
 		DropKit(kits_number, left_victim);
 	}
 	Serial8.print('7');
@@ -1037,18 +1037,18 @@ int16_t Robot::GetPIDOutputAndSec()
 	PID_start_time = micros();
 
 	/*
-		Serial.print("Desired angle: ");
-		Serial.print(desired_angle);
-		Serial.print("\tGyro: ");
-		Serial.print(imu->z);
-		Serial.print("\tPID_output: ");
-		Serial.print(PID_output);
-		Serial.print(".\tElapsed_seconds: ");
-		Serial.print(elapsed_seconds);
-		Serial.print(".\tPID_output * elapsed_seconds: ");
+		PRINT("Desired angle: ");
+		PRINT(desired_angle);
+		PRINT("\tGyro: ");
+		PRINT(imu->z);
+		PRINT("\tPID_output: ");
+		PRINT(PID_output);
+		PRINT(".\tElapsed_seconds: ");
+		PRINT(elapsed_seconds);
+		PRINT(".\tPID_output * elapsed_seconds: ");
 	*/
 	int16_t corr = PID_output * elapsed_seconds;
-	//	Serial.println(corr);
+	//	PRINTLN(corr);
 
 	return corr;
 }
@@ -1105,7 +1105,7 @@ void Robot::TurnBack()
 	FakeDelay(1000);
 	while (FoundVictim())
 	{
-		Serial.println("Cerco vittima in U");
+		PRINTLN("Cerco vittima in U");
 		int kits_number;
 		if (Serial8.available() > 0)
 		{
@@ -1131,7 +1131,7 @@ void Robot::TurnBack()
 void Robot::Turn(int16_t degree)
 {
 	// Output metodo Turn()
-	Serial.println("Metodo Turn: Inizio la manovra!");
+	PRINTLN("Metodo Turn: Inizio la manovra!");
 
 	// desired_angle = mpu_data.x + degree;
 	desired_angle += degree;
@@ -1139,16 +1139,16 @@ void Robot::Turn(int16_t degree)
 	// Controllo se devo girare a destra o sinistra
 	if (degree > 0) // Giro a destra
 	{
-		Serial.println("Giro destra ->");
+		PRINTLN("Giro destra ->");
 		while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
 			/*
-			Serial.print("Stiamo girando a destra");
-			Serial.print("\tGyro: ");
-			Serial.print(imu->z);
-			Serial.print("\tAngolo desiderato: ");
-			Serial.println(desired_angle);
+			PRINT("Stiamo girando a destra");
+			PRINT("\tGyro: ");
+			PRINT(imu->z);
+			PRINT("\tAngolo desiderato: ");
+			PRINTLN(desired_angle);
 			*/
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
@@ -1157,16 +1157,16 @@ void Robot::Turn(int16_t degree)
 	}
 	else // Giro a sinistra o indietro
 	{
-		Serial.println("Giro sinistra <-");
+		PRINTLN("Giro sinistra <-");
 		while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
 			/*
-				Serial.print("Stiamo girando a sinistra");
-				Serial.print("\tGyro: ");
-				Serial.print(imu->z);
-				Serial.print("\tAngolo desiderato: ");
-				Serial.println(desired_angle);
+				PRINT("Stiamo girando a sinistra");
+				PRINT("\tGyro: ");
+				PRINT(imu->z);
+				PRINT("\tAngolo desiderato: ");
+				PRINTLN(desired_angle);
 			*/
 			int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
@@ -1178,7 +1178,7 @@ void Robot::Turn(int16_t degree)
 	ms->StopMotors();
 
 	PID_integral = 0;
-	Serial.println("Metodo Turn: giro completato!!!");
+	PRINTLN("Metodo Turn: giro completato!!!");
 }
 
 void Robot::FakeDelay(uint32_t time)
@@ -1273,30 +1273,30 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	digitalWriteFast(R_LED3_PIN, LOW);
 	digitalWriteFast(R_LED4_PIN, HIGH);
 
-	LOG("Disabling and then enabling sensors power supply...");
+	PRINTLN("Disabling and then enabling sensors power supply...");
 	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
 	delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
 	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
 	delay(10);																					// Wait for sensors to wake up (especially sensor 0)
-	LOG("...done!");
+	PRINTLN("...done!");
 
-	LOG("Laser sensors setup started");
+	PRINTLN("Laser sensors setup started");
 	lasers = new VL53L5CX_manager(Wire2, true);
-	LOG("Laser sensors setup finished");
+	PRINTLN("Laser sensors setup finished");
 
 	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous); // 8*8, 12Hz
 
-	LOG("Initializing color sensor");
+	PRINTLN("Initializing color sensor");
 	cs = new Color();
 	if (cs->begin(&Wire1))
 	{
-		LOG("Initialized color sensor!");
+		PRINTLN("Initialized color sensor!");
 		cs->ClearInterrupt();
 	}
 	else
 	{
-		LOG("Failed to initialize color sensor!");
+		PRINTLN("Failed to initialize color sensor!");
 	}
 
 	digitalWriteFast(R_LED4_PIN, LOW);
@@ -1323,55 +1323,67 @@ void Robot::UpdateGyroBlocking()
 void Robot::PrintSensorData()
 {
 
-	Serial.print("gyro.x: \t");
-	Serial.print(imu->x);
-	Serial.print(" \t");
-	Serial.print("gyro.y: \t");
-	Serial.print(imu->y);
-	Serial.print(" \t");
-	Serial.print("gyro.z: \t");
-	Serial.println(imu->z);
-/*
-	for (uint8_t i = 0; i < 4; i++)
-	{
-		const char arr[4] = {'F', 'B', 'S', 'D'};
-		Serial.print("Sensor ");
-		Serial.print(arr[i]);
-		Serial.println(i);
+	json_doc[doc_helper.AddLineGraph("Gyro X", -180, 180)] = imu->x;
+	json_doc[doc_helper.AddLineGraph("Gyro Y", -180, 180)] = imu->y;
+	json_doc[doc_helper.AddLineGraph("Gyro Z")] = imu->z;
+	dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
+	dist[VL53L5CX::BW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX BW", 8, 8, 0, 1000));
+	dist[VL53L5CX::SX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX SX", 8, 8, 0, 1000));
+	dist[VL53L5CX::DX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX DX", 8, 8, 0, 1000));
 
-		for (uint8_t j = 0; j < lasers->resolution; j++)
+	for (size_t i = 0; i < 4; i++)
+	{
+		for (size_t j = 0; j < 64; j++)
 		{
-			// float how_many_tiles = lasers->sensors[i]->GetData()->distance_mm[j] / 300.0f;
-			Serial.print(lasers->sensors[i]->GetData()->distance_mm[j]);
-			Serial.print(", \t");
-			if ((j + 1) % 8 == 0)
-			{
-				Serial.print("\t");
-				for (uint8_t k = abs(7 - j); k <= j; k++)
-				{
-					Serial.print(lasers->sensors[i]->GetData()->target_status[k]);
-					Serial.print(", \t");
-				}
-				Serial.println();
-			}
+			dist[i].add(lasers->sensors[i]->GetData()->distance_mm[j]);
 		}
-		Serial.println();
 	}
 
-	Serial.print("c_comp:");
-	Serial.print(cs->c_comp);
-	Serial.print("\tr_comp: ");
-	Serial.print(cs->r_comp);
-	Serial.print("\tg_comp: ");
-	Serial.print(cs->g_comp);
-	Serial.print("\tb_comp:");
-	Serial.println(cs->b_comp);
+	/*
+		for (uint8_t i = 0; i < 4; i++)
+		{
+			const char arr[4] = {'F', 'B', 'S', 'D'};
+			PRINT("Sensor ");
+			PRINT(arr[i]);
+			PRINTLN(i);
 
-	Serial.print("Serial8 bits available for read (OpenMV DX): ");
-	Serial.println(Serial8.available());
+			for (uint8_t j = 0; j < lasers->resolution; j++)
+			{
+				// float how_many_tiles = lasers->sensors[i]->GetData()->distance_mm[j] / 300.0f;
+				PRINT(lasers->sensors[i]->GetData()->distance_mm[j]);
+				PRINT(", \t");
+				if ((j + 1) % 8 == 0)
+				{
+					PRINT("\t");
+					for (uint8_t k = abs(7 - j); k <= j; k++)
+					{
+						PRINT(lasers->sensors[i]->GetData()->target_status[k]);
+						PRINT(", \t");
+					}
+					PRINTLN();
+				}
+			}
+			PRINTLN();
+		}
+	*/
 
-	Serial.print("Serial2 bits available for read (OpenMV SX): ");
-	Serial.println(Serial2.available());
+	json_doc[doc_helper.AddLineGraph("Color: c_comp", 0, 1050)] = cs->c_comp;
+	//json_doc[doc_helper.AddLineGraph("Color: r_comp", 0, 500)] = cs->r_comp;
+	//json_doc[doc_helper.AddLineGraph("Color: g_comp", 0, 500)] = cs->g_comp;
+	//json_doc[doc_helper.AddLineGraph("Color: b_comp", 0, 500)] = cs->b_comp;
+
+	json_doc[doc_helper.AddPacketIndex()] = doc_helper.GetAndIncrementPacketIdx();
+
+	doc_helper.ResetIdx();
+	serializeJson(json_doc, Serial);
+	json_doc.clear();
+	dist->clear();
+/*
+	PRINT("Serial8 bits available for read (OpenMV DX): ");
+	PRINTLN(Serial8.available());
+
+	PRINT("Serial2 bits available for read (OpenMV SX): ");
+	PRINTLN(Serial2.available());
 */
 }
 

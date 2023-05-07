@@ -40,6 +40,10 @@ private:
 #define MIN_TIME_RAMP 3000
 #define RAMP_BACK_DIST 100
 
+	StaticJsonDocument<10000> json_doc;
+	DataFormatter doc_helper;
+	JsonArray dist[4];
+
 	/**
 	 * Navigation variables
 	 */
