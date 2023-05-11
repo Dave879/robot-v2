@@ -5,11 +5,11 @@
 #include <stdio.h>
 
 #define PRINT(x)                \
-	Serial.print("{\"0£s\":\""); \
+	Serial.print("{\"0&s\":\""); \
 	Serial.print(x);             \
 	Serial.print("\"}");
 #define PRINTLN(x)              \
-	Serial.print("{\"0£s\":\""); \
+	Serial.print("{\"0&s\":\""); \
 	Serial.print(x);             \
 	Serial.print("\\n\"}");
 
@@ -26,6 +26,7 @@ private:
 	unsigned int graph_index_;
 	unsigned int heatmap_index_;
 	unsigned long long pkt_idx_;
+	unsigned int rep_string_;
 	char numstr_[21];
 	char numstr__[21];
 	char numstr___[21];
@@ -38,6 +39,7 @@ public:
 	std::string AddStringLog(color c);
 	std::string AddStringLog();
 	std::string AddPacketIndex();
+	std::string AddRepeatedMessage();
 	std::string AddLineGraph(std::string name);
 	std::string AddLineGraph(std::string name, int min, int max);
 	std::string AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey, int min, int max);

@@ -301,17 +301,17 @@ void Robot::Run()
 			PRINTLN("Nuova tile");
 			PRINT("Front: ");
 			PRINT(GetFrontDistance());
-			PRINT("\tRight: ");
+			PRINT("\\tRight: ");
 			PRINT(GetRightDistance());
-			PRINT("\tLeft: ");
+			PRINT("\\tLeft: ");
 			PRINT(GetLeftDistance());
-			PRINT("\tBack: ");
+			PRINT("\\tBack: ");
 			PRINTLN(GetBackDistance());
 
 			PRINTLN("Distanze per nuova tile");
 			PRINT("Front to reach: ");
 			PRINT(front_distance_to_reach);
-			PRINT("\tBack to reach: ");
+			PRINT("\\tBack to reach: ");
 			PRINTLN(back_distance_to_reach);
 
 			ms->StopMotors();
@@ -392,9 +392,9 @@ void Robot::Run()
 
 			PRINT("Right blocked: ");
 			PRINT(right_blocked);
-			PRINT("\tleft blocked: ");
+			PRINT("\\tleft blocked: ");
 			PRINT(left_blocked);
-			PRINT("\tfront blocked: ");
+			PRINT("\\tfront blocked: ");
 			PRINTLN(front_blocked);
 
 			if (right_blocked && left_blocked && front_blocked)
