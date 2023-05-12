@@ -5,11 +5,11 @@
 #include <ArduinoJson.h>
 #include <Servo.h>
 
-#include "util.h"
 #include "pins.h"
 #include "Motors.h"
 #include "Sensors/gyro.h"
 #include "Sensors/VL53L5CX_manager.h"
+#include "Sensors/LRir.h"
 #include "Sensors/Color.h"
 #include "data_formatter.h"
 #include "map.h"
@@ -148,8 +148,10 @@ private:
 	VL53L5CX_manager *lasers;
 	static volatile bool lasers_data_ready[4];
 
+	LRir *ir_front;
+
 	Color *cs;
-	static volatile bool color_data_ready;
+	static volatile bool color_data_ready; // As of 12/05/2023, unused - Dave
 
 	Servo kit;
 

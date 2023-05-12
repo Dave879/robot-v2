@@ -8,11 +8,12 @@
 #include "util.h"
 
 volatile bool Robot::lasers_data_ready[4] = {0};
-volatile bool Robot::color_data_ready = false;
+// volatile bool Robot::color_data_ready = false;
 
 Robot *rb;
 
 gyro *imu;
+
 volatile bool imu_dr;
 
 void IMU_int()
@@ -25,28 +26,28 @@ void IMU_int()
 
 void setup()
 {
-	PRINTLN("Robot initialization starting... 1");
-	PRINTLN("Robot initialization starting... 2");
-	PRINTLN("Robot initialization starting... 3");
+	Serial.println("Robot initialization starting... 1");
+	Serial.println("Robot initialization starting... 2");
+	Serial.println("Robot initialization starting... 3");
 	delay(3000);
-	PRINTLN("Robot initialization starting... 4");
+	Serial.println("Robot initialization starting... 4");
 
 	if (CrashReport)
 	{
 		delay(5000);
-		PRINT(CrashReport);
+		Serial.print(CrashReport);
 		delay(5000);
 	}
 	else
 	{
-		PRINTLN("Good news! No crash report found!");
+		Serial.println("Good news! No crash report found!");
 	}
 
-	PRINTLN("Gyro setup started");
+	Serial.println("Gyro setup started");
 	imu_dr = false;
 	imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
 	attachInterrupt(R_IMU_INT_SPI_PIN, IMU_int, RISING);
-	PRINTLN("Finished gyro setup!");
+	Serial.println("Finished gyro setup!");
 
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
 	rb = new Robot(imu, &imu_dr, true);
@@ -72,8 +73,8 @@ void loop()
 		times_per_second++;
 		if (past_millis + 1000 < millis())
 		{
-			PRINT("Times per second: ");
-			PRINTLN(times_per_second);
+			Serial.print("Times per second: ");
+			Serial.println(times_per_second);
 			times_per_second = 0;
 			past_millis = millis();
 		}
@@ -89,6 +90,6 @@ void loop()
 	doc[fm.AddLineGraph("Noise1")] = 30;
 	doc[fm.AddLineGraph("Noise2")] = 20;
 	serializeJson(doc, res);
-	PRINTLN(res);
+	Serial.println(res);
 	*/
 }

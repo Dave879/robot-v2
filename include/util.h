@@ -4,9 +4,9 @@
 
 void SignalBuiltinLED(int count, int delayTime);
 
-#define START_TIMER int32_t startTime = micros();
+#define START_TIMER int32_t startTime = millis();
 #define END_TIMER                   \
-	int32_t endTime = micros();              \
+	int32_t endTime = millis();              \
 	int32_t deltaTime = endTime - startTime; \
 	Serial.println(deltaTime);
 

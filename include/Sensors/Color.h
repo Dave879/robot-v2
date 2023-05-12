@@ -51,13 +51,14 @@ private:
   Adafruit_TCS34725 tcs;
 
 public:
-  Color(void);
+  Color();
 
   boolean begin(TwoWire* wireInterface);
   void getData();
   void ClearInterrupt();
 
   boolean isAvailable, isSaturated;
+  uint32_t last_reading_time;
   uint16_t againx, atime, atime_ms;
   uint16_t r, g, b, c;
   uint16_t ir;

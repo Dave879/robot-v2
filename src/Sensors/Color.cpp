@@ -14,7 +14,7 @@ const Color::tcs_agc Color::agc_lst[] = {
     {TCS34725_GAIN_16X, TCS34725_INTEGRATIONTIME_154MS, 16790, 63000},
     {TCS34725_GAIN_4X, TCS34725_INTEGRATIONTIME_154MS, 15740, 63000},
     {TCS34725_GAIN_1X, TCS34725_INTEGRATIONTIME_154MS, 15740, 0}};
-Color::Color() : agc_cur(0), isAvailable(0), isSaturated(0)
+Color::Color() : agc_cur(0), isAvailable(0), isSaturated(0), last_reading_time(0)
 {
 }
 
@@ -26,7 +26,7 @@ boolean Color::begin(TwoWire *wireInterface)
   {
     tcs.setGain(tcs34725Gain_t::TCS34725_GAIN_1X);
     tcs.setIntegrationTime(TCS34725_INTEGRATIONTIME_2_4MS);
-    tcs.setInterrupt(true);
+    tcs.setInterrupt(false);
     // setGainTime();
   }
   return (isAvailable);
@@ -59,36 +59,42 @@ void Color::setGainTime()
 // Retrieve data from the sensor and do the calculations
 void Color::getData()
 {
-  // read the sensor and autorange if necessary
-  tcs.getRawData(&r, &g, &b, &c);
-  tcs.clearInterrupt();
-  // DN40 calculations
-  // ir = (r + g + b > c) ? (r + g + b - c) / 2 : 0;
-  /*
-    r_comp = r - ir;
-    g_comp = g - ir;
-    b_comp = b - ir;
-    c_comp = c - ir;
+  if (millis() > last_reading_time + 7)
+  {
+    last_reading_time = millis();
+    // read the sensor and autorange if necessary
+    tcs.getRawData(&r, &g, &b, &c);
+    //tcs.clearInterrupt();
 
-  */
+    r_comp = (float)r / c * 255.0;
+    g_comp = (float)g / c * 255.0;
+    b_comp = (float)b / c * 255.0;
+    c_comp = c;
 
-  r_comp = (float)r / c * 255.0;
-  g_comp = (float)g / c * 255.0;
-  b_comp = (float)b / c * 255.0;
-  c_comp = c;
+    // DN40 calculations
+    // ir = (r + g + b > c) ? (r + g + b - c) / 2 : 0;
+    /*
+      r_comp = r - ir;
+      g_comp = g - ir;
+      b_comp = b - ir;
+      c_comp = c - ir;
 
-  /*
-    cratio = float(ir) / float(c);
+    */
 
-    saturation = ((256 - atime) > 63) ? 65535 : 1024 * (256 - atime);
-    saturation75 = (atime_ms < 150) ? (saturation - saturation / 4) : saturation;
-    isSaturated = (atime_ms < 150 && c > saturation75) ? 1 : 0;
-    cpl = (atime_ms * againx) / (TCS34725_GA * TCS34725_DF);
-    maxlux = 65535 / (cpl * 3);
+    /*
+      cratio = float(ir) / float(c);
 
-    lux = (TCS34725_R_Coef * float(r_comp) + TCS34725_G_Coef * float(g_comp) + TCS34725_B_Coef * float(b_comp)) / cpl;
-    ct = TCS34725_CT_Coef * float(b_comp) / float(r_comp) + TCS34725_CT_Offset;
-  */
+      saturation = ((256 - atime) > 63) ? 65535 : 1024 * (256 - atime);
+      saturation75 = (atime_ms < 150) ? (saturation - saturation / 4) : saturation;
+      isSaturated = (atime_ms < 150 && c > saturation75) ? 1 : 0;
+      cpl = (atime_ms * againx) / (TCS34725_GA * TCS34725_DF);
+      maxlux = 65535 / (cpl * 3);
+
+      lux = (TCS34725_R_Coef * float(r_comp) + TCS34725_G_Coef * float(g_comp) + TCS34725_B_Coef * float(b_comp)) / cpl;
+      ct = TCS34725_CT_Coef * float(b_comp) / float(r_comp) + TCS34725_CT_Offset;
+    */
+  }
+
 }
 
 void Color::ClearInterrupt()
