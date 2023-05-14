@@ -52,7 +52,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		otherwise if the data_ready array isn't initialized and an interrupt is
 		fired, the program will crash.
 	*/
-	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
+	//attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
@@ -149,11 +149,12 @@ void Robot::Run()
 								current_y = 1000;
 				*/
 				SetCurrentTileDistances();
+				// TODO: DA TOGLIERE
 				if (going_down_ramp)
 				{
 					going_down_ramp = false;
 					UpdateSensorNumBlocking(VL53L5CX::BW);
-					back_distance_to_reach = DISTANCE_FRONT_AND_BACK_CENTER_TILE + (GetBackDistance() - DISTANCE_FRONT_AND_BACK_CENTER_TILE);
+					back_distance_to_reach = DISTANCE_BACK_TO_CENTER_TILE + (GetBackDistance() - DISTANCE_BACK_TO_CENTER_TILE);
 				}
 				/*
 								Serial.println("Distanze per nuova tile");
@@ -182,14 +183,14 @@ void Robot::Run()
 			SetCurrentTileDistances();
 			while (NewTile())
 			{
-				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateFrontBlocking();
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
 			ms->SetPower(SPEED, SPEED);
 			SetCurrentTileDistances();
 			while (!NewTile())
 			{
-				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateFrontBlocking();
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
 			// Adding the black tile into the map
@@ -345,7 +346,7 @@ void Robot::Run()
 
 			UpdateSensorNumBlocking(VL53L5CX::SX);
 			UpdateSensorNumBlocking(VL53L5CX::DX);
-			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateFrontBlocking();
 			UpdateSensorNumBlocking(VL53L5CX::BW);
 
 			int16_t next_tile = 0;
@@ -669,9 +670,9 @@ int16_t Robot::GetLeftDistance()
 	return lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
 }
 
-int16_t Robot::GetFrontDistance()
+int32_t Robot::GetFrontDistance()
 {
-	return lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
+	return ir_front->tfDist * 10;
 }
 
 int16_t Robot::GetBackDistance()
@@ -681,25 +682,25 @@ int16_t Robot::GetBackDistance()
 
 void Robot::SetNewTileDistances()
 {
-	UpdateSensorNumBlocking(VL53L5CX::FW);
+	UpdateFrontBlocking();
 	UpdateSensorNumBlocking(VL53L5CX::BW);
-	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_TO_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_BACK_TO_CENTER_TILE;
+	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
-		back_distance_to_reach = ((((GetBackDistance() / 300) + 1) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE));
+		back_distance_to_reach = ((((GetBackDistance() / 300) + 1) * 320) + DISTANCE_BACK_TO_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE));
 	}
 }
 
 void Robot::SetCurrentTileDistances()
 {
-	UpdateSensorNumBlocking(VL53L5CX::FW);
+	UpdateFrontBlocking();
 	UpdateSensorNumBlocking(VL53L5CX::BW);
-	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE;
-	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_TO_CENTER_TILE;
+	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_BACK_TO_CENTER_TILE;
+	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
-		back_distance_to_reach = (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_FRONT_AND_BACK_CENTER_TILE));
+		back_distance_to_reach = (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE));
 	}
 }
 
@@ -839,7 +840,7 @@ bool Robot::CanTurnLeft()
 
 bool Robot::CanGoOn()
 {
-	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
+	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || GetFrontDistance() == 0;
 }
 
 bool Robot::CanBumpBack()
@@ -849,7 +850,7 @@ bool Robot::CanBumpBack()
 
 bool Robot::FrontWall()
 {
-	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5;
+	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && GetFrontDistance() != 0;
 }
 
 bool Robot::BlackTile()
@@ -864,7 +865,7 @@ bool Robot::BlueTile()
 
 bool Robot::NewTile()
 {
-	return (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
+	return (GetFrontDistance() <= front_distance_to_reach && GetFrontDistance() != 0) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
 }
 
 bool Robot::FoundVictim()
@@ -987,7 +988,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 			ms->SetPower(SPEED, SPEED);
 			while (!NewTile())
 			{
-				UpdateSensorNumBlocking(VL53L5CX::FW);
+				UpdateFrontBlocking();
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
 			ms->StopMotors();
@@ -996,7 +997,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 		Turn(90 * side);
 	}
 	// TODO: Verificare se tenere o meno le due righe sotto
-	UpdateSensorNumBlocking(VL53L5CX::FW);
+	UpdateFrontBlocking();
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	UpdateSensorNumBlocking(VL53L5CX::SX);
 	UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -1014,7 +1015,7 @@ void Robot::Straighten()
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
-		UpdateSensorNumBlocking(VL53L5CX::FW);
+		UpdateFrontBlocking();
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
 	ms->StopMotors();
@@ -1329,6 +1330,14 @@ void Robot::UpdateGyroBlocking()
 	}
 }
 
+void Robot::UpdateFrontBlocking()
+{
+	while (ir_front->Read() != 2)
+	{
+		FakeDelay(1);
+	}
+}
+
 void Robot::PrintSensorData()
 {
 
@@ -1336,12 +1345,13 @@ void Robot::PrintSensorData()
 	json_doc[doc_helper.AddLineGraph("Gyro Y", -180, 180)] = imu->y;
 	json_doc[doc_helper.AddLineGraph("Gyro Z")] = imu->z;
 	json_doc[doc_helper.AddLineGraph("Front distance (cm)")] = ir_front->tfDist;
-	dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
+	json_doc[doc_helper.AddLineGraph("Front strength")] = ir_front->tfFlux;
+	//dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
 	dist[VL53L5CX::BW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX BW", 8, 8, 0, 1000));
 	dist[VL53L5CX::SX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX SX", 8, 8, 0, 1000));
 	dist[VL53L5CX::DX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX DX", 8, 8, 0, 1000));
 
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 1; i < 4; i++)
 	{
 		for (size_t j = 0; j < 64; j++)
 		{
