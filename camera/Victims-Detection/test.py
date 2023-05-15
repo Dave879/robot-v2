@@ -52,7 +52,7 @@ except Exception as e:
 
 sensor.reset()                      # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
-sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
+sensor.set_framesize(sensor.B128X64)   # Set frame size to QVGA (320x240)
 sensor.skip_frames(time = 2000)     # Wait for settings take effect.
 time.sleep(0.01)
 #sensor.set_auto_gain(True) # must be turned off for color tracking

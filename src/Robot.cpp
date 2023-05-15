@@ -595,6 +595,14 @@ void Robot::Run()
 			digitalToggleFast(R_LED3_PIN);
 			old_gyro_value = imu->z;
 		}
+		if (!NotInRamp())
+		{
+			digitalWriteFast(R_LED3_PIN, HIGH);
+		}
+		else
+		{
+			digitalWriteFast(R_LED3_PIN, LOW);
+		}
 	}
 }
 
@@ -1023,7 +1031,7 @@ void Robot::Straighten()
 
 bool Robot::NotInRamp()
 {
-	return (imu->y <= 20 && imu->y >= -20);
+	return (imu->y <= 5 && imu->y >= -5);
 }
 
 int16_t Robot::GetPIDOutputAndSec()
@@ -1342,7 +1350,7 @@ void Robot::PrintSensorData()
 {
 
 	json_doc[doc_helper.AddLineGraph("Gyro X", -180, 180)] = imu->x;
-	json_doc[doc_helper.AddLineGraph("Gyro Y", -180, 180)] = imu->y;
+	json_doc[doc_helper.AddLineGraph("Gyro Y")] = imu->y;
 	json_doc[doc_helper.AddLineGraph("Gyro Z")] = imu->z;
 	json_doc[doc_helper.AddLineGraph("Front distance (cm)")] = ir_front->tfDist;
 	json_doc[doc_helper.AddLineGraph("Front strength")] = ir_front->tfFlux;
@@ -1387,7 +1395,7 @@ void Robot::PrintSensorData()
 		}
 	*/
 
-	json_doc[doc_helper.AddLineGraph("Color: c_comp", 0, 1050)] = cs->c_comp;
+	json_doc[doc_helper.AddLineGraph("Color: c_comp", 0, 60)] = cs->c_comp;
 	// json_doc[doc_helper.AddLineGraph("Color: r_comp", 0, 500)] = cs->r_comp;
 	// json_doc[doc_helper.AddLineGraph("Color: g_comp", 0, 500)] = cs->g_comp;
 	// json_doc[doc_helper.AddLineGraph("Color: b_comp", 0, 500)] = cs->b_comp;

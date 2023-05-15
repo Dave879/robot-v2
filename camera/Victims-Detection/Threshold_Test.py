@@ -39,15 +39,14 @@ thresholds = [red, green, yellow, black]
 # camera resolution. Don't set "merge=True" becuase that will merge blobs which we don't want here.
 
 # AI
-
 net = None
 labels = None
+min_confidence = 0.5
 
 try:
     # load the model, alloc the model file on the heap if we have at least 64K free after loading
     net = tf.load("trained.tflite", load_to_fb=uos.stat('trained.tflite')[6] > (gc.mem_free() - (64*1024)))
 except Exception as e:
-    print(e)
     raise Exception('Failed to load "trained.tflite", did you copy the .tflite and labels.txt file onto the mass-storage device? (' + str(e) + ')')
 
 try:
@@ -55,11 +54,21 @@ try:
 except Exception as e:
     raise Exception('Failed to load "labels.txt", did you copy the .tflite and labels.txt file onto the mass-storage device? (' + str(e) + ')')
 
+colors = [ # Add more colors if you are detecting more than 7 types of classes at once.
+    (255,   0,   0),
+    (  0, 255,   0),
+    (255, 255,   0),
+    (  0,   0, 255),
+    (255,   0, 255),
+    (  0, 255, 255),
+    (255, 255, 255),
+]
+
 # CAMERA
 
 sensor.reset()                      # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
-sensor.set_framesize(sensor.B64X64)   # Set frame size to QVGA (320x240)
+sensor.set_framesize(sensor.B128X64)   # Set frame size to QVGA (320x240)
 sensor.skip_frames(time = 2000)     # Wait for settings take effect.
 time.sleep(0.01)
 #sensor.set_auto_gain(True) # must be turned off for color tracking
@@ -75,79 +84,70 @@ while(True):
 
     print("%f <- value" % sharp_read) # read value, 0-4095
 
-    if (sharp_read > 450):
 
-        img = sensor.snapshot() # Take a picture and return the image.
+    img = sensor.snapshot() # Take a picture and return the image.
 
-        #img.negate()
+    #img.negate()
 
-        pixels_threshold = int(sharp_read * 0.10 * math.log(sharp_read, 50))
-        area_threshold= int(sharp_read * 0.08)
-        print("Pixels: " + str(pixels_threshold))
-        print("Area: " + str(area_threshold))
+    for i in thresholds:
 
-        for i in thresholds:
+        for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 
-            for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
+                # These values depend on the blob not being circular - otherwise they will be shaky.
+                #if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
+                    #img.draw_edges(blob.min_corners(), color=(255,0,0))
+                    #img.draw_line(blob.major_axis_line(), color=(0,255,0))
+                    #img.draw_line(blob.minor_axis_line(), color=(0,0,255))
+                # These values are stable all the time.
+                #img.draw_rectangle(blob.rect())
+                #img.draw_cross(blob.cx(), blob.cy())
+                # Note - the blob rotation is unique to 0-180 only.
+                #img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
 
-                    # These values depend on the blob not being circular - otherwise they will be shaky.
-                    #if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
-                        #img.draw_edges(blob.min_corners(), color=(255,0,0))
-                        #img.draw_line(blob.major_axis_line(), color=(0,255,0))
-                        #img.draw_line(blob.minor_axis_line(), color=(0,0,255))
-                    # These values are stable all the time.
-                    #img.draw_rectangle(blob.rect())
-                    #img.draw_cross(blob.cx(), blob.cy())
-                    # Note - the blob rotation is unique to 0-180 only.
-                    #img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
+                # Black detected
+                if i == black:
+                    sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
+                    img = sensor.snapshot()
 
-                    # Black detected
-                    if i == black:
-                        sensor.set_pixformat(sensor.GRAYSCALE) # Set pixel format to RGB565 (or GRAYSCALE)
-                        img = sensor.snapshot()
+                    for i, detection_list in enumerate(net.detect(img, thresholds=[(math.ceil(min_confidence * 255), 255)])):
+                        if (i == 0): continue # background class
+                        if (len(detection_list) == 0): continue # no detections for this class?
 
-                        for obj in net.classify(img, min_scale=1.0, scale_mul=0.8, x_overlap=0.5, y_overlap=0.5):
-                            print("**********\nPredictions at [x=%d,y=%d,w=%d,h=%d]" % obj.rect())
-                            #img.draw_rectangle(obj.rect())
-                            # This combines the labels and confidence values into a list of tuples
-                            predictions_list = list(zip(labels, obj.output()))
+                        print("********** %s **********" % labels[i])
+                        for d in detection_list:
+                            [x, y, w, h] = d.rect()
+                            center_x = math.floor(x + (w / 2))
+                            center_y = math.floor(y + (h / 2))
+                            print('x %d\ty %d' % (center_x, center_y))
+                            img.draw_circle((center_x, center_y, 12), color=colors[i], thickness=2)
 
-                            letter_max_value = 0
-                            lable = ""
-                            for i in range(len(predictions_list)):
-                                    if predictions_list[i][1] > letter_max_value:
-                                        letter_max_value = predictions_list[i][1]
-                                        lable = predictions_list[i][0]
-                                    # print("%s = %f" % (predictions_list[i][0], predictions_list[i][1]))
+                        if labels[i]== "H":
+                            print("black")
+                            kits = 3
+                        elif labels[i] == "S":
+                            print("black")
+                            kits = 2
+                        elif labels[i]== "U":
+                            print("black")
+                            kits = 0
 
-                            print("Lettera: %s con %f" %(lable, letter_max_value))
-                            if lable == "H":
-                                print("black")
-                                kits = 3
-                            elif lable == "S":
-                                print("black")
-                                kits = 2
-                            elif lable == "U":
-                                print("black")
-                                kits = 0
+                        sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
 
-                            sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
+                # Red detected
+                elif i == red:
+                    print("red")
+                    kits = 1
+                # Yellow detected
+                elif i == yellow:
+                    print("yellow")
+                    kits = 1
+                # Green detected
+                elif i == green:
+                    print("green")
+                    kits = 0
 
-                    # Red detected
-                    elif i == red:
-                        print("red")
-                        kits = 1
-                    # Yellow detected
-                    elif i == yellow:
-                        print("yellow")
-                        kits = 1
-                    # Green detected
-                    elif i == green:
-                        print("green")
-                        kits = 0
-
-        if kits >= 0:
-            print(kits)
-            green_led = LED(2)
-            kits =-1
-            # Lampeggio -> Vittima
+    if kits >= 0:
+        print(kits)
+        green_led = LED(2)
+        kits =-1
+        # Lampeggio -> Vittima
