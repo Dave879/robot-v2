@@ -27,11 +27,11 @@ gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), 
 	delay(10);
 	IMU->enableExternalClock();
 	delay(10);
-	IMU->setGyroFS(IMU->dps1000);
+	IMU->setGyroFS(IMU->dps500);
 	delay(10);
-	IMU->setGyroODR(IMU->odr1k);
+	IMU->setGyroODR(IMU->odr2k);
 	delay(10);
-	IMU->setAccelODR(IMU->odr1k);
+	IMU->setAccelODR(IMU->odr2k);
 	delay(10);
 	IMU->enableAccelGyroLN();
 	delay(10);
@@ -42,7 +42,7 @@ gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), 
 uint8_t gyro::UpdateData()
 {
 	uint8_t status = IMU->getAGT();
-	uint32_t delta_micros = micros() - pastMicros;
+	delta_micros = micros() - pastMicros;
 	// double est_x_acc_rad = atanf(IMU->accY() / IMU->accZ());
 	// double est_y_acc_rad = -asinf(IMU->accX()); // Works only if stationary
 	delta_seconds = delta_micros / 1e6;
@@ -55,7 +55,15 @@ uint8_t gyro::UpdateData()
 	// printf("Roll %0.1f, Pitch %0.1f, Yaw %0.1f\n", euler.angle.roll, euler.angle.pitch, euler.angle.yaw);
 	//  y += IMU->gyrY() * delta_micros / 1e6;
 	//  x += IMU->gyrX() * delta_micros / 1e6;
+	/*
+		Serial.print("{\"2&n&l&Gyro Z\":");
+	Serial.print(z);
+	Serial.print("}");
+	Serial.print("{\"3&n&l&Gyro reading time\":");
+	Serial.print(delta_micros);
+	Serial.print("}");
 	x = euler.angle.roll;
+	*/
 	y = euler.angle.pitch;
 	pastMicros = micros();
 	return status;

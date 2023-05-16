@@ -17,8 +17,9 @@ private:
 	FusionVector gyroscope;		 // degrees/s
 	FusionVector accelerometer; // g
 	FusionEuler euler;
-	double delta_seconds = 0;
 public:
+	uint32_t delta_micros = 0;
+	double delta_seconds = 0;
 	double x, y, z;
 	gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin);
 	uint8_t UpdateData();

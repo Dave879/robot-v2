@@ -277,6 +277,7 @@ void Robot::Run()
 						Serial.print("\tcurrent y: ");
 						Serial.println(current_y);
 			*/
+			bool already_visisted = maze->find({current_x, current_y, old_tile_x, old_tile_y});
 			maze->push({current_x, current_y, old_tile_x, old_tile_y});
 			maze->print();
 			// Blue tile check
@@ -306,21 +307,24 @@ void Robot::Run()
 			Serial.println("Nuova tile");
 			Serial.print("Front: ");
 			Serial.print(GetFrontDistance());
-			Serial.print("\\tRight: ");
+			Serial.print("\\t Right: ");
 			Serial.print(GetRightDistance());
-			Serial.print("\\tLeft: ");
+			Serial.print("\\t Left: ");
 			Serial.print(GetLeftDistance());
-			Serial.print("\\tBack: ");
+			Serial.print("\\t Back: ");
 			Serial.println(GetBackDistance());
 
 			Serial.println("Distanze per nuova tile");
 			Serial.print("Front to reach: ");
 			Serial.print(front_distance_to_reach);
-			Serial.print("\\tBack to reach: ");
+			Serial.print("\\t Back to reach: ");
 			Serial.println(back_distance_to_reach);
 
-			ms->StopMotors();
-			FakeDelay(250);
+			if(!already_visisted)
+			{
+				ms->StopMotors();
+				FakeDelay(250);
+			}
 
 			// Victims detection
 			while (FoundVictim())
@@ -461,7 +465,10 @@ void Robot::Run()
 							// Giro a destra
 							TurnRight();
 							ms->StopMotors();
-							AfterTurnVictimDetection();
+							if (!already_visisted)
+							{
+								AfterTurnVictimDetection();
+							}
 						}
 					}
 					else
@@ -469,7 +476,10 @@ void Robot::Run()
 						// Giro a destra
 						TurnRight();
 						ms->StopMotors();
-						AfterTurnVictimDetection();
+						if (!already_visisted)
+						{
+							AfterTurnVictimDetection();
+						}
 					}
 				}
 				// Giro a sinistra
@@ -483,7 +493,10 @@ void Robot::Run()
 							// Giro a sinistra
 							TurnLeft();
 							ms->StopMotors();
-							AfterTurnVictimDetection();
+							if (!already_visisted)
+							{
+								AfterTurnVictimDetection();
+							}
 						}
 					}
 					else
@@ -491,7 +504,10 @@ void Robot::Run()
 						// Giro a sinistra
 						TurnLeft();
 						ms->StopMotors();
-						AfterTurnVictimDetection();
+						if (!already_visisted)
+						{
+							AfterTurnVictimDetection();
+						}
 					}
 				}
 			}
@@ -509,7 +525,10 @@ void Robot::Run()
 							// Giro a destra
 							TurnRight();
 							ms->StopMotors();
-							AfterTurnVictimDetection();
+							if (!already_visisted)
+							{
+								AfterTurnVictimDetection();
+							}
 						}
 					}
 					else
@@ -517,7 +536,10 @@ void Robot::Run()
 						// Giro a destra
 						TurnRight();
 						ms->StopMotors();
-						AfterTurnVictimDetection();
+						if (!already_visisted)
+						{
+							AfterTurnVictimDetection();
+						}
 					}
 				}
 				// Giro a sinistra
@@ -531,7 +553,10 @@ void Robot::Run()
 							// Giro a sinistra
 							TurnLeft();
 							ms->StopMotors();
-							AfterTurnVictimDetection();
+							if (!already_visisted)
+							{
+								AfterTurnVictimDetection();
+							}
 						}
 					}
 					else
@@ -539,7 +564,10 @@ void Robot::Run()
 						// Giro a sinistra
 						TurnLeft();
 						ms->StopMotors();
-						AfterTurnVictimDetection();
+						if (!already_visisted)
+						{
+							AfterTurnVictimDetection();
+						}
 					}
 				}
 			}
@@ -549,8 +577,10 @@ void Robot::Run()
 							TurnBack();
 						}
 			*/
-
-			FakeDelay(250);
+			if (!already_visisted)
+			{
+				FakeDelay(250);
+			}
 			SetNewTileDistances();
 
 			/*
@@ -592,7 +622,7 @@ void Robot::Run()
 		UpdateGyroBlocking();
 		if (imu->z - old_gyro_value > 0.1 || imu->z - old_gyro_value < -0.1)
 		{
-			digitalToggleFast(R_LED3_PIN);
+			digitalToggleFast(R_LED4_PIN);
 			old_gyro_value = imu->z;
 		}
 		if (!NotInRamp())
@@ -1237,6 +1267,7 @@ uint8_t Robot::TrySensorDataUpdate()
 		imu->UpdateData();
 		*imu_data_ready = false;
 	}
+
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		if (lasers_data_ready[i])
@@ -1251,6 +1282,7 @@ uint8_t Robot::TrySensorDataUpdate()
 			*imu_data_ready = false;
 		}
 	}
+
 
 	status |= ir_front->Read();
 
@@ -1352,6 +1384,7 @@ void Robot::PrintSensorData()
 	json_doc[doc_helper.AddLineGraph("Gyro X", -180, 180)] = imu->x;
 	json_doc[doc_helper.AddLineGraph("Gyro Y")] = imu->y;
 	json_doc[doc_helper.AddLineGraph("Gyro Z")] = imu->z;
+	json_doc[doc_helper.AddLineGraph("Gyro reading time")] = imu->delta_micros;
 	json_doc[doc_helper.AddLineGraph("Front distance (cm)")] = ir_front->tfDist;
 	json_doc[doc_helper.AddLineGraph("Front strength")] = ir_front->tfFlux;
 	//dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
