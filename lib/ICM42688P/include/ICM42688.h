@@ -4,8 +4,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <Fusion.h>
 #include "registers.h"
-
 
 class ICM42688
 {
@@ -61,16 +61,7 @@ public:
     bw_10
   };
 
-  int innerCalRoutine____temp();
-
-
-  /**
-   * @brief      Constructor for I2C communication
-   *
-   * @param      bus      I2C bus
-   * @param[in]  address  Address of ICM 42688-p device
-   */
-  ICM42688(TwoWire &bus, uint8_t address);
+  uint8_t firstCalibration();
 
   /**
    * @brief      Constructor for SPI communication
@@ -80,80 +71,28 @@ public:
    */
   ICM42688(SPIClass &bus, uint8_t csPin, uint32_t SPI_HS_CLK = 8000000);
 
-  /**
-   * @brief      Initialize the device.
-   *
-   * @return     ret < 0 if error
-   */
-  int begin();
+  uint8_t begin();
 
-  /**
-   * @brief      Sets the full scale range for the accelerometer
-   *
-   * @param[in]  fssel  Full scale selection
-   *
-   * @return     ret < 0 if error
-   */
-  int setAccelFS(AccelFS fssel);
+  uint8_t setAccelFS(AccelFS fssel);
 
-  /**
-   * @brief      Sets the full scale range for the gyro
-   *
-   * @param[in]  fssel  Full scale selection
-   *
-   * @return     ret < 0 if error
-   */
-  int setGyroFS(GyroFS fssel);
+  uint8_t setGyroFS(GyroFS fssel);
 
-  /**
-   * @brief      Set the ODR for accelerometer
-   *
-   * @param[in]  odr   Output data rate
-   *
-   * @return     ret < 0 if error
-   */
-  int setAccelODR(ODR odr);
+  uint8_t setAccelODR(ODR odr);
 
-  /**
-   * @brief      Set the ODR for gyro
-   *
-   * @param[in]  odr   Output data rate
-   *
-   * @return     ret < 0 if error
-   */
-  int setGyroODR(ODR odr);
+  uint8_t setGyroODR(ODR odr);
 
-  int configureNotchFilterBandwidth(Filter_BW f_bw);
-  int configureUIFilter(AAF_3db_bw_hz accel_bw, AAF_3db_bw_hz gyro_bw);
-  int configureUIFilterAccel(AAF_3db_bw_hz accel_bw);
-  int configureUIFilterGyro(AAF_3db_bw_hz gyro_bw);
+  uint8_t configureNotchFilterBandwidth(Filter_BW f_bw);
+  uint8_t configureUIFilter(AAF_3db_bw_hz accel_bw, AAF_3db_bw_hz gyro_bw);
+  uint8_t configureUIFilterAccel(AAF_3db_bw_hz accel_bw);
+  uint8_t configureUIFilterGyro(AAF_3db_bw_hz gyro_bw);
 
-  int setFilters(bool gyroFilters, bool accFilters);
+  uint8_t setFilters(bool gyroFilters, bool accFilters);
 
-  /**
-   * @brief      Enables the data ready interrupt.
-   *
-   *             - routes UI data ready interrupt to INT1
-   *             - push-pull, pulsed, active HIGH interrupts
-   *
-   * @return     ret < 0 if error
-   */
-  int enableDataReadyInterrupt();
+  uint8_t enableDataReadyInterrupt();
 
-  /**
-   * @brief      Masks the data ready interrupt
-   *
-   * @return     ret < 0 if error
-   */
-  int disableDataReadyInterrupt();
+  uint8_t disableDataReadyInterrupt(); // NEED TO CHECK
 
-  /**
-   * @brief      Transfers data from ICM 42688-p to microcontroller.
-   *             Must be called to access new measurements.
-   *
-   * @return     ret < 0 if error
-   */
-  int getAGT();
+  void ReadRawMeasurements();
 
   /**
    * @brief      Get accelerometer data, per axis
@@ -187,14 +126,14 @@ public:
   int16_t getGyroY_count();
   int16_t getGyroZ_count();
 
-  int calibrateGyro();
+  uint8_t calibrateGyro();
   float getGyroBiasX();
   float getGyroBiasY();
   float getGyroBiasZ();
   void setGyroBiasX(float bias);
   void setGyroBiasY(float bias);
   void setGyroBiasZ(float bias);
-  int calibrateAccel();
+  uint8_t calibrateAccel();
   float getAccelBiasX_mss();
   float getAccelScaleFactorX();
   float getAccelBiasY_mss();
@@ -204,35 +143,32 @@ public:
   void setAccelCalX(float bias, float scaleFactor);
   void setAccelCalY(float bias, float scaleFactor);
   void setAccelCalZ(float bias, float scaleFactor);
-  int enableExternalClock();
-  int enableAccelGyroLN();
-  int disableAccelGyro();
+  uint8_t enableExternalClock();
+  uint8_t enableAccelGyroLN();
+  uint8_t disableAccelGyro();
   bool dataIsReady();
 
 protected:
-  ///\brief I2C Communication
-  uint8_t _address = 0;
-  TwoWire *_i2c = {};
-  static constexpr uint32_t I2C_CLK = 400000; // 400 kHz
-  size_t _numBytes = 0;                       // number of bytes received from I2C
+  uint8_t status = 0;
 
   int16_t _rawMeas[7]; // temp, accel xyz, gyro xyz
 
   ///\brief SPI Communication
   SPIClass *_spi = {};
   uint8_t _csPin = 0;
-  bool _useSPI = false;
   bool _useSPIHS = false;
   static constexpr uint32_t SPI_LS_CLOCK = 1000000; // 1 MHz
   uint32_t SPI_HS_CLOCK = 8000000;                  // 8 MHz
 
   // buffer for reading from sensor
-  uint8_t _buffer[15] = {};
+  uint8_t _buffer[15] = {0};
+
+  bool gyro_accel_started = false;
 
   // data buffer
   float _t = 0.0f;
-  float _acc[3] = {};
-  float _gyr[3] = {};
+  float _acc[3] = {}; // [ x, y, z ]
+  float _gyr[3] = {}; // [ x, y, z ]
 
   ///\brief Full scale resolution factors
   float _accelScale = 0.0f;
@@ -254,8 +190,8 @@ protected:
   float _gyrB[3] = {};
 
   ///\brief Constants
-  static constexpr uint8_t WHO_AM_I = 0x47;      ///< expected value in UB0_REG_WHO_AM_I reg
-  static constexpr int NUM_CALIB_SAMPLES = 1000; ///< for gyro/accel bias calib
+  static constexpr uint8_t WHO_AM_I = 0x47;           ///< expected value in UB0_REG_WHO_AM_I reg
+  static constexpr uint16_t NUM_CALIB_SAMPLES = 1000; ///< for gyro/accel bias calib
 
   ///\brief Conversion formula to get temperature in Celsius (Sec 4.13)
   static constexpr float TEMP_DATA_REG_SCALE = 132.48f;
@@ -283,14 +219,14 @@ protected:
   const uint8_t ACCEL_AAF_DISABLE = 0x01;
 
   // private functions
-  int writeRegister(uint8_t subAddress, uint8_t data);
-  int readRegisters(uint8_t subAddress, uint8_t count, uint8_t *dest);
-  int setBank(uint8_t bank);
+  uint8_t writeRegister(uint8_t subAddress, uint8_t data);
+  void readRegisters(uint8_t subAddress, uint8_t count, uint8_t *dest);
+  uint8_t setBank(uint8_t bank);
 
   /**
    * @brief      Software reset of the device
    */
-  void reset();
+  uint8_t reset();
 
   /**
    * @brief      Read the WHO_AM_I register
@@ -304,33 +240,13 @@ class ICM42688_FIFO : public ICM42688
 {
 public:
   using ICM42688::ICM42688;
-  int enableFifo(bool accel, bool gyro, bool temp);
-  int readFifo();
-  void getFifoAccelX_mss(size_t *size, float *data);
-  void getFifoAccelY_mss(size_t *size, float *data);
-  void getFifoAccelZ_mss(size_t *size, float *data);
-  void getFifoGyroX(size_t *size, float *data);
-  void getFifoGyroY(size_t *size, float *data);
-  void getFifoGyroZ(size_t *size, float *data);
-  void getFifoTemperature_C(size_t *size, float *data);
-
-public:
-  // fifo
-  bool _enFifoAccel = false;
-  bool _enFifoGyro = false;
-  bool _enFifoTemp = false;
-  size_t _fifoSize = 0;
-  size_t _fifoFrameSize = 0;
-  float _axFifo[127] = {};
-  float _ayFifo[127] = {};
-  float _azFifo[127] = {};
-  size_t _aSize = 0;
-  float _gxFifo[127] = {};
-  float _gyFifo[127] = {};
-  float _gzFifo[127] = {};
-  size_t _gSize = 0;
-  float _tFifo[127] = {};
-  size_t _tSize = 0;
+  uint8_t enableFifo();
+  uint8_t readFifo(FusionAhrs &ahrs, float &euler_yaw);
+  FusionVector gyroscope;             // degrees/s
+  FusionVector accelerometer;         // g
+  const double delta_seconds = 0.01f; // 1s/100(odr)
+  uint32_t _fifoSize = 0;
+  const uint8_t _fifoFrameSize = 16; // If Accel + Gyro enabled packet size = 16 bytes as per datasheet
 };
 
 #endif // ICM42688_H

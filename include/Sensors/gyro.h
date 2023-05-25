@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ICM42688.h"
-#include "Fusion.h"
+#include <Fusion.h>
 #include "util.h"
 
 struct GyroData
@@ -23,7 +23,7 @@ public:
 	uint32_t past_millis_count_;
 	double drift_last_sec = 0.0f;
 	const double delta_seconds = 0.01f; // 1s/100(odr)
-	double x, y, z;
+	float x, y, z;
 	gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin);
 	uint8_t UpdateData();
 	void ResetZ();
