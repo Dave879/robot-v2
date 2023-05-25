@@ -23,8 +23,6 @@ enum color
 class DataFormatter
 {
 private:
-	unsigned int graph_index_;
-	unsigned int heatmap_index_;
 	unsigned long long pkt_idx_;
 	unsigned int rep_string_;
 	char numstr_[21];
@@ -35,15 +33,17 @@ private:
 
 public:
 	DataFormatter();
-	std::string AddBarGraph(std::string name);
-	std::string AddStringLog(color c);
+	std::string AddBarGraph(const std::string &name);
+	std::string AddBarGraph(const std::string &name, const int& id);
+	std::string AddStringLog(const color &c);
 	std::string AddStringLog();
 	std::string AddPacketIndex();
 	std::string AddRepeatedMessage();
-	std::string AddLineGraph(std::string name);
-	std::string AddLineGraph(std::string name, int min, int max);
-	std::string AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey, int min, int max);
-	std::string AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey);
+	std::string AddLineGraph(const std::string &name);
+	std::string AddLineGraph(const std::string &name, const int& id);
+	std::string AddLineGraph(const std::string &name, const int &min, const int &max);
+	std::string AddHeatmap(const std::string &name, const unsigned int &sizex, const unsigned int &sizey, const int &min, const int &max);
+	std::string AddHeatmap(const std::string &name, const unsigned int &sizex, const unsigned int &sizey);
 	uint64_t GetAndIncrementPacketIdx();
 	void ResetIdx();
 	~DataFormatter();

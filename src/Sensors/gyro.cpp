@@ -3,13 +3,16 @@
 
 gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), z(0.0f)
 {
-	pinMode(extClkPin, OUTPUT);
-	analogWriteFrequency(extClkPin, 36000);
-	analogWrite(extClkPin, 128);
+	/*
+		pinMode(extClkPin, OUTPUT);
+		analogWriteFrequency(extClkPin, 36000);
+		analogWrite(extClkPin, 128);
+	*/
 
-	IMU = new ICM42688(bus, csPin);
+	IMU = new ICM42688_FIFO(bus, csPin, 24000000);
 
 	int status = IMU->begin();
+	IMU->innerCalRoutine____temp();
 	if (status < 0)
 	{
 		Serial.println("IMU initialization unsuccessful");
@@ -21,51 +24,82 @@ gyro::gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin) : x(0.0f), y(0.0f), 
 	{
 		Serial.println("Found ICM42688P");
 	}
-	IMU->disableAccelGyro();
-	delay(10);
-	IMU->enableDataReadyInterrupt();
-	delay(10);
-	IMU->enableExternalClock();
-	delay(10);
-	IMU->setGyroFS(IMU->dps500);
-	delay(10);
-	IMU->setGyroODR(IMU->odr2k);
-	delay(10);
-	IMU->setAccelODR(IMU->odr2k);
-	delay(10);
-	IMU->enableAccelGyroLN();
-	delay(10);
+	Serial.print("Z gyro bias: ");
+	Serial.println(IMU->getGyroBiasZ());
+
+	// Bad solution but i don't care, there are bigger issues to fix - Dave 23/05/23
+#define CHECKSTATUS(x)                        \
+	if (x != 1)                                \
+	{                                          \
+		Serial.println("A gyro config failed"); \
+	}
+
+	status = IMU->enableDataReadyInterrupt();
+	CHECKSTATUS(status)
+	status = IMU->setFilters(true, false);
+	CHECKSTATUS(status)
+	status = IMU->configureUIFilter(AAF_3db_bw_hz::bw_3057, AAF_3db_bw_hz::bw_3057);
+	CHECKSTATUS(status)
+	status = IMU->setGyroFS(IMU->dps500);
+	CHECKSTATUS(status)
+	status = IMU->setGyroODR(IMU->odr100); // If this gets modified, also delta_seconds needs to change in gyro.h
+	CHECKSTATUS(status)
+	status = IMU->setAccelODR(IMU->odr100); // If this gets modified, also delta_seconds needs to change in gyro.h
+	CHECKSTATUS(status)
+	status = IMU->enableFifo(true, true, false);
+	CHECKSTATUS(status)
+	status = IMU->enableAccelGyroLN();
+	CHECKSTATUS(status)
+
 	FusionAhrsInitialise(&ahrs);
-	pastMicros = micros();
+	past_millis_count_ = millis();
+	IMU->readFifo();
 }
 
 uint8_t gyro::UpdateData()
 {
-	uint8_t status = IMU->getAGT();
-	delta_micros = micros() - pastMicros;
-	// double est_x_acc_rad = atanf(IMU->accY() / IMU->accZ());
-	// double est_y_acc_rad = -asinf(IMU->accX()); // Works only if stationary
-	delta_seconds = delta_micros / 1e6;
-	z -= IMU->gyrZ() * delta_seconds;
-	gyroscope.axis = {IMU->gyrX(), IMU->gyrY(), IMU->gyrZ()};
-	accelerometer.axis = {IMU->accX(), IMU->accY(), IMU->accZ()};
-	FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, delta_seconds);
+	int8_t status = IMU->readFifo();
+	CHECKSTATUS(status)
+	for (size_t i = 0; i < IMU->_fifoSize; i++)
+	{
+		z -= IMU->_gzFifo[i] * delta_seconds;
+		drift_last_sec += abs(IMU->_gzFifo[i] * delta_seconds);
+		gyroscope.axis = {IMU->_gxFifo[i], IMU->_gyFifo[i], IMU->_gzFifo[i]};
+		accelerometer.axis = {IMU->_axFifo[i], IMU->_ayFifo[i], IMU->_azFifo[i]};
+		FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, delta_seconds);
+		/*
+		LINEGRAPH_MULTI("Z gyro raw", IMU->_gzFifo[i], 1);
+		LINEGRAPH_MULTI("X gyro raw", IMU->_gxFifo[i], 1);
+		LINEGRAPH_MULTI("Y gyro raw", IMU->_gyFifo[i], 1);
+		LINEGRAPH_MULTI("Z accel raw", IMU->_azFifo[i], 2);
+		LINEGRAPH_MULTI("X accel raw", IMU->_axFifo[i], 2);
+		LINEGRAPH_MULTI("Y accel raw", IMU->_ayFifo[i], 2);
+		*/
+		count_++;
+	}
+	//LINEGRAPH("Integrated Z", z);
 	euler = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
 
-	// printf("Roll %0.1f, Pitch %0.1f, Yaw %0.1f\n", euler.angle.roll, euler.angle.pitch, euler.angle.yaw);
-	//  y += IMU->gyrY() * delta_micros / 1e6;
-	//  x += IMU->gyrX() * delta_micros / 1e6;
-	/*
-		Serial.print("{\"2&n&l&Gyro Z\":");
-	Serial.print(z);
-	Serial.print("}");
-	Serial.print("{\"3&n&l&Gyro reading time\":");
-	Serial.print(delta_micros);
-	Serial.print("}");
+/*
+	if (past_millis_count_ + 1000 < millis())
+	{
+		past_millis_count_ = millis();
+		Serial.print("Read count: ");
+		Serial.print(count_);
+		Serial.print("\t Drift last sec: ");
+		Serial.print(drift_last_sec);
+		Serial.print("°");
+		Serial.print("\t z:");
+		Serial.print(z);
+		Serial.print("°\t ");
+		Serial.print(millis() / 1000);
+		Serial.println("s");
+		drift_last_sec = 0;
+		count_ = 0;
+	}
+*/
 	x = euler.angle.roll;
-	*/
 	y = euler.angle.pitch;
-	pastMicros = micros();
 	return status;
 }
 

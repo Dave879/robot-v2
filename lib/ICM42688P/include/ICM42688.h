@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
+#include "registers.h"
+
 
 class ICM42688
 {
@@ -46,6 +48,21 @@ public:
     odr1a5625 = 0x0E, // LP mode only (accel only)
     odr500 = 0x0F,
   };
+
+  enum Filter_BW : uint8_t
+  {
+    bw_1449,
+    bw_680,
+    bw_329,
+    bw_162,
+    bw_80,
+    bw_40,
+    bw_20,
+    bw_10
+  };
+
+  int innerCalRoutine____temp();
+
 
   /**
    * @brief      Constructor for I2C communication
@@ -105,6 +122,11 @@ public:
    * @return     ret < 0 if error
    */
   int setGyroODR(ODR odr);
+
+  int configureNotchFilterBandwidth(Filter_BW f_bw);
+  int configureUIFilter(AAF_3db_bw_hz accel_bw, AAF_3db_bw_hz gyro_bw);
+  int configureUIFilterAccel(AAF_3db_bw_hz accel_bw);
+  int configureUIFilterGyro(AAF_3db_bw_hz gyro_bw);
 
   int setFilters(bool gyroFilters, bool accFilters);
 
@@ -182,9 +204,9 @@ public:
   void setAccelCalX(float bias, float scaleFactor);
   void setAccelCalY(float bias, float scaleFactor);
   void setAccelCalZ(float bias, float scaleFactor);
-  void enableExternalClock();
-  void enableAccelGyroLN();
-  void disableAccelGyro();
+  int enableExternalClock();
+  int enableAccelGyroLN();
+  int disableAccelGyro();
   bool dataIsReady();
 
 protected:
@@ -292,22 +314,22 @@ public:
   void getFifoGyroZ(size_t *size, float *data);
   void getFifoTemperature_C(size_t *size, float *data);
 
-protected:
+public:
   // fifo
   bool _enFifoAccel = false;
   bool _enFifoGyro = false;
   bool _enFifoTemp = false;
   size_t _fifoSize = 0;
   size_t _fifoFrameSize = 0;
-  float _axFifo[85] = {};
-  float _ayFifo[85] = {};
-  float _azFifo[85] = {};
+  float _axFifo[127] = {};
+  float _ayFifo[127] = {};
+  float _azFifo[127] = {};
   size_t _aSize = 0;
-  float _gxFifo[85] = {};
-  float _gyFifo[85] = {};
-  float _gzFifo[85] = {};
+  float _gxFifo[127] = {};
+  float _gyFifo[127] = {};
+  float _gzFifo[127] = {};
   size_t _gSize = 0;
-  float _tFifo[256] = {};
+  float _tFifo[127] = {};
   size_t _tSize = 0;
 };
 

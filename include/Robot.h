@@ -31,18 +31,18 @@ private:
 #define MIN_VALUE_BLUE_TILE 22
 #define MIN_VALUE_BLACK_TILE 11
 // PID controller constants
-#define KP 0.45			 //.5 // Proportional gain
-#define KI 0.0000001 //.2 // Integral gain
-#define KD 0			 //.1 // Derivative gain
+#define KP 0.0007		//.5 // Proportional gain
+#define KI 0 //.2 // Integral gain
+#define KD 0 //.1 // Derivative gain
 // Tile to tile
 #define DISTANCE_SENSOR_CELL 27
-#define DISTANCE_END_TILE_CENTER  60
-#define DISTANCE_FRONT_TO_CENTER_TILE  DISTANCE_END_TILE_CENTER + 70
-#define DISTANCE_BACK_TO_CENTER_TILE  60
+#define DISTANCE_END_TILE_CENTER 60
+#define DISTANCE_FRONT_TO_CENTER_TILE DISTANCE_END_TILE_CENTER + 70
+#define DISTANCE_BACK_TO_CENTER_TILE 60
 #define MIN_TIME_RAMP 3000
 #define RAMP_BACK_DIST 100
 
-	StaticJsonDocument<10000> json_doc;
+	StaticJsonDocument<5000> json_doc;
 	DataFormatter doc_helper;
 	JsonArray dist[4];
 
@@ -55,9 +55,9 @@ private:
 	uint32_t time_in_ramp = 0;
 	bool was_in_ramp = false;
 	bool going_down_ramp = false;
-/*
-	bool dont_look_back = false;
-*/
+	/*
+		bool dont_look_back = false;
+	*/
 	// Tile to tile variables
 	int32_t front_distance_to_reach = 0;
 	int32_t back_distance_to_reach = 0;
@@ -68,7 +68,8 @@ private:
 	/*
 	Direction può essere FW = 0, DX = 1, BW = 2, SX = 3
 	*/
-	enum dir {
+	enum dir
+	{
 		FW,
 		DX,
 		BW,
@@ -121,7 +122,7 @@ private:
 	void DropKit(int8_t number_of_kits, bool left_victim);
 	void AfterTurnVictimDetection();
 
-	double old_gyro_value; 
+	double old_gyro_value;
 
 	/**
 	 * PID controller variables

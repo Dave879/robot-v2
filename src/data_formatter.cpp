@@ -1,16 +1,21 @@
 #include "data_formatter.h"
 
-DataFormatter::DataFormatter() : graph_index_(0), heatmap_index_(0), pkt_idx_(0), rep_string_(0)
+DataFormatter::DataFormatter() : pkt_idx_(0), rep_string_(0)
 {
 }
 
-std::string DataFormatter::AddBarGraph(std::string name)
+std::string DataFormatter::AddBarGraph(const std::string &name)
 {
-	sprintf(numstr_, "%i", graph_index_++);
+	return "0&n&b&" + name;
+}
+
+std::string DataFormatter::AddBarGraph(const std::string &name, const int &id)
+{
+	sprintf(numstr_, "%i", id);
 	return std::string(numstr_) + "&n&b&" + name;
 }
 
-std::string DataFormatter::AddStringLog(color c)
+std::string DataFormatter::AddStringLog(const color &c)
 {
 	return "0&s&" + c;
 }
@@ -25,42 +30,44 @@ std::string DataFormatter::AddPacketIndex()
 	return "0&i";
 }
 
-std::string DataFormatter::AddLineGraph(std::string name)
+std::string DataFormatter::AddLineGraph(const std::string &name)
 {
-	sprintf(numstr_, "%i", graph_index_++);
+	return "0&n&l&" + name;
+}
+
+std::string DataFormatter::AddLineGraph(const std::string &name, const int &id)
+{
+	sprintf(numstr_, "%i", id);
 	return std::string(numstr_) + "&n&l&" + name;
 }
 
-std::string DataFormatter::AddLineGraph(std::string name, int min, int max)
+std::string DataFormatter::AddLineGraph(const std::string &name, const int &min, const int &max)
 {
 	sprintf(numstr_, "%i", min);
 	sprintf(numstr__, "%i", max);
-	sprintf(numstr___, "%i", graph_index_++);
-	return  std::string(numstr___) + "&n&l&" + name + "&" + numstr_ + "&" + numstr__;
+	return std::string(numstr___) + "&n&l&" + name + "&" + numstr_ + "&" + numstr__;
 }
 
-std::string DataFormatter::AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey, int min, int max)
+std::string DataFormatter::AddHeatmap(const std::string &name, const unsigned int &sizex, const unsigned int &sizey, const int &min, const int &max)
 {
 	sprintf(numstr_, "%i", sizex);
 	sprintf(numstr__, "%i", sizey);
 	sprintf(numstr___, "%i", min);
 	sprintf(numstr____, "%i", max);
-	sprintf(numstr_____, "%i", heatmap_index_++);
-	return std::string(numstr_____)+ "&n&h&" + name + "&" + numstr_ + "&" + numstr__ + "&" + numstr___ + "&" + numstr____;
+	return "0&n&h&" + name + "&" + numstr_ + "&" + numstr__ + "&" + numstr___ + "&" + numstr____;
 }
 
-std::string DataFormatter::AddHeatmap(std::string name, unsigned int sizex, unsigned int sizey)
+std::string DataFormatter::AddHeatmap(const std::string &name, const unsigned int &sizex, const unsigned int &sizey)
 {
 	sprintf(numstr_, "%i", sizex);
 	sprintf(numstr__, "%i", sizey);
-	sprintf(numstr_____, "%i", heatmap_index_++);
-	return std::string(numstr_____)+ "&n&h&" + name + "&" + numstr_ + "&" + numstr__;
+	return "0&n&h&" + name + "&" + numstr_ + "&" + numstr__;
 }
 
 std::string DataFormatter::AddRepeatedMessage()
 {
 	sprintf(numstr_____, "%i", rep_string_++);
-	return std::string(numstr_____)+ "&m";
+	return std::string(numstr_____) + "&m";
 }
 
 uint64_t DataFormatter::GetAndIncrementPacketIdx()
@@ -70,8 +77,6 @@ uint64_t DataFormatter::GetAndIncrementPacketIdx()
 
 void DataFormatter::ResetIdx()
 {
-	graph_index_ = 0;
-	heatmap_index_ = 0;
 	rep_string_ = 0;
 }
 

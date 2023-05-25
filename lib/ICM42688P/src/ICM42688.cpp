@@ -1,6 +1,4 @@
-#include <Arduino.h>
 #include "ICM42688.h"
-#include "registers.h"
 
 using namespace ICM42688reg;
 
@@ -62,6 +60,11 @@ int ICM42688::begin()
   if (ret < 0)
     return ret;
 
+  return 1;
+}
+
+int ICM42688::innerCalRoutine____temp()
+{
   // // disable inner filters (Notch filter, Anti-alias filter, UI filter block)
   // if (setFilters(false, false) < 0) {
   //   return -7;
@@ -75,33 +78,42 @@ int ICM42688::begin()
   {
     return -8;
   }
-
+  disableAccelGyro();
   // successful init, return 1
   return 1;
 }
 
-void ICM42688::enableAccelGyroLN()
+int ICM42688::enableAccelGyroLN()
 {
   _useSPIHS = false;
   // turn on accel and gyro in Low Noise (LN) Mode
-  writeRegister(UB0_REG_PWR_MGMT0, 0x0F);
-  delay(45);  // Gyroscope needs to be kept ON for a minimum of 45ms + From datasheet, do not issue any register writes for 200μs
+  if (writeRegister(UB0_REG_PWR_MGMT0, 0x0F) < 0)
+    return -1;
+  delay(45); // Gyroscope needs to be kept ON for a minimum of 45ms + From datasheet, do not issue any register writes for 200μs
+  return 1;
 }
 
-void ICM42688::disableAccelGyro()
+int ICM42688::disableAccelGyro()
 {
   _useSPIHS = false;
-  writeRegister(UB0_REG_PWR_MGMT0, 0x00);
+  if (writeRegister(UB0_REG_PWR_MGMT0, 0x00) < 0)
+  {
+    return -1;
+  }
   delayMicroseconds(200); // From datasheet, do not issue any register writes for 200μs
+  return 1;
 }
 
-void ICM42688::enableExternalClock()
+int ICM42688::enableExternalClock()
 {
   _useSPIHS = false;
   setBank(0);
-  writeRegister(UB0_REG_INTF_CONFIG1, 0x95);
+  if (writeRegister(UB0_REG_INTF_CONFIG1, 0x95) < 0)
+    return -1;
   setBank(1);
-  writeRegister(UB1_REG_INTF_CONFIG5, 0x04);
+  if (writeRegister(UB1_REG_INTF_CONFIG5, 0x04) < 0)
+    return -1;
+  return 1;
 }
 bool ICM42688::dataIsReady()
 {
@@ -207,6 +219,80 @@ int ICM42688::setGyroODR(ODR odr)
 
   return 1;
 }
+// What does "Factory trimmed" mean?
+int ICM42688::configureNotchFilterBandwidth(Filter_BW f_bw)
+{
+  if (setBank(1) < 0)
+    return -1;
+  uint8_t v = 0x01 | f_bw << 4;
+  if (writeRegister(UB1_REG_GYRO_CONFIG_STATIC10, v) < 0)
+  {
+    return -2;
+  }
+  return 1;
+}
+
+int ICM42688::configureUIFilter(AAF_3db_bw_hz accel_bw, AAF_3db_bw_hz gyro_bw)
+{
+  return configureUIFilterAccel(accel_bw);
+  return configureUIFilterGyro(gyro_bw);
+}
+
+int ICM42688::configureUIFilterAccel(AAF_3db_bw_hz accel_bw)
+{
+  _useSPIHS = false;
+
+  if (setBank(2) < 0)
+    return -1;
+  uint8_t accel_reg_val;
+  if (readRegisters(UB2_REG_ACCEL_CONFIG_STATIC2, 1, &accel_reg_val) < 0)
+    return -2;
+  accel_reg_val &= 0x81; // Clear bits 1-6
+  accel_reg_val |= accel_bw << 1;
+  if (writeRegister(UB2_REG_ACCEL_CONFIG_STATIC2, accel_reg_val) < 0) // Write ACCEL_AAF_DELT
+  {
+    return -2;
+  }
+
+  if (writeRegister(UB2_REG_ACCEL_CONFIG_STATIC3, (uint8_t)aaf_reg_val[accel_bw].AAF_DELTSQR) < 0) // Write to ACCEL_AAF_DELTSQR
+  {
+    return -2;
+  }
+  accel_reg_val = aaf_reg_val[accel_bw].AAF_BITSHIFT << 4 | highByte(aaf_reg_val[accel_bw].AAF_DELTSQR); // Write higher nibble of ACCEL_AAF_DELTSQR and ACCEL_AAF_BITSHIFT
+  if (writeRegister(UB2_REG_ACCEL_CONFIG_STATIC4, accel_reg_val) < 0)
+  {
+    return -2;
+  }
+  return 1;
+}
+
+int ICM42688::configureUIFilterGyro(AAF_3db_bw_hz gyro_bw)
+{
+  _useSPIHS = false;
+
+  if (setBank(1) < 0)
+    return -1;
+  uint8_t gyro_reg_val;
+  if (readRegisters(UB1_REG_GYRO_CONFIG_STATIC3, 1, &gyro_reg_val) < 0)
+    return -2;
+  gyro_reg_val &= 0xC0; // Clear bits 0-5
+  gyro_reg_val |= gyro_bw;
+  if (writeRegister(UB1_REG_GYRO_CONFIG_STATIC3, gyro_reg_val) < 0) // Write GYRO_AAF_DELT
+  {
+    return -2;
+  }
+
+  if (writeRegister(UB1_REG_GYRO_CONFIG_STATIC4, (uint8_t)aaf_reg_val[gyro_bw].AAF_DELTSQR) < 0) // Write lower bits of GYRO_AAF_DELTSQR
+  {
+    return -2;
+  }
+  gyro_reg_val = aaf_reg_val[gyro_bw].AAF_BITSHIFT << 4 | highByte(aaf_reg_val[gyro_bw].AAF_DELTSQR);
+  if (writeRegister(UB2_REG_ACCEL_CONFIG_STATIC4, gyro_reg_val) < 0) // Write GYRO_AAF_DELTSQR in the lower nibble and GYRO_AAF_BITSHIFT in the higher one
+  {
+    return -2;
+  }
+  return 1;
+}
 
 int ICM42688::setFilters(bool gyroFilters, bool accFilters)
 {
@@ -256,7 +342,7 @@ int ICM42688::enableDataReadyInterrupt()
   _useSPIHS = false;
 
   // push-pull, pulsed, active HIGH interrupts
-  if (writeRegister(UB0_REG_INT_CONFIG, 0x18 | 0x03) < 0)
+  if (writeRegister(UB0_REG_INT_CONFIG, 0x8 | 0x03) < 0)
     return -1;
 
   // need to clear bit 4 to allow proper INT1 and INT2 operation
@@ -326,14 +412,25 @@ int ICM42688_FIFO::enableFifo(bool accel, bool gyro, bool temp)
 {
   // use low speed SPI for register setting
   _useSPIHS = false;
-  if (writeRegister(FIFO_EN, (accel * FIFO_ACCEL) | (gyro * FIFO_GYRO) | (temp * FIFO_TEMP_EN)) < 0)
+  setBank(0);
+  if (writeRegister(UB0_REG_FIFO_CONFIG, 0x40) < 0) // Set FIFO mode to Stream-to-FIFO
   {
     return -2;
   }
-  _enFifoAccel = accel;
-  _enFifoGyro = gyro;
-  _enFifoTemp = temp;
-  _fifoFrameSize = accel * 6 + gyro * 6 + temp * 2;
+  if (writeRegister(UB0_REG_FIFO_CONFIG1, 0x03) < 0) // Enable gyro and accel data output
+  {
+    return -2;
+  }
+
+  if (readRegisters(UB0_REG_INTF_CONFIG0, 1, _buffer) < 0)
+  {
+    return -1;
+  }
+  if (writeRegister(UB0_REG_INTF_CONFIG0, _buffer[0] | 0x40) < 0) // Set FIFO_COUNT to record count and not bytes
+  {
+    return -2;
+  }
+  _fifoFrameSize = 16; // Gyro and accel enabled
   return 1;
 }
 
@@ -342,50 +439,42 @@ int ICM42688_FIFO::readFifo()
 {
   _useSPIHS = true; // use the high speed SPI for data readout
   // get the fifo size
-  readRegisters(UB0_REG_FIFO_COUNTH, 2, _buffer);
-  _fifoSize = (((uint16_t)(_buffer[0] & 0x0F)) << 8) + (((uint16_t)_buffer[1]));
+  if (readRegisters(UB0_REG_FIFO_COUNTH, 2, _buffer) < 0)
+  {
+    return -1;
+  }
+  _fifoSize = (_buffer[0] << 8) | _buffer[1];
   // read and parse the buffer
-  for (size_t i = 0; i < _fifoSize / _fifoFrameSize; i++)
+  for (size_t i = 0; i < _fifoSize; i++)
   {
     // grab the data from the ICM42688
     if (readRegisters(UB0_REG_FIFO_DATA, _fifoFrameSize, _buffer) < 0)
     {
       return -1;
     }
-    if (_enFifoAccel)
-    {
-      // combine into 16 bit values
-      int16_t rawMeas[3];
-      rawMeas[0] = (((int16_t)_buffer[0]) << 8) | _buffer[1];
-      rawMeas[1] = (((int16_t)_buffer[2]) << 8) | _buffer[3];
-      rawMeas[2] = (((int16_t)_buffer[4]) << 8) | _buffer[5];
-      // transform and convert to float values
-      _axFifo[i] = ((rawMeas[0] * _accelScale) - _accB[0]) * _accS[0];
-      _ayFifo[i] = ((rawMeas[1] * _accelScale) - _accB[1]) * _accS[1];
-      _azFifo[i] = ((rawMeas[2] * _accelScale) - _accB[2]) * _accS[2];
-      _aSize = _fifoSize / _fifoFrameSize;
-    }
-    if (_enFifoTemp)
-    {
-      // combine into 16 bit values
-      int16_t rawMeas = (((int16_t)_buffer[0 + _enFifoAccel * 6]) << 8) | _buffer[1 + _enFifoAccel * 6];
-      // transform and convert to float values
-      _tFifo[i] = (static_cast<float>(rawMeas) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
-      _tSize = _fifoSize / _fifoFrameSize;
-    }
-    if (_enFifoGyro)
-    {
-      // combine into 16 bit values
-      int16_t rawMeas[3];
-      rawMeas[0] = (((int16_t)_buffer[0 + _enFifoAccel * 6 + _enFifoTemp * 2]) << 8) | _buffer[1 + _enFifoAccel * 6 + _enFifoTemp * 2];
-      rawMeas[1] = (((int16_t)_buffer[2 + _enFifoAccel * 6 + _enFifoTemp * 2]) << 8) | _buffer[3 + _enFifoAccel * 6 + _enFifoTemp * 2];
-      rawMeas[2] = (((int16_t)_buffer[4 + _enFifoAccel * 6 + _enFifoTemp * 2]) << 8) | _buffer[5 + _enFifoAccel * 6 + _enFifoTemp * 2];
-      // transform and convert to float values
-      _gxFifo[i] = (rawMeas[0] * _gyroScale) - _gyrB[0];
-      _gyFifo[i] = (rawMeas[1] * _gyroScale) - _gyrB[1];
-      _gzFifo[i] = (rawMeas[2] * _gyroScale) - _gyrB[2];
-      _gSize = _fifoSize / _fifoFrameSize;
-    }
+
+    // combine into 16 bit values
+    int16_t rawMeas[3];
+    rawMeas[0] = (((int16_t)_buffer[1]) << 8) | _buffer[2];
+    rawMeas[1] = (((int16_t)_buffer[3]) << 8) | _buffer[4];
+    rawMeas[2] = (((int16_t)_buffer[5]) << 8) | _buffer[6];
+    // transform and convert to float values
+    _axFifo[i] = ((rawMeas[0] * _accelScale) - _accB[0]) * _accS[0];
+    _ayFifo[i] = ((rawMeas[1] * _accelScale) - _accB[1]) * _accS[1];
+    _azFifo[i] = ((rawMeas[2] * _accelScale) - _accB[2]) * _accS[2];
+    _aSize = _fifoSize;
+
+    // NEED TO TEST
+    _tFifo[i] = (static_cast<float>(_buffer[13]) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
+
+    rawMeas[0] = (((int16_t)_buffer[7]) << 8) | _buffer[8];
+    rawMeas[1] = (((int16_t)_buffer[9]) << 8) | _buffer[10];
+    rawMeas[2] = (((int16_t)_buffer[11]) << 8) | _buffer[12];
+    // transform and convert to float values
+    _gxFifo[i] = (rawMeas[0] * _gyroScale) - _gyrB[0];
+    _gyFifo[i] = (rawMeas[1] * _gyroScale) - _gyrB[1];
+    _gzFifo[i] = (rawMeas[2] * _gyroScale) - _gyrB[2];
+    _gSize = _fifoSize;
   }
   return 1;
 }
@@ -444,7 +533,7 @@ int ICM42688::calibrateGyro()
 {
   // set at a lower range (more resolution) since IMU not moving
   const GyroFS current_fssel = _gyroFS;
-  if (setGyroFS(dps250) < 0)
+  if (setGyroFS(dps500) < 0)
     return -1;
 
   // take samples and find bias

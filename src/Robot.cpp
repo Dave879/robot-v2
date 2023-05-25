@@ -2,7 +2,6 @@
 
 Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 {
-
 	Serial.println("Servo setup started");
 	kit.attach(R_PIN_SERVO);
 	kit.write(0);
@@ -52,7 +51,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		otherwise if the data_ready array isn't initialized and an interrupt is
 		fired, the program will crash.
 	*/
-	//attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
+	// attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
@@ -320,7 +319,7 @@ void Robot::Run()
 			Serial.print("\\t Back to reach: ");
 			Serial.println(back_distance_to_reach);
 
-			if(!already_visisted)
+			if (!already_visisted)
 			{
 				ms->StopMotors();
 				FakeDelay(250);
@@ -1093,7 +1092,8 @@ int16_t Robot::GetPIDOutputAndSec()
 		Serial.print(".\tPID_output * elapsed_seconds: ");
 	*/
 	int16_t corr = PID_output * elapsed_seconds;
-	//	Serial.println(corr);
+	Serial.print("corr: ");
+	Serial.println(corr);
 
 	return corr;
 }
@@ -1232,7 +1232,7 @@ void Robot::FakeDelay(uint32_t time)
 	uint32_t time_to_wait = millis() + time;
 	while (millis() < time_to_wait)
 	{
-		if (imu_data_ready)
+		if (*imu_data_ready)
 		{
 			imu->UpdateData();
 			*imu_data_ready = false;
@@ -1262,12 +1262,6 @@ uint8_t Robot::TrySensorDataUpdate()
 
 	uint8_t status = 0;
 
-	if (imu_data_ready)
-	{
-		imu->UpdateData();
-		*imu_data_ready = false;
-	}
-
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		if (lasers_data_ready[i])
@@ -1276,24 +1270,13 @@ uint8_t Robot::TrySensorDataUpdate()
 			lasers_data_ready[i] = false;
 			status |= 0b10000 << i;
 		}
-		if (imu_data_ready)
-		{
-			imu->UpdateData();
-			*imu_data_ready = false;
-		}
 	}
-
 
 	status |= ir_front->Read();
 
 	// if (color_data_ready)
 	{
 		cs->getData();
-	}
-	if (*imu_data_ready)
-	{
-		imu->UpdateData();
-		*imu_data_ready = false;
 	}
 	return status;
 }
@@ -1303,7 +1286,7 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	uint32_t time_end = millis() + 500;
 	while (millis() < time_end)
 	{
-		if (imu_data_ready)
+		if (*imu_data_ready)
 		{
 			imu->UpdateData();
 			*imu_data_ready = false;
@@ -1361,7 +1344,7 @@ void Robot::UpdateGyroBlocking()
 {
 	while (true)
 	{
-		if (imu_data_ready)
+		if (*imu_data_ready)
 		{
 			imu->UpdateData();
 			*imu_data_ready = false;
@@ -1380,14 +1363,12 @@ void Robot::UpdateFrontBlocking()
 
 void Robot::PrintSensorData()
 {
-
-	json_doc[doc_helper.AddLineGraph("Gyro X", -180, 180)] = imu->x;
-	json_doc[doc_helper.AddLineGraph("Gyro Y")] = imu->y;
-	json_doc[doc_helper.AddLineGraph("Gyro Z")] = imu->z;
-	json_doc[doc_helper.AddLineGraph("Gyro reading time")] = imu->delta_micros;
-	json_doc[doc_helper.AddLineGraph("Front distance (cm)")] = ir_front->tfDist;
-	json_doc[doc_helper.AddLineGraph("Front strength")] = ir_front->tfFlux;
-	//dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
+	json_doc[doc_helper.AddLineGraph("Gyro X", 1)] = imu->x;
+	json_doc[doc_helper.AddLineGraph("Gyro Y", 1)] = imu->y;
+	json_doc[doc_helper.AddLineGraph("Gyro Z", 1)] = imu->z;
+	json_doc[doc_helper.AddLineGraph("Front distance (cm)", 2)] = ir_front->tfDist;
+	json_doc[doc_helper.AddLineGraph("Front strength", 2)] = ir_front->tfFlux;
+	// dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
 	dist[VL53L5CX::BW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX BW", 8, 8, 0, 1000));
 	dist[VL53L5CX::SX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX SX", 8, 8, 0, 1000));
 	dist[VL53L5CX::DX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX DX", 8, 8, 0, 1000));
@@ -1399,46 +1380,17 @@ void Robot::PrintSensorData()
 			dist[i].add(lasers->sensors[i]->GetData()->distance_mm[j]);
 		}
 	}
-
-	/*
-		for (uint8_t i = 0; i < 4; i++)
-		{
-			const char arr[4] = {'F', 'B', 'S', 'D'};
-			Serial.print("Sensor ");
-			Serial.print(arr[i]);
-			Serial.println(i);
-
-			for (uint8_t j = 0; j < lasers->resolution; j++)
-			{
-				// float how_many_tiles = lasers->sensors[i]->GetData()->distance_mm[j] / 300.0f;
-				Serial.print(lasers->sensors[i]->GetData()->distance_mm[j]);
-				Serial.print(", \t");
-				if ((j + 1) % 8 == 0)
-				{
-					Serial.print("\t");
-					for (uint8_t k = abs(7 - j); k <= j; k++)
-					{
-						Serial.print(lasers->sensors[i]->GetData()->target_status[k]);
-						Serial.print(", \t");
-					}
-					Serial.println();
-				}
-			}
-			Serial.println();
-		}
-	*/
-
-	json_doc[doc_helper.AddLineGraph("Color: c_comp", 0, 60)] = cs->c_comp;
-	// json_doc[doc_helper.AddLineGraph("Color: r_comp", 0, 500)] = cs->r_comp;
-	// json_doc[doc_helper.AddLineGraph("Color: g_comp", 0, 500)] = cs->g_comp;
-	// json_doc[doc_helper.AddLineGraph("Color: b_comp", 0, 500)] = cs->b_comp;
+	json_doc[doc_helper.AddLineGraph("Color: b_comp", 3)] = cs->b_comp;
+	json_doc[doc_helper.AddLineGraph("Color: c_comp", 3)] = cs->c_comp;
+	json_doc[doc_helper.AddLineGraph("Color: g_comp", 3)] = cs->g_comp;
+	json_doc[doc_helper.AddLineGraph("Color: r_comp", 3)] = cs->r_comp;
 
 	json_doc[doc_helper.AddPacketIndex()] = doc_helper.GetAndIncrementPacketIdx();
 
 	doc_helper.ResetIdx();
 	serializeJson(json_doc, Serial);
 	json_doc.clear();
-	dist->clear();
+
 	/*
 		Serial.print("Serial8 bits available for read (OpenMV DX): ");
 		Serial.println(Serial8.available());
