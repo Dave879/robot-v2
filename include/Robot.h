@@ -12,7 +12,7 @@
 #include "Sensors/LRir.h"
 #include "Sensors/Color.h"
 #include "data_formatter.h"
-#include "map.h"
+#include "mapping/graph.h"
 
 class Robot
 {
@@ -75,10 +75,14 @@ private:
 		BW,
 		SX
 	};
-	Map *maze;
+	/*
+	Graph
+	*/
+	graph *map;
 	int8_t direction = 0;
-	int16_t current_x = 1000;
-	int16_t current_y = 1000;
+	int16_t current_x = 0;
+	int16_t current_y = 0;
+	int16_t current_z = 0;
 	void GoToDirection(int8_t direction_to_go);
 
 	/**
