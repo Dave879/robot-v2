@@ -83,6 +83,14 @@ private:
 	int16_t current_x = 0;
 	int16_t current_y = 0;
 	int16_t current_z = 0;
+	bool first_tile = false;
+	int16_t previous_tile_y = current_y;
+	int16_t previous_tile_x = current_x;
+	int16_t previous_tile_z = current_z;
+	std::vector<Tile> path_to_tile;
+	std::vector<Tile> tile_to_visit;
+
+	Tile last_checkpoint;
 	void GoToDirection(int8_t direction_to_go);
 
 	/**

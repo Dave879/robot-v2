@@ -91,27 +91,24 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 
 	imu->ResetZ();
 
-	maze = new Map();
+	// Crea il grafo vuoto
+	map = new graph();
 
-	// Inizializzazione canale di comunicazione con OpenMV SX, e primo avvio se presente un muro a destra alla partenza
+	// Inizializzazione canale di comunicazione con OpenMV SX
 	Serial2.begin(115200);
-	Serial2.print('9');
 
-	// Inizializzazione canale di comunicazione con OpenMV DX, e primo avvio se presente un muro a destra alla partenza
+	// Inizializzazione canale di comunicazione con OpenMV DX
 	Serial8.begin(115200);
-	Serial8.print('9');
 
 	// Get first old_gyro value for check drift
 	old_gyro_value = imu->z;
-
-	// Initialize front/back distance to reach
-	SetNewTileDistances();
 }
 
 void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
 	{
+		/*
 		if (!NotInRamp())
 		{
 			if (!was_in_ramp)
@@ -138,15 +135,7 @@ void Robot::Run()
 					UpdateGyroBlocking();
 				}
 				// Serial.println(imu->y);
-				/*
-								ms->StopMotors();
-								Serial.println("Rampa fatta");
-								FakeDelay(1000);
-
-								maze->clear();
-								current_x = 1000;
-								current_y = 1000;
-				*/
+				
 				SetCurrentTileDistances();
 				// TODO: DA TOGLIERE
 				if (going_down_ramp)
@@ -155,13 +144,6 @@ void Robot::Run()
 					UpdateSensorNumBlocking(VL53L5CX::BW);
 					back_distance_to_reach = DISTANCE_BACK_TO_CENTER_TILE + (GetBackDistance() - DISTANCE_BACK_TO_CENTER_TILE);
 				}
-				/*
-								Serial.println("Distanze per nuova tile");
-								Serial.print("Front to reach: ");
-								Serial.print(front_distance_to_reach);
-								Serial.print("\tBack to reach: ");
-								Serial.print(back_distance_to_reach);
-				*/
 			}
 		}
 
@@ -213,15 +195,16 @@ void Robot::Run()
 			TurnBack();
 			SetCurrentTileDistances();
 		}
+		*/
 
 		// Se ho colpito un muretto con gli switch
 		if (digitalReadFast(R_COLLISION_SX_PIN) && NotInRamp())
 		{
 			ms->SetPower(-30, -100);
-			FakeDelay(350);
+			FakeDelay(400);
 			ms->StopMotors();
 			UpdateGyroBlocking();
-			while (imu->z <= desired_angle /*- ADDITIONAL_ANGLE_TO_OVERCOME*/)
+			while (imu->z <= desired_angle)
 			{
 				UpdateGyroBlocking();
 				ms->SetPower(-TURN_SPEED, TURN_SPEED);
@@ -232,11 +215,11 @@ void Robot::Run()
 		{
 			ms->SetPower(-100, -30);
 
-			FakeDelay(350);
+			FakeDelay(400);
 
 			ms->StopMotors();
 			UpdateGyroBlocking();
-			while (imu->z >= desired_angle /*+ ADDITIONAL_ANGLE_TO_OVERCOME*/)
+			while (imu->z >= desired_angle)
 			{
 				UpdateGyroBlocking();
 				ms->SetPower(TURN_SPEED, -TURN_SPEED);
@@ -245,44 +228,20 @@ void Robot::Run()
 		}
 
 		// Controllo se ho raggiunto una nuova tile
-		if ((NewTile() && NotInRamp()) || FrontWall())
+		if ((NewTile() && NotInRamp()))
 		{
-			/*
-						digitalWriteFast(R_LED1_PIN, HIGH);
-						digitalWriteFast(R_LED2_PIN, HIGH);
-						digitalWriteFast(R_LED3_PIN, HIGH);
-						digitalWriteFast(R_LED4_PIN, HIGH);
-			*/
-			// Send signal to watch for victims to OpenMV
-			UpdateSensorNumBlocking(VL53L5CX::SX);
-			UpdateSensorNumBlocking(VL53L5CX::DX);
-			if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
-			{
-				Serial8.print('9');
-			}
-			if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
-			{
-				Serial2.print('9');
-			}
-			// Mapping things
-			int16_t old_tile_x = current_x;
-			int16_t old_tile_y = current_y;
-			ChangeMapPosition();
-			/*
-						Serial.print("Direction: ");
-						Serial.println(direction);
-						Serial.print("current x: ");
-						Serial.print(current_x);
-						Serial.print("\tcurrent y: ");
-						Serial.println(current_y);
-			*/
-			bool already_visisted = maze->find({current_x, current_y, old_tile_x, old_tile_y});
-			maze->push({current_x, current_y, old_tile_x, old_tile_y});
-			maze->print();
+/*
+			digitalWriteFast(R_LED1_PIN, HIGH);
+			digitalWriteFast(R_LED2_PIN, HIGH);
+			digitalWriteFast(R_LED3_PIN, HIGH);
+			digitalWriteFast(R_LED4_PIN, HIGH);
+*/
 			// Blue tile check
+			bool blue_tile = false;
 			if (BlueTile())
 			{
 				ms->StopMotors();
+				blue_tile = true;
 				Serial.println("Tile blue");
 				for (int8_t i = 0; i < 5; i++)
 				{
@@ -299,32 +258,302 @@ void Robot::Run()
 				}
 			}
 
-			// Per fermare il robot per 0.5s ogni tile (sono per fase di test)
-			// ms->StopMotors();
-			// FakeDelay(500);
-
-			Serial.println("Nuova tile");
-			Serial.print("Front: ");
-			Serial.print(GetFrontDistance());
-			Serial.print("\\t Right: ");
-			Serial.print(GetRightDistance());
-			Serial.print("\\t Left: ");
-			Serial.print(GetLeftDistance());
-			Serial.print("\\t Back: ");
-			Serial.println(GetBackDistance());
-
-			Serial.println("Distanze per nuova tile");
-			Serial.print("Front to reach: ");
-			Serial.print(front_distance_to_reach);
-			Serial.print("\\t Back to reach: ");
-			Serial.println(back_distance_to_reach);
-
-			if (!already_visisted)
+			if (!path_to_tile.empty())
 			{
-				ms->StopMotors();
-				FakeDelay(250);
+				ChangeMapPosition();
+				if (current_x == path_to_tile.front().x)
+				{
+					if (current_y > path_to_tile.front().y)
+					{
+						GoToDirection(2);
+					}
+					else
+					{
+						GoToDirection(0);
+					}
+				}
+				else
+				{
+					if (current_x > path_to_tile.front().x)
+					{
+						GoToDirection(3);
+					}
+					else
+					{
+						GoToDirection(1);
+					}
+				}
+				path_to_tile.pop_back();
+			}
+			else
+			{
+				// Invio il segnale alle openMV
+				bool need_to_stop = false;
+				if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
+				{
+					Serial8.print('9');
+					need_to_stop = true;
+				}
+				if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
+				{
+					Serial2.print('9');
+					need_to_stop = true;
+				}
+
+				// Aggiungo il vertice corrente
+				map->AddVertex(Tile{current_y, current_x, current_z});
+
+				// Aggiungo angolo tra le due tile
+				int16_t previous_tile_y = current_y;
+				int16_t previous_tile_x = current_x;
+				int16_t previous_tile_z = current_z;
+				if (!first_tile)
+				{
+					ChangeMapPosition();
+				}
+				else
+				{
+					first_tile = false;
+				}
+				if (!blue_tile)
+				{
+					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 1);
+				}
+				else
+				{
+					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 5);
+				}
+
+				// Mi fermo nella tile solo se la tile non è mai stata visitata e sono presenti muri
+				bool already_visited = map->GetNode(Tile{current_y, current_x, current_z}) != -1;
+				if (already_visited && need_to_stop)
+				{
+					ms->StopMotors();
+					FakeDelay(250);
+				}
+				UpdateSensorNumBlocking(VL53L5CX::SX);
+				UpdateSensorNumBlocking(VL53L5CX::DX);
+				UpdateFrontBlocking();
+				UpdateSensorNumBlocking(VL53L5CX::BW);
+
+				int16_t next_tile = 0;
+				bool right_already_visited = false;
+				bool left_already_visited = false;
+				bool front_already_visited = false;
+				switch (direction)
+				{
+				case 0:
+					next_tile = current_x + 1;
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					next_tile = current_x - 1;
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					next_tile = current_y + 1;
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					break;
+				case 1:
+					next_tile = current_y - 1;
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					next_tile = current_y + 1;
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					next_tile = current_x + 1;
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					break;
+				case 2:
+					next_tile = current_x - 1;
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					next_tile = current_x + 1;
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					next_tile = current_y - 1;
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					break;
+				case 3:
+					next_tile = current_y + 1;
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					next_tile = current_y - 1;
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					next_tile = current_x - 1;
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					break;
+				default:
+					break;
+				}
+
+				bool right_blocked = !CanTurnRight() || right_already_visited;
+				bool left_blocked = !CanTurnLeft() || left_already_visited;
+				bool front_blocked = !CanGoOn() || front_already_visited;
+
+				Serial.print("Right blocked: ");
+				Serial.print(right_blocked);
+				Serial.print("\\tleft blocked: ");
+				Serial.print(left_blocked);
+				Serial.print("\\tfront blocked: ");
+				Serial.println(front_blocked);
+
+				if (right_blocked && left_blocked && front_blocked)
+				{
+					int len;
+					if (tile_to_visit.empty())
+					{
+						map->FindPathAStar(Tile{current_y, current_x, current_z}, Tile{0,0,0}, path_to_tile, len, direction);
+						// Da fare alla fine quando la tile da raggiungere era la 0,0,0 e non ci sono elementi nella lista tile_to_visit
+						/*
+						ms->StopMotors();
+						for (int8_t i = 0; i < 10; i++)
+						{
+							digitalWriteFast(R_LED1_PIN, HIGH);
+							FakeDelay(250);
+							digitalWriteFast(R_LED2_PIN, HIGH);
+							FakeDelay(250);
+							digitalWriteFast(R_LED4_PIN, HIGH);
+							FakeDelay(250);
+							digitalWriteFast(R_LED3_PIN, HIGH);
+							FakeDelay(250);
+							digitalWriteFast(R_LED1_PIN, LOW);
+							digitalWriteFast(R_LED2_PIN, LOW);
+							digitalWriteFast(R_LED3_PIN, LOW);
+							digitalWriteFast(R_LED4_PIN, LOW);
+						}
+						*/
+					}
+					else
+					{
+						map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.front(), path_to_tile, len, direction);
+						tile_to_visit.pop_back();
+					}
+				}
+				else if (!right_blocked && !left_blocked)
+				{
+					// Scelgo quale direzione prendere tra destra e sinistra
+					if (millis() % 2)
+					// Giro a destra
+					{
+						if (!front_blocked)
+						{
+							// Giro o continuo ad andare dritto
+							if (millis() % 2)
+							{
+								// Giro a destra
+								TurnRight();
+								ms->StopMotors();
+								if (!already_visited)
+								{
+									AfterTurnVictimDetection();
+								}
+							}
+						}
+						else
+						{
+							// Giro a destra
+							TurnRight();
+							ms->StopMotors();
+							if (!already_visited)
+							{
+								AfterTurnVictimDetection();
+							}
+						}
+					}
+					// Giro a sinistra
+					else
+					{
+						if (!front_blocked)
+						{
+							// Giro o continuo ad andare dritto
+							if (millis() % 2)
+							{
+								// Giro a sinistra
+								TurnLeft();
+								ms->StopMotors();
+								if (!already_visited)
+								{
+									AfterTurnVictimDetection();
+								}
+							}
+						}
+						else
+						{
+							// Giro a sinistra
+							TurnLeft();
+							ms->StopMotors();
+							if (!already_visited)
+							{
+								AfterTurnVictimDetection();
+							}
+						}
+					}
+				}
+				// Non è stato rilevato un varco simultaneo, ma solo a destra o sinistra
+				else if (!right_blocked || !left_blocked)
+				{
+					// Giro a destra
+					if (!right_blocked)
+					{
+						if (!front_blocked)
+						{
+							// Giro o continuo ad andare dritto
+							if (millis() % 2)
+							{
+								// Giro a destra
+								TurnRight();
+								ms->StopMotors();
+								if (!already_visited)
+								{
+									AfterTurnVictimDetection();
+								}
+							}
+						}
+						else
+						{
+							// Giro a destra
+							TurnRight();
+							ms->StopMotors();
+							if (!already_visited)
+							{
+								AfterTurnVictimDetection();
+							}
+						}
+					}
+					// Giro a sinistra
+					else if (!left_blocked)
+					{
+						if (!front_blocked)
+						{
+							// Giro o continuo ad andare dritto
+							if (millis() % 2)
+							{
+								// Giro a sinistra
+								TurnLeft();
+								ms->StopMotors();
+								if (!already_visited)
+								{
+									AfterTurnVictimDetection();
+								}
+							}
+						}
+						else
+						{
+							// Giro a sinistra
+							TurnLeft();
+							ms->StopMotors();
+							if (!already_visited)
+							{
+								AfterTurnVictimDetection();
+							}
+						}
+					}
+				}
+				/*
+							else if (!CanGoOn() && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+							{
+								TurnBack();
+							}
+				*/
+				if (!already_visited)
+				{
+					FakeDelay(250);
+				}
 			}
 
+			/*
 			// Victims detection
 			while (FoundVictim())
 			{
@@ -346,240 +575,8 @@ void Robot::Run()
 			}
 			Serial8.print('7');
 			Serial2.print('7');
-
-			UpdateSensorNumBlocking(VL53L5CX::SX);
-			UpdateSensorNumBlocking(VL53L5CX::DX);
-			UpdateFrontBlocking();
-			UpdateSensorNumBlocking(VL53L5CX::BW);
-
-			int16_t next_tile = 0;
-			bool right_already_visited = false;
-			bool left_already_visited = false;
-			bool front_already_visited = false;
-			switch (direction)
-			{
-			case 0:
-				next_tile = current_x + 1;
-				right_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-				next_tile = current_x - 1;
-				left_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-				next_tile = current_y + 1;
-				front_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-				break;
-			case 1:
-				next_tile = current_y - 1;
-				right_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-				next_tile = current_y + 1;
-				left_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-				next_tile = current_x + 1;
-				front_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-				break;
-			case 2:
-				next_tile = current_x - 1;
-				right_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-				next_tile = current_x + 1;
-				left_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-				next_tile = current_y - 1;
-				front_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-				break;
-			case 3:
-				next_tile = current_y + 1;
-				right_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-				next_tile = current_y - 1;
-				left_already_visited = maze->find({current_x, next_tile, old_tile_x, old_tile_y});
-				next_tile = current_x - 1;
-				front_already_visited = maze->find({next_tile, current_y, old_tile_x, old_tile_y});
-				break;
-			default:
-				break;
-			}
-
-			bool right_blocked = !CanTurnRight() || right_already_visited;
-			bool left_blocked = !CanTurnLeft() || left_already_visited;
-			bool front_blocked = !CanGoOn() || front_already_visited;
-
-			Serial.print("Right blocked: ");
-			Serial.print(right_blocked);
-			Serial.print("\\tleft blocked: ");
-			Serial.print(left_blocked);
-			Serial.print("\\tfront blocked: ");
-			Serial.println(front_blocked);
-
-			if (right_blocked && left_blocked && front_blocked)
-			{
-				Tile previous_tile = maze->get({current_x, current_y, old_tile_x, old_tile_y});
-				if (previous_tile.a == 1000 && previous_tile.b == 1000)
-				{
-					ms->StopMotors();
-					for (int8_t i = 0; i < 10; i++)
-					{
-						digitalWriteFast(R_LED1_PIN, HIGH);
-						FakeDelay(250);
-						digitalWriteFast(R_LED2_PIN, HIGH);
-						FakeDelay(250);
-						digitalWriteFast(R_LED4_PIN, HIGH);
-						FakeDelay(250);
-						digitalWriteFast(R_LED3_PIN, HIGH);
-						FakeDelay(250);
-						digitalWriteFast(R_LED1_PIN, LOW);
-						digitalWriteFast(R_LED2_PIN, LOW);
-						digitalWriteFast(R_LED3_PIN, LOW);
-						digitalWriteFast(R_LED4_PIN, LOW);
-					}
-				}
-				if (current_x == previous_tile.a)
-				{
-					if (current_y > previous_tile.b)
-					{
-						GoToDirection(2);
-					}
-					else
-					{
-						GoToDirection(0);
-					}
-				}
-				else
-				{
-					if (current_x > previous_tile.a)
-					{
-						GoToDirection(3);
-					}
-					else
-					{
-						GoToDirection(1);
-					}
-				}
-			}
-			else if (!right_blocked && !left_blocked)
-			{
-				// Scelgo quale direzione prendere tra destra e sinistra
-				if (millis() % 2)
-				// Giro a destra
-				{
-					if (!front_blocked)
-					{
-						// Giro o continuo ad andare dritto
-						if (millis() % 2)
-						{
-							// Giro a destra
-							TurnRight();
-							ms->StopMotors();
-							if (!already_visisted)
-							{
-								AfterTurnVictimDetection();
-							}
-						}
-					}
-					else
-					{
-						// Giro a destra
-						TurnRight();
-						ms->StopMotors();
-						if (!already_visisted)
-						{
-							AfterTurnVictimDetection();
-						}
-					}
-				}
-				// Giro a sinistra
-				else
-				{
-					if (!front_blocked)
-					{
-						// Giro o continuo ad andare dritto
-						if (millis() % 2)
-						{
-							// Giro a sinistra
-							TurnLeft();
-							ms->StopMotors();
-							if (!already_visisted)
-							{
-								AfterTurnVictimDetection();
-							}
-						}
-					}
-					else
-					{
-						// Giro a sinistra
-						TurnLeft();
-						ms->StopMotors();
-						if (!already_visisted)
-						{
-							AfterTurnVictimDetection();
-						}
-					}
-				}
-			}
-			// Non è stato rilevato un varco simultaneo, ma solo a destra o sinistra
-			else if (!right_blocked || !left_blocked)
-			{
-				// Giro a destra
-				if (!right_blocked)
-				{
-					if (!front_blocked)
-					{
-						// Giro o continuo ad andare dritto
-						if (millis() % 2)
-						{
-							// Giro a destra
-							TurnRight();
-							ms->StopMotors();
-							if (!already_visisted)
-							{
-								AfterTurnVictimDetection();
-							}
-						}
-					}
-					else
-					{
-						// Giro a destra
-						TurnRight();
-						ms->StopMotors();
-						if (!already_visisted)
-						{
-							AfterTurnVictimDetection();
-						}
-					}
-				}
-				// Giro a sinistra
-				else if (!left_blocked)
-				{
-					if (!front_blocked)
-					{
-						// Giro o continuo ad andare dritto
-						if (millis() % 2)
-						{
-							// Giro a sinistra
-							TurnLeft();
-							ms->StopMotors();
-							if (!already_visisted)
-							{
-								AfterTurnVictimDetection();
-							}
-						}
-					}
-					else
-					{
-						// Giro a sinistra
-						TurnLeft();
-						ms->StopMotors();
-						if (!already_visisted)
-						{
-							AfterTurnVictimDetection();
-						}
-					}
-				}
-			}
-			/*
-						else if (!CanGoOn() && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
-						{
-							TurnBack();
-						}
 			*/
-			if (!already_visisted)
-			{
-				FakeDelay(250);
-			}
+
 			SetNewTileDistances();
 
 			/*
@@ -666,6 +663,7 @@ bool Robot::StopRobot()
 	{
 		if (!first_time_pressed)
 		{
+			// Gestione stop robot
 			first_time_pressed = true;
 			stop_the_robot = !stop_the_robot;
 			// OpenMV discard old data
@@ -677,17 +675,28 @@ bool Robot::StopRobot()
 			{
 				Serial8.read();
 			}
-			// Reset gyro
-			imu->ResetZ();
-			desired_angle = 0;
-			// Reset Map
-			current_x = 1000;
-			current_y = 1000;
-			direction = 0;
-			maze->clear();
+			if (map->NumVertices() == 0)
+			{
+				// Reset gyro
+				imu->ResetZ();
+				desired_angle = 0;
+				first_tile = true;
+				last_checkpoint = Tile{current_y, current_x, current_z};	
+			}
+			else
+			{
+				current_y = last_checkpoint.y;
+				current_x = last_checkpoint.x;
+				current_z = last_checkpoint.z;
+				direction = 0;
+			}
 			// Set current front/back distance to reach
 			SetCurrentTileDistances();
+			// Spengo tutti i led per sicurezza
+			digitalWriteFast(R_LED1_PIN, LOW);
+			digitalWriteFast(R_LED2_PIN, LOW);
 			digitalWriteFast(R_LED3_PIN, LOW);
+			digitalWriteFast(R_LED4_PIN, LOW);
 		}
 	}
 	else
