@@ -96,16 +96,21 @@ bool graph::AddVertex(Tile t)
 
 bool graph::AddEdge(Tile from, Tile to, uint16_t weight)
 {
+  Serial.println("1--");
   if (from == to)
     return false;
   int16_t index_from;
   int16_t index_to;
+  Serial.println("2--");
   if (!IsVertexIn(from, index_from, graph_) || !IsVertexIn(to, index_to, graph_))
     return false;
+  Serial.println("3--");
   if (AuxAreAdjacent(index_from, index_to, graph_))
     return false;
+  Serial.println("4--");
   AddHalfEdge(index_from, index_to, weight, graph_);
   AddHalfEdge(index_to, index_from, weight, graph_);
+  Serial.println("5--");
   return true;
 }
 

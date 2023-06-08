@@ -108,7 +108,10 @@ void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
 	{
+		Serial.print("{\"0&m\":\""); // Inizio messaggio ripetuto
 		map->PrintMaze();
+		Serial.print("\"}"); // Fine messaggio ripetuto
+
 		/*
 		if (!NotInRamp())
 		{
@@ -229,7 +232,7 @@ void Robot::Run()
 		}
 
 		// Controllo se ho raggiunto una nuova tile
-		if ((NewTile() && NotInRamp()))
+		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
 /*
 			digitalWriteFast(R_LED1_PIN, HIGH);
@@ -301,8 +304,6 @@ void Robot::Run()
 					need_to_stop = true;
 				}
 
-				// Aggiungo il vertice corrente
-				map->AddVertex(Tile{current_y, current_x, current_z});
 
 				// Aggiungo angolo tra le due tile
 				int16_t previous_tile_y = current_y;
@@ -318,6 +319,9 @@ void Robot::Run()
 					Serial.println("Prima tile");
 					first_tile = false;
 				}
+
+				// Aggiungo il vertice corrente
+				map->AddVertex(Tile{current_y, current_x, current_z});
 				if (!blue_tile)
 				{
 					Serial.println("Arco aggiunto");
@@ -552,7 +556,7 @@ void Robot::Run()
 								TurnBack();
 							}
 				*/
-				if (!already_visited)
+				if (!already_visited && need_to_stop)
 				{
 					FakeDelay(250);
 				}
@@ -901,7 +905,7 @@ bool Robot::CanBumpBack()
 
 bool Robot::FrontWall()
 {
-	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && GetFrontDistance() != 0;
+	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && ir_front->tfFlux != 0;
 }
 
 bool Robot::BlackTile()
