@@ -345,35 +345,35 @@ void Robot::Run()
 				{
 				case 0:
 					next_tile = current_x + 1;
-					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
 					next_tile = current_x - 1;
-					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
 					next_tile = current_y + 1;
-					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
 					break;
 				case 1:
 					next_tile = current_y - 1;
-					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
 					next_tile = current_y + 1;
-					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
 					next_tile = current_x + 1;
-					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
 					break;
 				case 2:
 					next_tile = current_x - 1;
-					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
 					next_tile = current_x + 1;
-					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
 					next_tile = current_y - 1;
-					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
 					break;
 				case 3:
 					next_tile = current_y + 1;
-					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
 					next_tile = current_y - 1;
-					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
 					next_tile = current_x - 1;
-					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
 					break;
 				default:
 					break;
