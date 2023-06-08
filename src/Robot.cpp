@@ -108,10 +108,6 @@ void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
 	{
-		Serial.print("{\"0&m\":\""); // Inizio messaggio ripetuto
-		map->PrintMaze();
-		Serial.print("\"}"); // Fine messaggio ripetuto
-
 		/*
 		if (!NotInRamp())
 		{
@@ -587,6 +583,7 @@ void Robot::Run()
 			*/
 
 			SetNewTileDistances();
+			map->PrintMaze();
 
 			/*
 						digitalWriteFast(R_LED1_PIN, LOW);
