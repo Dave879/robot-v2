@@ -106,9 +106,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 
 void Robot::Run()
 {
-	map->PrintMaze();
 	if (!StopRobot()) // Robot in azione
 	{
+		map->PrintMaze();
 		/*
 		if (!NotInRamp())
 		{
@@ -310,18 +310,22 @@ void Robot::Run()
 				int16_t previous_tile_z = current_z;
 				if (!first_tile)
 				{
+					Serial.println("Cambiato posizione");
 					ChangeMapPosition();
 				}
 				else
 				{
+					Serial.println("Prima tile");
 					first_tile = false;
 				}
 				if (!blue_tile)
 				{
+					Serial.println("Arco aggiunto");
 					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 1);
 				}
 				else
 				{
+					Serial.println("Arco blue aggiunto");
 					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 5);
 				}
 
