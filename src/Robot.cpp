@@ -106,6 +106,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 
 void Robot::Run()
 {
+	map->PrintMaze();
 	if (!StopRobot()) // Robot in azione
 	{
 		/*

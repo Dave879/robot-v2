@@ -213,8 +213,11 @@ void graph::PrintGraph()
 
 void graph::PrintMaze()
 {
+  if (graph_.size() == 0)
+  {
+    return;
+  }
   std::vector<Tile> ordered_nodes;
-  ordered_nodes.reserve(1000);
   for (size_t i = 0; i < graph_.size(); i++)
   {
     uint16_t temp_index = 0;
@@ -612,6 +615,10 @@ void graph::FindPathAStar(const Tile &start, const Tile &goal, std::vector<Tile>
 
 void graph::PrintMazePath(std::vector<Tile> &path)
 {
+  if (graph_.size() == 0)
+  {
+    return;
+  }
   std::vector<Tile> ordered_nodes;
   ordered_nodes.reserve(1000);
   for (size_t i = 0; i < graph_.size(); i++)
