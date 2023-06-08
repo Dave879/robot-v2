@@ -261,9 +261,9 @@ void Robot::Run()
 			if (!path_to_tile.empty())
 			{
 				ChangeMapPosition();
-				if (current_x == path_to_tile.front().x)
+				if (current_x == path_to_tile.at(0).x)
 				{
-					if (current_y > path_to_tile.front().y)
+					if (current_y > path_to_tile.at(0).y)
 					{
 						GoToDirection(2);
 					}
@@ -274,7 +274,7 @@ void Robot::Run()
 				}
 				else
 				{
-					if (current_x > path_to_tile.front().x)
+					if (current_x > path_to_tile.at(0).x)
 					{
 						GoToDirection(3);
 					}
@@ -283,7 +283,7 @@ void Robot::Run()
 						GoToDirection(1);
 					}
 				}
-				path_to_tile.pop_back();
+				path_to_tile.erase(path_to_tile.begin());
 			}
 			else
 			{
@@ -326,7 +326,7 @@ void Robot::Run()
 
 				// Mi fermo nella tile solo se la tile non è mai stata visitata e sono presenti muri
 				bool already_visited = map->GetNode(Tile{current_y, current_x, current_z}) != -1;
-				if (already_visited && need_to_stop)
+				if (!already_visited && need_to_stop)
 				{
 					ms->StopMotors();
 					FakeDelay(250);
@@ -346,33 +346,33 @@ void Robot::Run()
 					next_tile = current_x + 1;
 					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
 					next_tile = current_x - 1;
-					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
 					next_tile = current_y + 1;
-					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
 					break;
 				case 1:
 					next_tile = current_y - 1;
 					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
 					next_tile = current_y + 1;
-					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
 					next_tile = current_x + 1;
-					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
 					break;
 				case 2:
 					next_tile = current_x - 1;
 					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
 					next_tile = current_x + 1;
-					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
 					next_tile = current_y - 1;
-					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
 					break;
 				case 3:
 					next_tile = current_y + 1;
 					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
 					next_tile = current_y - 1;
-					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
+					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z});
 					next_tile = current_x - 1;
-					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
+					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z});
 					break;
 				default:
 					break;
@@ -1052,6 +1052,12 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 void Robot::Straighten()
 {
+	consecutive_turns++;
+	if (consecutive_turns < 5)
+	{
+		return;
+	}
+	consecutive_turns = 0;
 	ms->SetPower(-100, -100);
 	FakeDelay(1200);
 	ms->StopMotors();
