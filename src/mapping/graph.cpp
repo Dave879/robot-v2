@@ -1,7 +1,19 @@
 #include <mapping/graph.h>
 
-graph::graph() {
-  graph_.reserve(100);
+//--------------------
+Vertex::Vertex(Tile t, HalfEdge *adjacency_list, bool visited)
+{
+  this->tile = t;
+  this->adjacency_list = adjacency_list;
+}
+Vertex::Vertex(Tile t)
+{
+  this->tile = t;
+}
+//--------------------
+graph::graph()
+{
+  graph_.reserve(1000);
 }
 graph::~graph() {}
 
@@ -9,7 +21,7 @@ graph::~graph() {}
 // It iterates over the graph and returns the index of the node if found, or -1 if not found.
 int32_t graph::GetNode(const Tile t)
 {
-  for (uint16_t i = 0; i < graph_.size(); i++)
+  for (uint32_t i = 0; i < graph_.size(); i++)
   {
     if (graph_.at(i).tile == t)
       return i;
@@ -19,9 +31,9 @@ int32_t graph::GetNode(const Tile t)
 
 // The IsVertexIn function is a helper function used by other functions to check if a vertex exists in the graph.
 // It also updates the index parameter if the vertex is found.
-bool IsVertexIn(Tile t, int16_t &index, const std::vector<Vertex> &graph_)
+bool IsVertexIn(Tile t, int32_t &index, const std::vector<Vertex> &graph_)
 {
-  for (uint16_t i = 0; i < graph_.size(); i++)
+  for (uint32_t i = 0; i < graph_.size(); i++)
   {
     if (graph_.at(i).tile == t)
     {
@@ -33,7 +45,7 @@ bool IsVertexIn(Tile t, int16_t &index, const std::vector<Vertex> &graph_)
 }
 
 // The AuxAreAdjacent function checks if two nodes (vertices) are adjacent in the graph by examining their adjacency lists.
-bool AuxAreAdjacent(uint16_t index_from, uint16_t index_to, const std::vector<Vertex> &graph_)
+bool AuxAreAdjacent(int32_t index_from, int32_t index_to, const std::vector<Vertex> &graph_)
 {
   HalfEdge *aux = graph_.at(index_from).adjacency_list;
   while (aux != NULL)
@@ -47,7 +59,7 @@ bool AuxAreAdjacent(uint16_t index_from, uint16_t index_to, const std::vector<Ve
 
 // The AddHalfEdge function adds a half-edge between two nodes in the graph.
 // It creates a new HalfEdge object and adds it to the adjacency list of the source node.
-void AddHalfEdge(uint16_t index_from, uint16_t index_to, uint8_t weight, std::vector<Vertex> &graph_)
+void AddHalfEdge(int32_t index_from, int32_t index_to, uint16_t weight, std::vector<Vertex> &graph_)
 {
   HalfEdge *e = new HalfEdge;
   e->weight = weight;
@@ -56,9 +68,29 @@ void AddHalfEdge(uint16_t index_from, uint16_t index_to, uint8_t weight, std::ve
   graph_.at(index_from).adjacency_list = e;
 }
 
+void ChangeHalfEdgeWeight(int32_t index_from, int32_t index_to, uint16_t weight, std::vector<Vertex> &graph_)
+{
+  for (HalfEdge *edges = graph_.at(index_from).adjacency_list; edges != nullptr; edges = edges->next_edge)
+  {
+    if (edges->vertex_index == index_to)
+    {
+      edges->weight = weight;
+      return;
+    }
+  }
+}
+
+void ChangeAdjacencyListWeight(int32_t index_tile, uint16_t weight, std::vector<Vertex> &graph_)
+{
+  for (HalfEdge *edges = graph_.at(index_tile).adjacency_list; edges != nullptr; edges = edges->next_edge)
+  {
+    edges->weight = weight;
+  }
+}
+
 // The RemoveHalfEdge function removes a half-edge between two nodes in the graph.
 // It searches for the specified edge and removes it from the adjacency list of the source node.
-void RemoveHalfEdge(uint16_t index_from, uint16_t index_to, std::vector<Vertex> &graph_)
+void RemoveHalfEdge(int32_t index_from, int32_t index_to, std::vector<Vertex> &graph_)
 {
   /* TODO */
   for (HalfEdge *edges = graph_.at(index_from).adjacency_list; edges != nullptr; edges = edges->next_edge)
@@ -96,21 +128,41 @@ bool graph::AddVertex(Tile t)
 
 bool graph::AddEdge(Tile from, Tile to, uint16_t weight)
 {
-  Serial.println("1--");
   if (from == to)
     return false;
-  int16_t index_from;
-  int16_t index_to;
-  Serial.println("2--");
+  int32_t index_from;
+  int32_t index_to;
   if (!IsVertexIn(from, index_from, graph_) || !IsVertexIn(to, index_to, graph_))
     return false;
-  Serial.println("3--");
   if (AuxAreAdjacent(index_from, index_to, graph_))
     return false;
-  Serial.println("4--");
   AddHalfEdge(index_from, index_to, weight, graph_);
   AddHalfEdge(index_to, index_from, weight, graph_);
-  Serial.println("5--");
+  return true;
+}
+
+bool graph::ChangeTileWeight(Tile from, Tile to, uint16_t weight)
+{
+  if (from == to)
+    return false;
+  int32_t index_from;
+  int32_t index_to;
+  if (!IsVertexIn(from, index_from, graph_) || !IsVertexIn(to, index_to, graph_))
+    return false;
+  if (!AuxAreAdjacent(index_from, index_to, graph_))
+    return false;
+  ChangeHalfEdgeWeight(index_from, index_to, weight, graph_);
+  ChangeHalfEdgeWeight(index_to, index_from, weight, graph_);
+  return true;
+}
+
+bool graph::ChangeTileAdjacencyListWeight(Tile tile, uint16_t weight)
+{
+  if (GetNode(tile) == -1)
+    return false;
+  if (graph_.at(GetNode(tile)).adjacency_list == nullptr)
+    return false;
+  ChangeAdjacencyListWeight(GetNode(tile), weight, graph_);
   return true;
 }
 
@@ -118,14 +170,30 @@ bool graph::RemoveEdge(Tile from, Tile to)
 {
   if (from == to)
     return false;
-  int16_t index_from;
-  int16_t index_to;
+  int32_t index_from;
+  int32_t index_to;
   if (!IsVertexIn(from, index_from, graph_) || !IsVertexIn(to, index_to, graph_))
     return false;
   if (!AuxAreAdjacent(index_from, index_to, graph_))
     return false;
   RemoveHalfEdge(index_from, index_to, graph_);
   RemoveHalfEdge(index_to, index_from, graph_);
+  return true;
+}
+
+bool graph::RemoveTileAdjacencyList(Tile tile)
+{
+  int32_t index_tile = GetNode(tile);
+  if (index_tile == -1)
+    return false;
+  if (graph_.at(index_tile).adjacency_list == nullptr)
+    return false;
+  HalfEdge *edges = graph_.at(index_tile).adjacency_list;
+  while (edges != nullptr)
+  {
+    RemoveEdge(graph_.at(edges->vertex_index).tile, graph_.at(index_tile).tile);
+    edges = edges->next_edge;
+  }
   return true;
 }
 
@@ -137,7 +205,7 @@ int graph::NumVertices()
 int graph::NumEdges()
 {
   int tot = 0;
-  for (uint16_t i = 0; i < graph_.size(); i++)
+  for (uint32_t i = 0; i < graph_.size(); i++)
   {
     NodeDegree(graph_.at(i).tile, tot);
   }
@@ -158,8 +226,8 @@ bool graph::NodeDegree(Tile t, int &degree)
 
 bool graph::AreAdjacent(Tile v1, Tile v2)
 {
-  int16_t index_from = -1;
-  int16_t index_to = -1;
+  int32_t index_from = -1;
+  int32_t index_to = -1;
   if (!IsVertexIn(v1, index_from, graph_) || !IsVertexIn(v2, index_to, graph_))
     return false;
   return AuxAreAdjacent(index_from, index_to, graph_);
@@ -225,7 +293,7 @@ void graph::PrintMaze()
   std::vector<Tile> ordered_nodes;
   for (size_t i = 0; i < graph_.size(); i++)
   {
-    uint16_t temp_index = 0;
+    int32_t temp_index = 0;
     for (size_t j = 0; j < ordered_nodes.size(); j++)
     {
       if (graph_.at(i).tile < ordered_nodes.at(j))
@@ -237,16 +305,16 @@ void graph::PrintMaze()
     ordered_nodes.insert(ordered_nodes.begin() + temp_index, graph_.at(i).tile);
   }
 
-  int16_t min_z = ordered_nodes.at(0).z;
-  int16_t max_z = ordered_nodes.at(ordered_nodes.size() - 1).z;
+  int32_t min_z = ordered_nodes.at(0).z;
+  int32_t max_z = ordered_nodes.at(ordered_nodes.size() - 1).z;
 
-  for (int16_t z = min_z; z <= max_z; z++)
+  for (int32_t z = min_z; z <= max_z; z++)
   {
     LOG3("Floor: ", (int)z, "\n");
-    int16_t max_x = ordered_nodes.at(0).x;
-    int16_t min_x = ordered_nodes.at(0).x;
-    int16_t max_y = ordered_nodes.at(0).y;
-    int16_t min_y = ordered_nodes.at(0).y;
+    int32_t max_x = ordered_nodes.at(0).x;
+    int32_t min_x = ordered_nodes.at(0).x;
+    int32_t max_y = ordered_nodes.at(0).y;
+    int32_t min_y = ordered_nodes.at(0).y;
     for (size_t i = 0; i < ordered_nodes.size(); i++)
     {
       if (z == ordered_nodes.at(i).z)
@@ -268,11 +336,11 @@ void graph::PrintMaze()
         min_y = ordered_nodes.at(i).y;
     }
 
-    for (int16_t y = min_y; y <= max_y; y++)
+    for (int32_t y = min_y; y <= max_y; y++)
     {
       for (int8_t i = 0; i < 3; i++)
       {
-        for (int16_t x = min_x; x <= max_x; x++)
+        for (int32_t x = min_x; x <= max_x; x++)
         {
           if (i == 0)
           {
@@ -335,7 +403,7 @@ void graph::PrintMaze()
               {
                 bool found = false;
                 std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
-                for (uint8_t i = 0; i < temp_vec.size(); i++)
+                for (int32_t i = 0; i < temp_vec.size(); i++)
                 {
                   if (temp_vec.at(i).z > z)
                   {
@@ -357,7 +425,7 @@ void graph::PrintMaze()
               {
                 std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
                 bool found = false;
-                for (uint8_t i = 0; i < temp_vec.size(); i++)
+                for (int32_t i = 0; i < temp_vec.size(); i++)
                 {
                   if (temp_vec.at(i).z > z)
                   {
@@ -402,7 +470,237 @@ void graph::PrintMaze()
         }
       }
     }
-    for (int16_t x = min_x; x <= max_x; x++)
+    for (int32_t x = min_x; x <= max_x; x++)
+    {
+      if (GetNode({max_y, x, z}) == -1)
+      {
+        if (GetNode({max_y, (int16_t)(x - 1), z}) == -1)
+        {
+          LOG("    ");
+        }
+        else
+        {
+          LOG("+   ");
+        }
+      }
+      else
+      {
+        LOG("+---");
+      }
+    }
+    if (GetNode({max_y, max_x, z}) != -1)
+    {
+      LOG("+\n");
+    }
+    else
+    {
+      LOG("\n");
+    }
+  }
+  LOG("\n");
+}
+
+void graph::PrintMaze(Tile current_position)
+{
+  if (graph_.size() == 0)
+  {
+    return;
+  }
+  std::vector<Tile> ordered_nodes;
+  for (size_t i = 0; i < graph_.size(); i++)
+  {
+    int32_t temp_index = 0;
+    for (size_t j = 0; j < ordered_nodes.size(); j++)
+    {
+      if (graph_.at(i).tile < ordered_nodes.at(j))
+      {
+        break;
+      }
+      temp_index++;
+    }
+    ordered_nodes.insert(ordered_nodes.begin() + temp_index, graph_.at(i).tile);
+  }
+
+  int32_t min_z = ordered_nodes.at(0).z;
+  int32_t max_z = ordered_nodes.at(ordered_nodes.size() - 1).z;
+
+  for (int32_t z = min_z; z <= max_z; z++)
+  {
+    LOG3("Floor: ", (int)z, "\n");
+    int32_t max_x = ordered_nodes.at(0).x;
+    int32_t min_x = ordered_nodes.at(0).x;
+    int32_t max_y = ordered_nodes.at(0).y;
+    int32_t min_y = ordered_nodes.at(0).y;
+    for (size_t i = 0; i < ordered_nodes.size(); i++)
+    {
+      if (z == ordered_nodes.at(i).z)
+        max_x = ordered_nodes.at(i).x;
+      min_x = ordered_nodes.at(i).x;
+      max_y = ordered_nodes.at(i).y;
+      min_y = ordered_nodes.at(i).y;
+      break;
+    }
+    for (size_t i = 0; i < ordered_nodes.size(); i++)
+    {
+      if (max_x < ordered_nodes.at(i).x && z == ordered_nodes.at(i).z)
+        max_x = ordered_nodes.at(i).x;
+      if (min_x > ordered_nodes.at(i).x && z == ordered_nodes.at(i).z)
+        min_x = ordered_nodes.at(i).x;
+      if (max_y < ordered_nodes.at(i).y && z == ordered_nodes.at(i).z)
+        max_y = ordered_nodes.at(i).y;
+      if (min_y > ordered_nodes.at(i).y && z == ordered_nodes.at(i).z)
+        min_y = ordered_nodes.at(i).y;
+    }
+
+    for (int32_t y = min_y; y <= max_y; y++)
+    {
+      for (int8_t i = 0; i < 3; i++)
+      {
+        for (int32_t x = min_x; x <= max_x; x++)
+        {
+          if (i == 0)
+          {
+            if (GetNode(Tile(y, x, z)) == -1)
+            {
+              if (GetNode({(int16_t)(y - 1), x, z}) != -1)
+              {
+                LOG("+---");
+              }
+              else
+              {
+                if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+                {
+                  LOG("+   ");
+                }
+                else
+                {
+                  LOG("    ");
+                }
+              }
+            }
+            else
+            {
+              if (AreAdjacent({y, x, z}, {(int16_t)(y - 1), x, z}))
+              {
+                if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}) && AreAdjacent({y, (int16_t)(x - 1), z}, {(int16_t)(y - 1), (int16_t)(x - 1), z}) && AreAdjacent({(int16_t)(y - 1), (int16_t)(x - 1), z}, {(int16_t)(y - 1), x, z}))
+                {
+                  LOG(" ");
+                  LOG("   ");
+                }
+                else
+                {
+                  LOG("+");
+                  LOG("   ");
+                }
+              }
+              else
+              {
+                LOG("+");
+                LOG("---");
+              }
+            }
+          }
+          else if (i == 1)
+          {
+            if (GetNode({y, x, z}) == -1)
+            {
+              if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+              {
+                LOG("|   ");
+              }
+              else
+              {
+                LOG("    ");
+              }
+            }
+            else
+            {
+              if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}))
+              {
+                if (Tile{y, x, z} == current_position)
+                {
+                  LOG("  R ");
+                }
+                else
+                {
+                  bool found = false;
+                  std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
+                  for (int32_t i = 0; i < temp_vec.size(); i++)
+                  {
+                    if (temp_vec.at(i).z > z)
+                    {
+                      LOG("  U ");
+                      found = true;
+                    }
+                    else if (temp_vec.at(i).z < z)
+                    {
+                      LOG("  D ");
+                      found = true;
+                    }
+                  }
+                  if (!found)
+                  {
+                    LOG("    ");
+                  }
+                }
+              }
+              else
+              {
+                if (Tile{y, x, z} == current_position)
+                {
+                  LOG("| R ");
+                }
+                else
+                {
+                  std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
+                  bool found = false;
+                  for (int32_t i = 0; i < temp_vec.size(); i++)
+                  {
+                    if (temp_vec.at(i).z > z)
+                    {
+                      LOG("| U ");
+                      found = true;
+                    }
+                    else if (temp_vec.at(i).z < z)
+                    {
+                      LOG("| D ");
+                      found = true;
+                    }
+                  }
+                  if (!found)
+                  {
+                    LOG("|   ");
+                  }
+                }
+              }
+            }
+          }
+        }
+        if (i == 0)
+        {
+          if (GetNode({y, max_x, z}) != -1 || GetNode({(int16_t)(y - 1), max_x, z}) != -1)
+          {
+            LOG("+\n");
+          }
+          else
+          {
+            LOG("\n");
+          }
+        }
+        else if (i == 1)
+        {
+          if (GetNode({y, max_x, z}) != -1)
+          {
+            LOG("|\n");
+          }
+          else
+          {
+            LOG("\n");
+          }
+        }
+      }
+    }
+    for (int32_t x = min_x; x <= max_x; x++)
     {
       if (GetNode({max_y, x, z}) == -1)
       {
@@ -628,7 +926,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
   ordered_nodes.reserve(1000);
   for (size_t i = 0; i < graph_.size(); i++)
   {
-    uint16_t temp_index = 0;
+    int32_t temp_index = 0;
     for (size_t j = 0; j < ordered_nodes.size(); j++)
     {
       if (graph_.at(i).tile < ordered_nodes.at(j))
@@ -640,16 +938,16 @@ void graph::PrintMazePath(std::vector<Tile> &path)
     ordered_nodes.insert(ordered_nodes.begin() + temp_index, graph_.at(i).tile);
   }
 
-  int16_t min_z = ordered_nodes.at(0).z;
-  int16_t max_z = ordered_nodes.at(ordered_nodes.size() - 1).z;
+  int32_t min_z = ordered_nodes.at(0).z;
+  int32_t max_z = ordered_nodes.at(ordered_nodes.size() - 1).z;
 
-  for (int16_t z = min_z; z <= max_z; z++)
+  for (int32_t z = min_z; z <= max_z; z++)
   {
     LOG3("Floor: ", (int)z, "\n");
-    int16_t max_x = ordered_nodes.at(0).x;
-    int16_t min_x = ordered_nodes.at(0).x;
-    int16_t max_y = ordered_nodes.at(0).y;
-    int16_t min_y = ordered_nodes.at(0).y;
+    int32_t max_x = ordered_nodes.at(0).x;
+    int32_t min_x = ordered_nodes.at(0).x;
+    int32_t max_y = ordered_nodes.at(0).y;
+    int32_t min_y = ordered_nodes.at(0).y;
     for (size_t i = 0; i < ordered_nodes.size(); i++)
     {
       if (z == ordered_nodes.at(i).z)
@@ -671,11 +969,11 @@ void graph::PrintMazePath(std::vector<Tile> &path)
         min_y = ordered_nodes.at(i).y;
     }
 
-    for (int16_t y = min_y; y <= max_y; y++)
+    for (int32_t y = min_y; y <= max_y; y++)
     {
       for (int8_t i = 0; i < 3; i++)
       {
-        for (int16_t x = min_x; x <= max_x; x++)
+        for (int32_t x = min_x; x <= max_x; x++)
         {
           if (i == 0)
           {
@@ -861,7 +1159,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
         }
       }
     }
-    for (int16_t x = min_x; x <= max_x; x++)
+    for (int32_t x = min_x; x <= max_x; x++)
     {
       if (GetNode({max_y, x, z}) == -1)
       {

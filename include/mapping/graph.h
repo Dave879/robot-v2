@@ -25,13 +25,13 @@ public:
     y = 0;
     z = 0;
   }
-  Tile(int16_t y, int16_t x, int16_t z)
+  Tile(int32_t y, int32_t x, int32_t z)
   {
     this->y = y;
     this->x = x;
     this->z = z;
   }
-  int16_t y, x, z;
+  int32_t y, x, z;
   size_t printTo(Print &p) const
   {
     size_t r = 0;
@@ -83,6 +83,10 @@ public:
   }
 };
 
+/**
+ * @struct HalfEdge
+ * @brief Represents a half-edge in the graph.
+ */
 struct HalfEdge
 {
   HalfEdge *next_edge;
@@ -90,19 +94,28 @@ struct HalfEdge
   uint16_t weight;
 };
 
+/**
+ * @struct Vertex
+ * @brief Represents a vertex in the graph.
+ */
 struct Vertex
 {
   Tile tile;
   HalfEdge *adjacency_list;
-  Vertex(Tile t, HalfEdge *adjacency_list, bool visited)
-  {
-    this->tile = t;
-    this->adjacency_list = adjacency_list;
-  }
-  Vertex(Tile t)
-  {
-    this->tile = t;
-  }
+
+  /**
+   * @brief Constructs a Vertex object with the given tile and adjacency list.
+   * @param t The tile associated with the vertex.
+   * @param adjacency_list The adjacency list of the vertex.
+   * @param visited Flag indicating if the vertex has been visited during graph traversal.
+   */
+  Vertex(Tile t, HalfEdge *adjacency_list, bool visited);
+
+  /**
+   * @brief Constructs a Vertex object with the given tile.
+   * @param t The tile associated with the vertex.
+   */
+  Vertex(Tile t);
 };
 
 /**
@@ -226,16 +239,7 @@ public:
    * @param tile The tile associated with the vertex.
    * @return The index of the tile in the graph vector, or -1 if not found.
    */
-  int32_t GetNode(const Tile &tile);
-
-  /**
-   * @brief Finds a path between two vertices in the graph using Depth-First Search (DFS) algorithm.
-   * @param start The tile associated with the start vertex.
-   * @param goal The tile associated with the goal vertex.
-   * @param path The vector to store the tiles of the found path.
-   * @param len The length of the found path.
-   */
-  void FindPathDFS(Tile start, Tile goal, std::vector<Tile> &path, int &len);
+  int32_t GetNode(const Tile tile);
 
   /**
    * @brief Finds a path between two vertices in the graph using the A* algorithm.
