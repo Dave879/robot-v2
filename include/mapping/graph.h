@@ -105,64 +105,167 @@ struct Vertex
   }
 };
 
+/**
+ * @class graph
+ * @brief Represents a graph data structure.
+ */
 class graph
 {
 private:
   std::vector<Vertex> graph_;
-  // std::vector<HalfEdge> edges;
 
 public:
+  /**
+   * @brief Default constructor for the graph class.
+   */
   graph();
+
+  /**
+   * @brief Destructor for the graph class.
+   */
   ~graph();
 
-  // The AddVertex function adds a new vertex (node) to the graph with the given tile.
-  // It checks if the vertex already exists and returns false if it does.
-  // Otherwise, it creates a new Vertex object and adds it to the graph.
-  bool AddVertex(Tile);
+  /**
+   * @brief Adds a new vertex (node) to the graph with the given tile.
+   * @param tile The tile associated with the new vertex.
+   * @return True if the vertex is successfully
 
-  // The AddEdge function adds an edge between two vertices in the graph.
-  // It checks if both vertices exist, if the edge already exists, and if the source and target vertices are the same.
-  // If any of these conditions are met, it returns false. Otherwise, it adds two half-edges between the vertices with the specified weight.
-  bool AddEdge(Tile, Tile, uint16_t weight);
+    added, false if it already exists.
+   */
+  bool AddVertex(Tile tile);
 
-  // The RemoveEdge function removes an edge between two vertices in the graph.
-  // It checks if both vertices exist and if the edge exists. If any of these conditions are not met, it returns false.
-  // Otherwise, it removes the corresponding half-edges.
+  /**
+   * @brief Adds an edge between two vertices in the graph.
+   * @param from The tile associated with the source vertex.
+   * @param to The tile associated with the target vertex.
+   * @param weight The weight of the edge.
+   * @return True if the edge is successfully added, false if any of the conditions are not met.
+   */
+  bool AddEdge(Tile from, Tile to, uint16_t weight);
+
+  /**
+   * @brief Changes the weight of an existing edge between two vertices in the graph.
+   * @param from The tile associated with the source vertex.
+   * @param to The tile associated with the target vertex.
+   * @param weight The new weight of the edge.
+   * @return True if the weight is successfully changed, false if any of the conditions are not met.
+   */
+  bool ChangeTileWeight(Tile from, Tile to, uint16_t weight);
+
+  /**
+   * @brief Changes the weight of the adjacency list of a tile in the graph.
+   * This function updates the weight of all edges in the adjacency list of the specified tile.
+   * @param tile The tile associated with the adjacency list.
+   * @param weight The new weight to assign to the adjacency list edges.
+   * @return True if the weight is successfully changed, false if the tile is not found.
+   */
+  bool ChangeTileAdjacencyListWeight(Tile tile, uint16_t weight);
+
+  /**
+   * @brief Removes an edge between two vertices in the graph.
+   * @param from The tile associated with the source vertex.
+   * @param to The tile associated with the target vertex.
+   * @return True if the edge is successfully removed, false if any of the conditions are not met.
+   */
   bool RemoveEdge(Tile from, Tile to);
 
-  // The NumVertices function returns the number of vertices in the graph by returning the size of the graph_ vector.
+  /**
+   * @brief Removes the adjacency list of a tile from the graph.
+   * 
+   * This function removes the adjacency list of the specified tile from the graph.
+   * 
+   * @param tile The tile associated with the adjacency list to remove.
+   * @return True if the adjacency list is successfully removed, false if the tile is not found.
+   */
+  bool RemoveTileAdjacencyList(Tile tile);  
+
+  /**
+   * @brief Returns the number of vertices in the graph.
+   * @return The number of vertices in the graph.
+   */
   int NumVertices();
 
-  // The NumEdges function returns the number of edges in the graph.
-  // It iterates over all vertices and calls the NodeDegree function to count the edges incident to each vertex.
-  // The total count is divided by 2 since each edge is counted twice.
+  /**
+   * @brief Returns the number of edges in the graph.
+   * @return The number of edges in the graph.
+   */
   int NumEdges();
 
-  // The NodeDegree function calculates the degree of a given vertex (node) in the graph.
-  // It counts the number of adjacent vertices by iterating over the adjacency list of the vertex.
-  bool NodeDegree(Tile, int &);
+  /**
+   * @brief Calculates the degree of a given vertex in the graph.
+   * @param tile The tile associated with the vertex.
+   * @param degree The calculated degree of the vertex.
+   * @return True if the vertex exists and the degree is calculated successfully, false otherwise.
+   */
+  bool NodeDegree(Tile tile, int &degree);
 
-  // The AreAdjacent function checks if two vertices are adjacent (connected by an edge) in the graph.
-  // It uses the AuxAreAdjacent function to determine adjacency.
-  bool AreAdjacent(Tile, Tile);
+  /**
+   * @brief Checks if two vertices are adjacent (connected by an edge) in the graph.
+   * @param tile1 The tile associated with the first vertex.
+   * @param tile2 The tile associated with the second vertex.
+   * @return True if the vertices are adjacent, false otherwise.
+   */
+  bool AreAdjacent(Tile tile1, Tile tile2);
 
-  // The GetAdjacencyList function returns the adjacency list of a vertex as a vector of tiles.
-  // It retrieves the adjacency list of the vertex and converts it to a vector of tiles.
-  std::vector<Tile> GetAdjacencyList(Tile t);
+  /**
+   * @brief Returns the adjacency list of a vertex as a vector of tiles.
+   * @param tile The tile associated with the vertex.
+   * @return The adjacency list of the vertex as a vector of tiles.
+   */
+  std::vector<Tile> GetAdjacencyList(Tile tile);
 
-  std::vector<std::pair<Tile, uint16_t>> GetWeightedAdjacencyList(Tile v1);
+  /**
+   * @brief Returns the weighted adjacency list of a vertex.
+   * @param tile The tile associated with the vertex.
+   * @return The weighted adjacency list of the vertex as a vector of tile-weight pairs.
+   */
+  std::vector<std::pair<Tile, uint16_t>> GetWeightedAdjacencyList(Tile tile);
 
-  int32_t GetNode(const Tile t);
+  /**
+   * @brief Returns the index of the given tile in the graph vector.
+   * @param tile The tile associated with the vertex.
+   * @return The index of the tile in the graph vector, or -1 if not found.
+   */
+  int32_t GetNode(const Tile &tile);
 
-  // The FindPathDFS function finds a path between two vertices in the graph, using DFS algorithm.
-  // It calls the FindPathAux function and populates the path vector with the tiles of.
-  void FindPathDFS(Tile, Tile, std::vector<Tile> &, int &);
+  /**
+   * @brief Finds a path between two vertices in the graph using Depth-First Search (DFS) algorithm.
+   * @param start The tile associated with the start vertex.
+   * @param goal The tile associated with the goal vertex.
+   * @param path The vector to store the tiles of the found path.
+   * @param len The length of the found path.
+   */
+  void FindPathDFS(Tile start, Tile goal, std::vector<Tile> &path, int &len);
 
+  /**
+   * @brief Finds a path between two vertices in the graph using the A* algorithm.
+   * @param start The tile associated with the start vertex.
+   * @param goal The tile associated with the goal vertex.
+   * @param path The vector to store the tiles of the found path.
+   * @param len The length of the found path.
+   * @param direction The direction of the search.
+   */
   void FindPathAStar(const Tile &start, const Tile &goal, std::vector<Tile> &path, int &len, int const direction);
 
+  /**
+   * @brief Prints the graph.
+   */
   void PrintGraph();
 
+  /**
+   * @brief Prints the maze.
+   */
   void PrintMaze();
 
+  /**
+   * @brief Prints the maze.
+   * @param current_position The current position in the maze.
+   */
+  void PrintMaze(Tile current_position);
+
+  /**
+   * @brief Prints the maze path.
+   * @param path The path to be printed.
+   */
   void PrintMazePath(std::vector<Tile> &path);
 };
