@@ -7,6 +7,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	kit.write(0);
 	Serial.println("Finished servo setup!");
 
+	pinMode(R_BUZZER_PIN, OUTPUT);
+	tone(R_BUZZER_PIN, 4000, 1000);
+
 	this->imu = imu;
 	imu_data_ready = imu_dr;
 	if (cold_start)
@@ -95,10 +98,10 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	map = new graph();
 
 	// Inizializzazione canale di comunicazione con OpenMV SX
-	Serial2.begin(115200);
+	OPENMV_SX.begin(115200);
 
 	// Inizializzazione canale di comunicazione con OpenMV DX
-	Serial8.begin(115200);
+	OPENMV_DX.begin(115200);
 
 	// Get first old_gyro value for check drift
 	old_gyro_value = imu->z;
@@ -291,12 +294,12 @@ void Robot::Run()
 				bool need_to_stop = false;
 				if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 				{
-					Serial8.print('9');
+					OPENMV_DX.print('9');
 					need_to_stop = true;
 				}
 				if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
 				{
-					Serial2.print('9');
+					OPENMV_SX.print('9');
 					need_to_stop = true;
 				}
 
@@ -1051,22 +1054,22 @@ void Robot::Run()
 			{
 				int kits_number;
 				bool left_victim;
-				if (Serial2.available() > 0)
+				if (OPENMV_SX.available() > 0)
 				{
-					kits_number = int(Serial2.read() - '0');
+					kits_number = int(OPENMV_SX.read() - '0');
 					left_victim = true;
 				}
 				else
 				{
-					kits_number = int(Serial8.read() - '0');
+					kits_number = int(OPENMV_DX.read() - '0');
 					left_victim = false;
 				}
 				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 				Serial.println(kits_number);
 				DropKit(kits_number, left_victim);
 			}
-			Serial8.print('7');
-			Serial2.print('7');
+			OPENMV_DX.print('7');
+			OPENMV_SX.print('7');
 			*/
 
 			SetNewTileDistances();
@@ -1157,13 +1160,13 @@ bool Robot::StopRobot()
 			first_time_pressed = true;
 			stop_the_robot = !stop_the_robot;
 			// OpenMV discard old data
-			while (Serial2.available())
+			while (OPENMV_SX.available())
 			{
-				Serial2.read();
+				OPENMV_SX.read();
 			}
-			while (Serial8.available())
+			while (OPENMV_DX.available())
 			{
-				Serial8.read();
+				OPENMV_DX.read();
 			}
 			if (map->NumVertices() == 0)
 			{
@@ -1406,7 +1409,7 @@ bool Robot::NewTile()
 
 bool Robot::FoundVictim()
 {
-	return Serial2.available() > 0 || Serial8.available() > 0;
+	return OPENMV_SX.available() > 0 || OPENMV_DX.available() > 0;
 }
 
 void Robot::AfterTurnVictimDetection()
@@ -1415,40 +1418,40 @@ void Robot::AfterTurnVictimDetection()
 	UpdateSensorNumBlocking(VL53L5CX::DX);
 	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial8.print('9');
+		OPENMV_DX.print('9');
 	}
 	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial2.print('9');
+		OPENMV_SX.print('9');
 	}
 	FakeDelay(250);
 	while (FoundVictim())
 	{
 		int kits_number;
 		bool left_victim;
-		if (Serial2.available() > 0)
+		if (OPENMV_SX.available() > 0)
 		{
-			kits_number = int(Serial2.read() - '0');
+			kits_number = int(OPENMV_SX.read() - '0');
 			left_victim = true;
 		}
 		else
 		{
-			kits_number = int(Serial8.read() - '0');
+			kits_number = int(OPENMV_DX.read() - '0');
 			left_victim = false;
 		}
 		Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 		Serial.println(kits_number);
 		DropKit(kits_number, left_victim);
 	}
-	Serial8.print('7');
-	Serial2.print('7');
+	OPENMV_DX.print('7');
+	OPENMV_SX.print('7');
 }
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
 	// TODO: Verificare se tenere o meno le due righe sotto
-	Serial8.print('7');
-	Serial2.print('7');
+	OPENMV_DX.print('7');
+	OPENMV_SX.print('7');
 	// -------------------
 
 	int8_t seconds_to_wait = 6;
@@ -1649,20 +1652,20 @@ void Robot::TurnBack()
 	UpdateSensorNumBlocking(VL53L5CX::DX);
 	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial8.print('9');
+		OPENMV_DX.print('9');
 	}
 	FakeDelay(1000);
 	while (FoundVictim())
 	{
 		Serial.println("Cerco vittima in U");
 		int kits_number;
-		if (Serial8.available() > 0)
+		if (OPENMV_DX.available() > 0)
 		{
-			kits_number = int(Serial8.read() - '0');
+			kits_number = int(OPENMV_DX.read() - '0');
 			DropKit(kits_number, false);
 		}
 	}
-	Serial8.print('7');
+	OPENMV_DX.print('7');
 
 	Turn(-90);
 	DecreaseDirection();
@@ -1895,11 +1898,11 @@ void Robot::PrintSensorData()
 	json_doc.clear();
 
 	/*
-		Serial.print("Serial8 bits available for read (OpenMV DX): ");
-		Serial.println(Serial8.available());
+		Serial.print("OPENMV_DX bits available for read: ");
+		Serial.println(OPENMV_DX.available());
 
-		Serial.print("Serial2 bits available for read (OpenMV SX): ");
-		Serial.println(Serial2.available());
+		Serial.print("OPENMV_SX bits available for read: ");
+		Serial.println(OPENMV_SX.available());
 	*/
 }
 
