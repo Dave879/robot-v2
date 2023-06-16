@@ -284,6 +284,7 @@ void Robot::Run()
 					}
 				}
 				path_to_tile.erase(path_to_tile.begin());
+				map->PrintMazePath(path_to_tile);
 			}
 			else
 			{
@@ -556,6 +557,7 @@ void Robot::Run()
 				{
 					FakeDelay(250);
 				}
+				map->PrintMaze({current_y, current_x, current_z});
 			}
 
 			/*
@@ -583,7 +585,6 @@ void Robot::Run()
 			*/
 
 			SetNewTileDistances();
-			map->PrintMaze();
 
 			/*
 						digitalWriteFast(R_LED1_PIN, LOW);

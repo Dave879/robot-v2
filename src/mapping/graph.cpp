@@ -336,7 +336,7 @@ void graph::PrintMaze()
         min_y = ordered_nodes.at(i).y;
     }
 
-    for (int32_t y = min_y; y <= max_y; y++)
+    for (int32_t y = max_y; y >= min_y; y--)
     {
       for (int8_t i = 0; i < 3; i++)
       {
@@ -346,13 +346,13 @@ void graph::PrintMaze()
           {
             if (GetNode(Tile(y, x, z)) == -1)
             {
-              if (GetNode({(int16_t)(y - 1), x, z}) != -1)
+              if (GetNode({(int32_t)(y + 1), x, z}) != -1)
               {
                 LOG("+---");
               }
               else
               {
-                if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+                if (GetNode({y, (int32_t)(x - 1), z}) != -1)
                 {
                   LOG("+   ");
                 }
@@ -364,9 +364,9 @@ void graph::PrintMaze()
             }
             else
             {
-              if (AreAdjacent({y, x, z}, {(int16_t)(y - 1), x, z}))
+              if (AreAdjacent({y, x, z}, {(int32_t)(y + 1), x, z}))
               {
-                if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}) && AreAdjacent({y, (int16_t)(x - 1), z}, {(int16_t)(y - 1), (int16_t)(x - 1), z}) && AreAdjacent({(int16_t)(y - 1), (int16_t)(x - 1), z}, {(int16_t)(y - 1), x, z}))
+                if (AreAdjacent({y, x, z}, {y, (int32_t)(x - 1), z}) && AreAdjacent({y, (int32_t)(x - 1), z}, {(int32_t)(y + 1), (int32_t)(x - 1), z}) && AreAdjacent({(int32_t)(y + 1), (int32_t)(x - 1), z}, {(int32_t)(y + 1), x, z}))
                 {
                   LOG(" ");
                   LOG("   ");
@@ -388,7 +388,7 @@ void graph::PrintMaze()
           {
             if (GetNode({y, x, z}) == -1)
             {
-              if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+              if (GetNode({y, (int32_t)(x - 1), z}) != -1)
               {
                 LOG("|   ");
               }
@@ -399,7 +399,7 @@ void graph::PrintMaze()
             }
             else
             {
-              if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}))
+              if (AreAdjacent({y, x, z}, {y, (int32_t)(x - 1), z}))
               {
                 bool found = false;
                 std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
@@ -448,7 +448,7 @@ void graph::PrintMaze()
         }
         if (i == 0)
         {
-          if (GetNode({y, max_x, z}) != -1 || GetNode({(int16_t)(y - 1), max_x, z}) != -1)
+          if (GetNode({y, max_x, z}) != -1 || GetNode({(int32_t)(y + 1), max_x, z}) != -1)
           {
             LOG("+\n");
           }
@@ -472,9 +472,9 @@ void graph::PrintMaze()
     }
     for (int32_t x = min_x; x <= max_x; x++)
     {
-      if (GetNode({max_y, x, z}) == -1)
+      if (GetNode({min_y, x, z}) == -1)
       {
-        if (GetNode({max_y, (int16_t)(x - 1), z}) == -1)
+        if (GetNode({min_y, (int32_t)(x - 1), z}) == -1)
         {
           LOG("    ");
         }
@@ -488,7 +488,7 @@ void graph::PrintMaze()
         LOG("+---");
       }
     }
-    if (GetNode({max_y, max_x, z}) != -1)
+    if (GetNode({min_y, max_x, z}) != -1)
     {
       LOG("+\n");
     }
@@ -552,7 +552,7 @@ void graph::PrintMaze(Tile current_position)
         min_y = ordered_nodes.at(i).y;
     }
 
-    for (int32_t y = min_y; y <= max_y; y++)
+    for (int32_t y = max_y; y >= min_y; y--)
     {
       for (int8_t i = 0; i < 3; i++)
       {
@@ -562,13 +562,13 @@ void graph::PrintMaze(Tile current_position)
           {
             if (GetNode(Tile(y, x, z)) == -1)
             {
-              if (GetNode({(int16_t)(y - 1), x, z}) != -1)
+              if (GetNode({(int32_t)(y + 1), x, z}) != -1)
               {
                 LOG("+---");
               }
               else
               {
-                if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+                if (GetNode({y, (int32_t)(x - 1), z}) != -1)
                 {
                   LOG("+   ");
                 }
@@ -580,9 +580,9 @@ void graph::PrintMaze(Tile current_position)
             }
             else
             {
-              if (AreAdjacent({y, x, z}, {(int16_t)(y - 1), x, z}))
+              if (AreAdjacent({y, x, z}, {(int32_t)(y + 1), x, z}))
               {
-                if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}) && AreAdjacent({y, (int16_t)(x - 1), z}, {(int16_t)(y - 1), (int16_t)(x - 1), z}) && AreAdjacent({(int16_t)(y - 1), (int16_t)(x - 1), z}, {(int16_t)(y - 1), x, z}))
+                if (AreAdjacent({y, x, z}, {y, (int32_t)(x - 1), z}) && AreAdjacent({y, (int32_t)(x - 1), z}, {(int32_t)(y + 1), (int32_t)(x - 1), z}) && AreAdjacent({(int32_t)(y + 1), (int32_t)(x - 1), z}, {(int32_t)(y + 1), x, z}))
                 {
                   LOG(" ");
                   LOG("   ");
@@ -604,7 +604,7 @@ void graph::PrintMaze(Tile current_position)
           {
             if (GetNode({y, x, z}) == -1)
             {
-              if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+              if (GetNode({y, (int32_t)(x - 1), z}) != -1)
               {
                 LOG("|   ");
               }
@@ -615,7 +615,7 @@ void graph::PrintMaze(Tile current_position)
             }
             else
             {
-              if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}))
+              if (AreAdjacent({y, x, z}, {y, (int32_t)(x - 1), z}))
               {
                 if (Tile{y, x, z} == current_position)
                 {
@@ -678,7 +678,7 @@ void graph::PrintMaze(Tile current_position)
         }
         if (i == 0)
         {
-          if (GetNode({y, max_x, z}) != -1 || GetNode({(int16_t)(y - 1), max_x, z}) != -1)
+          if (GetNode({y, max_x, z}) != -1 || GetNode({(int32_t)(y + 1), max_x, z}) != -1)
           {
             LOG("+\n");
           }
@@ -702,9 +702,9 @@ void graph::PrintMaze(Tile current_position)
     }
     for (int32_t x = min_x; x <= max_x; x++)
     {
-      if (GetNode({max_y, x, z}) == -1)
+      if (GetNode({min_y, x, z}) == -1)
       {
-        if (GetNode({max_y, (int16_t)(x - 1), z}) == -1)
+        if (GetNode({min_y, (int32_t)(x - 1), z}) == -1)
         {
           LOG("    ");
         }
@@ -718,7 +718,7 @@ void graph::PrintMaze(Tile current_position)
         LOG("+---");
       }
     }
-    if (GetNode({max_y, max_x, z}) != -1)
+    if (GetNode({min_y, max_x, z}) != -1)
     {
       LOG("+\n");
     }
@@ -969,7 +969,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
         min_y = ordered_nodes.at(i).y;
     }
 
-    for (int32_t y = min_y; y <= max_y; y++)
+    for (int32_t y = max_y; y >= min_y; y--)
     {
       for (int8_t i = 0; i < 3; i++)
       {
@@ -979,13 +979,13 @@ void graph::PrintMazePath(std::vector<Tile> &path)
           {
             if (GetNode({y, x, z}) == -1)
             {
-              if (GetNode({(int16_t)(y - 1), x, z}) != -1)
+              if (GetNode({(int32_t)(y + 1), x, z}) != -1)
               {
                 LOG("+---");
               }
               else
               {
-                if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+                if (GetNode({y, (int32_t)(x - 1), z}) != -1)
                 {
                   LOG("+   ");
                 }
@@ -997,9 +997,9 @@ void graph::PrintMazePath(std::vector<Tile> &path)
             }
             else
             {
-              if (AreAdjacent({y, x, z}, {(int16_t)(y - 1), x, z}))
+              if (AreAdjacent({y, x, z}, {(int32_t)(y + 1), x, z}))
               {
-                if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}) && AreAdjacent({y, (int16_t)(x - 1), z}, {(int16_t)(y - 1), (int16_t)(x - 1), z}) && AreAdjacent({(int16_t)(y - 1), (int16_t)(x - 1), z}, {(int16_t)(y - 1), x, z}))
+                if (AreAdjacent({y, x, z}, {y, (int32_t)(x - 1), z}) && AreAdjacent({y, (int32_t)(x - 1), z}, {(int32_t)(y + 1), (int32_t)(x - 1), z}) && AreAdjacent({(int32_t)(y + 1), (int32_t)(x - 1), z}, {(int32_t)(y + 1), x, z}))
                 {
                   LOG(" ");
                   LOG("   ");
@@ -1021,7 +1021,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
           {
             if (GetNode({y, x, z}) == -1)
             {
-              if (GetNode({y, (int16_t)(x - 1), z}) != -1)
+              if (GetNode({y, (int32_t)(x - 1), z}) != -1)
               {
                 LOG("|   ");
               }
@@ -1032,7 +1032,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
             }
             else
             {
-              if (AreAdjacent({y, x, z}, {y, (int16_t)(x - 1), z}))
+              if (AreAdjacent({y, x, z}, {y, (int32_t)(x - 1), z}))
               {
                 bool found = false;
                 std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
@@ -1137,7 +1137,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
         }
         if (i == 0)
         {
-          if (GetNode({y, max_x, z}) != -1 || GetNode({(int16_t)(y - 1), max_x, z}) != -1)
+          if (GetNode({y, max_x, z}) != -1 || GetNode({(int32_t)(y + 1), max_x, z}) != -1)
           {
             LOG("+\n");
           }
@@ -1161,9 +1161,9 @@ void graph::PrintMazePath(std::vector<Tile> &path)
     }
     for (int32_t x = min_x; x <= max_x; x++)
     {
-      if (GetNode({max_y, x, z}) == -1)
+      if (GetNode({min_y, x, z}) == -1)
       {
-        if (GetNode({max_y, (int16_t)(x - 1), z}) == -1)
+        if (GetNode({min_y, (int32_t)(x - 1), z}) == -1)
         {
           LOG("    ");
         }
@@ -1177,7 +1177,7 @@ void graph::PrintMazePath(std::vector<Tile> &path)
         LOG("+---");
       }
     }
-    if (GetNode({max_y, max_x, z}) != -1)
+    if (GetNode({min_y, max_x, z}) != -1)
     {
       LOG("+\n");
     }
