@@ -403,7 +403,7 @@ void graph::PrintMaze()
               {
                 bool found = false;
                 std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
-                for (int32_t i = 0; i < temp_vec.size(); i++)
+                for (size_t i = 0; i < temp_vec.size(); i++)
                 {
                   if (temp_vec.at(i).z > z)
                   {
@@ -425,7 +425,7 @@ void graph::PrintMaze()
               {
                 std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
                 bool found = false;
-                for (int32_t i = 0; i < temp_vec.size(); i++)
+                for (size_t i = 0; i < temp_vec.size(); i++)
                 {
                   if (temp_vec.at(i).z > z)
                   {
@@ -625,7 +625,7 @@ void graph::PrintMaze(Tile current_position)
                 {
                   bool found = false;
                   std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
-                  for (int32_t i = 0; i < temp_vec.size(); i++)
+                  for (size_t i = 0; i < temp_vec.size(); i++)
                   {
                     if (temp_vec.at(i).z > z)
                     {
@@ -654,7 +654,7 @@ void graph::PrintMaze(Tile current_position)
                 {
                   std::vector<Tile> temp_vec = GetAdjacencyList({y, x, z});
                   bool found = false;
-                  for (int32_t i = 0; i < temp_vec.size(); i++)
+                  for (size_t i = 0; i < temp_vec.size(); i++)
                   {
                     if (temp_vec.at(i).z > z)
                     {
@@ -777,7 +777,7 @@ struct Distance {
   double operator()(const TileDistDirection& node1, const Tile& node2, int &new_direction) const {
     int dx = node1.tile.x - node2.x;
     int dy = node1.tile.y - node2.y;
-    int dz = node1.tile.z - node2.z;
+    //int dz = node1.tile.z - node2.z;
     int turn_weight = 0;
     if (node1.direction == 0 || node1.direction == 2)
     {

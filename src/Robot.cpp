@@ -14,9 +14,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		Serial.println("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-		delay(10);														 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
-		delay(10);														 // Wait for sensors to wake up (especially sensor 0)
+		delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+		delay(10);																					// Wait for sensors to wake up (especially sensor 0)
 		Serial.println("...done!");
 	}
 
@@ -35,7 +35,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	ms = new Motors();
 	Serial.println("Finished motor setup!");
 
-	Wire2.begin();				 // Lasers
+	Wire2.begin();					 // Lasers
 	Wire2.setClock(1000000); // 1MHz
 
 	Serial.println("Laser sensors setup started");
@@ -55,9 +55,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);					 // 8*8, 12Hz
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 12Hz
 
-	Wire1.begin();				// Color sensor
+	Wire1.begin();					// Color sensor
 	Wire1.setClock(400000); // 400kHz
 
 	Serial.println("Initializing color sensor");
@@ -135,7 +135,7 @@ void Robot::Run()
 					UpdateGyroBlocking();
 				}
 				// Serial.println(imu->y);
-				
+
 				SetCurrentTileDistances();
 				// TODO: DA TOGLIERE
 				if (going_down_ramp)
@@ -230,12 +230,11 @@ void Robot::Run()
 		// Controllo se ho raggiunto una nuova tile
 		if ((NewTile() && NotInRamp()) || FrontWall())
 		{
-/*
 			digitalWriteFast(R_LED1_PIN, HIGH);
 			digitalWriteFast(R_LED2_PIN, HIGH);
 			digitalWriteFast(R_LED3_PIN, HIGH);
 			digitalWriteFast(R_LED4_PIN, HIGH);
-*/
+
 			// Blue tile check
 			bool blue_tile = false;
 			if (BlueTile())
@@ -301,7 +300,6 @@ void Robot::Run()
 					need_to_stop = true;
 				}
 
-
 				// Aggiungo angolo tra le due tile
 				int16_t previous_tile_y = current_y;
 				int16_t previous_tile_x = current_x;
@@ -351,34 +349,58 @@ void Robot::Run()
 				case 0:
 					next_tile = current_x + 1;
 					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+					if (CanTurnRight())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 					next_tile = current_x - 1;
 					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+					if (CanTurnLeft())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 					next_tile = current_y + 1;
 					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+					if (CanGoOn())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 					break;
 				case 1:
 					next_tile = current_y - 1;
 					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+					if (CanTurnRight())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 					next_tile = current_y + 1;
 					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+					if (CanTurnLeft())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 					next_tile = current_x + 1;
 					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+					if (CanGoOn())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 					break;
 				case 2:
 					next_tile = current_x - 1;
 					right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+					if (CanTurnRight())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 					next_tile = current_x + 1;
 					left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+					if (CanTurnLeft())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 					next_tile = current_y - 1;
 					front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+					if (CanGoOn())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 					break;
 				case 3:
 					next_tile = current_y + 1;
 					right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+					if (CanTurnRight())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 					next_tile = current_y - 1;
 					left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+					if (CanTurnLeft())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 					next_tile = current_x - 1;
 					front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+					if (CanGoOn())
+						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 					break;
 				default:
 					break;
@@ -400,7 +422,7 @@ void Robot::Run()
 					int len;
 					if (tile_to_visit.empty())
 					{
-						map->FindPathAStar(Tile{current_y, current_x, current_z}, Tile{0,0,0}, path_to_tile, len, direction);
+						map->FindPathAStar(Tile{current_y, current_x, current_z}, Tile{0, 0, 0}, path_to_tile, len, direction);
 						// Da fare alla fine quando la tile da raggiungere era la 0,0,0 e non ci sono elementi nella lista tile_to_visit
 						/*
 						ms->StopMotors();
@@ -423,6 +445,7 @@ void Robot::Run()
 					}
 					else
 					{
+						Serial.println("bababooeyyyyy");
 						map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.front(), path_to_tile, len, direction);
 						tile_to_visit.pop_back();
 					}
@@ -438,6 +461,59 @@ void Robot::Run()
 							// Giro o continuo ad andare dritto
 							if (millis() % 2)
 							{
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_x - 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_y + 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y + 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_x + 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x + 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_y - 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y - 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_x - 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								default:
+									break;
+								}
 								// Giro a destra
 								TurnRight();
 								ms->StopMotors();
@@ -446,10 +522,119 @@ void Robot::Run()
 									AfterTurnVictimDetection();
 								}
 							}
+							else
+							{
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_x + 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_x - 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y - 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_y + 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x - 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_x + 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y + 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_y - 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								default:
+									break;
+								}
+							}
 						}
 						else
 						{
 							// Giro a destra
+							switch (direction)
+							{
+							case 0:
+								next_tile = current_x - 1;
+								if (!left_blocked)
+								{
+									tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+								}
+								next_tile = current_y + 1;
+								if (!front_blocked)
+								{
+									tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+								}
+								break;
+							case 1:
+								next_tile = current_y + 1;
+								if (!left_blocked)
+								{
+									tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+								}
+								next_tile = current_x + 1;
+								if (!front_blocked)
+								{
+									tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+								}
+								break;
+							case 2:
+								next_tile = current_x + 1;
+								if (!left_blocked)
+								{
+									tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+								}
+								next_tile = current_y - 1;
+								if (!front_blocked)
+								{
+									tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+								}
+								break;
+							case 3:
+								next_tile = current_y - 1;
+								if (!left_blocked)
+								{
+									tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+								}
+								next_tile = current_x - 1;
+								if (!front_blocked)
+								{
+									tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+								}
+								break;
+							default:
+								break;
+							}
 							TurnRight();
 							ms->StopMotors();
 							if (!already_visited)
@@ -467,6 +652,59 @@ void Robot::Run()
 							if (millis() % 2)
 							{
 								// Giro a sinistra
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_x + 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_y + 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y - 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_x + 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x - 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_y - 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y + 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_x - 1;
+									if (!front_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								default:
+									break;
+								}
 								TurnLeft();
 								ms->StopMotors();
 								if (!already_visited)
@@ -474,10 +712,119 @@ void Robot::Run()
 									AfterTurnVictimDetection();
 								}
 							}
+							else
+							{
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_x + 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_x - 1;
+									if (!left_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y - 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_y + 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x - 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_x + 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y + 1;
+									if (!right_blocked)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_y - 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								default:
+									break;
+								}
+							}
 						}
 						else
 						{
 							// Giro a sinistra
+							switch (direction)
+								{
+								case 0:
+									next_tile = current_x + 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_y + 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y - 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_x + 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x - 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									next_tile = current_y - 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y + 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									next_tile = current_x - 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								default:
+									break;
+								}
 							TurnLeft();
 							ms->StopMotors();
 							if (!already_visited)
@@ -499,11 +846,80 @@ void Robot::Run()
 							if (millis() % 2)
 							{
 								// Giro a destra
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_y + 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_x + 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_y - 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_x - 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								default:
+									break;
+								}
 								TurnRight();
 								ms->StopMotors();
 								if (!already_visited)
 								{
 									AfterTurnVictimDetection();
+								}
+							}
+							else
+							{
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_x + 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y - 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x - 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y + 1;
+									if (!right_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								default:
+									break;
 								}
 							}
 						}
@@ -527,11 +943,80 @@ void Robot::Run()
 							if (millis() % 2)
 							{
 								// Giro a sinistra
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_y + 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_x + 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_y - 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_x - 1;
+									if (!front_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								default:
+									break;
+								}
 								TurnLeft();
 								ms->StopMotors();
 								if (!already_visited)
 								{
 									AfterTurnVictimDetection();
+								}
+							}
+							else
+							{
+								switch (direction)
+								{
+								case 0:
+									next_tile = current_x - 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 1:
+									next_tile = current_y + 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								case 2:
+									next_tile = current_x + 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+									}
+									break;
+								case 3:
+									next_tile = current_y - 1;
+									if (!left_already_visited)
+									{
+										tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+									}
+									break;
+								default:
+									break;
 								}
 							}
 						}
@@ -586,12 +1071,10 @@ void Robot::Run()
 
 			SetNewTileDistances();
 
-			/*
-						digitalWriteFast(R_LED1_PIN, LOW);
-						digitalWriteFast(R_LED2_PIN, LOW);
-						digitalWriteFast(R_LED3_PIN, LOW);
-						digitalWriteFast(R_LED4_PIN, LOW);
-			*/
+			digitalWriteFast(R_LED1_PIN, LOW);
+			digitalWriteFast(R_LED2_PIN, LOW);
+			digitalWriteFast(R_LED3_PIN, LOW);
+			digitalWriteFast(R_LED4_PIN, LOW);
 		}
 		// Proseguo diretto
 		else
@@ -688,7 +1171,7 @@ bool Robot::StopRobot()
 				imu->ResetZ();
 				desired_angle = 0;
 				first_tile = true;
-				last_checkpoint = Tile{current_y, current_x, current_z};	
+				last_checkpoint = Tile{current_y, current_x, current_z};
 			}
 			else
 			{
@@ -893,7 +1376,7 @@ bool Robot::CanTurnLeft()
 
 bool Robot::CanGoOn()
 {
-	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || GetFrontDistance() == 0;
+	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM;
 }
 
 bool Robot::CanBumpBack()
@@ -1114,8 +1597,6 @@ int16_t Robot::GetPIDOutputAndSec()
 		Serial.print(".\tPID_output * elapsed_seconds: ");
 	*/
 	int16_t corr = PID_output * elapsed_seconds;
-	Serial.print("corr: ");
-	Serial.println(corr);
 
 	return corr;
 }
@@ -1331,9 +1812,9 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	Serial.println("Disabling and then enabling sensors power supply...");
 	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-	delay(10);														 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
-	delay(10);														 // Wait for sensors to wake up (especially sensor 0)
+	delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
+	delay(10);																					// Wait for sensors to wake up (especially sensor 0)
 	Serial.println("...done!");
 
 	Serial.println("Laser sensors setup started");

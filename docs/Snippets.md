@@ -301,3 +301,79 @@ while (true)
     }
 }
 ```
+
+``` cpp
+switch (direction)
+{
+    case 0:
+        next_tile = current_x + 1;
+        if (!right_already_visited)
+        {
+            tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+        }
+        next_tile = current_x - 1;
+        if (!left_already_visited)
+        {
+            tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+        }
+        next_tile = current_y + 1;
+        if (!front_already_visited)
+        {
+            tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+        }
+        break;
+    case 1:
+        next_tile = current_y - 1;
+        if (!right_already_visited)
+        {
+            tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+        }
+        next_tile = current_y + 1;
+        if (!left_already_visited)
+        {
+            tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+        }
+        next_tile = current_x + 1;
+        if (!front_already_visited)
+        {
+            tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+        }
+        break;
+    case 2:
+        next_tile = current_x - 1;
+        if (!right_already_visited)
+        {
+            tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+        }
+        next_tile = current_x + 1;
+        if (!left_already_visited)
+        {
+            tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+        }
+        next_tile = current_y - 1;
+        if (!front_already_visited)
+        {
+            tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+        }
+        break;
+    case 3:
+        next_tile = current_y + 1;
+        if (!right_already_visited)
+        {
+            tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+        }
+        next_tile = current_y - 1;
+        if (!left_already_visited)
+        {
+            tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+        }
+        next_tile = current_x - 1;
+        if (!front_already_visited)
+        {
+            tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+        }
+        break;
+    default:
+        break;
+}
+```
