@@ -377,22 +377,22 @@ void Robot::Run()
 			{
 				int kits_number;
 				bool left_victim;
-				if (Serial2.available() > 0)
+				if (OPENMV_SX.available() > 0)
 				{
-					kits_number = int(Serial2.read() - '0');
+					kits_number = int(OPENMV_SX.read() - '0');
 					left_victim = true;
 				}
 				else
 				{
-					kits_number = int(Serial8.read() - '0');
+					kits_number = int(OPENMV_DX.read() - '0');
 					left_victim = false;
 				}
 				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
 				Serial.println(kits_number);
 				DropKit(kits_number, left_victim);
 			}
-			Serial8.print('7');
-			Serial2.print('7');
+			OPENMV_DX.print('7');
+			OPENMV_SX.print('7');
 			*/
 
 			digitalWriteFast(R_LED1_PIN, LOW);
@@ -481,13 +481,13 @@ bool Robot::StopRobot()
 			first_time_pressed = true;
 			stop_the_robot = !stop_the_robot;
 			// OpenMV discard old data
-			while (Serial2.available())
+			while (OPENMV_SX.available())
 			{
-				Serial2.read();
+				OPENMV_SX.read();
 			}
-			while (Serial8.available())
+			while (OPENMV_DX.available())
 			{
-				Serial8.read();
+				OPENMV_DX.read();
 			}
 			if (map->NumVertices() == 0)
 			{
@@ -1240,12 +1240,12 @@ void Robot::AfterTurnVictimDetection()
 	UpdateSensorNumBlocking(VL53L5CX::DX);
 	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial8.print('9');
+		OPENMV_DX.print('9');
 		need_to_stop = true;
 	}
 	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial2.print('9');
+		OPENMV_SX.print('9');
 		need_to_stop = true;
 	}
 	if (!need_to_stop)
@@ -1273,8 +1273,8 @@ void Robot::AfterTurnVictimDetection()
 		Serial.println(kits_number);
 		DropKit(kits_number, left_victim);
 	}
-	Serial8.print('7');
-	Serial2.print('7');
+	OPENMV_DX.print('7');
+	OPENMV_SX.print('7');
 	*/
 	FakeDelay(500);
 	// TODO lettura vittime
