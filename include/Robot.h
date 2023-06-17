@@ -93,11 +93,20 @@ private:
 
 	Tile last_checkpoint;
 	void GoToDirection(int8_t direction_to_go);
-
+	void AddLeftAndFrontTileToTileToVisit();
+	void AddRightAndFrontTileToTileToVisit();
+	void AddLeftAndRightTileToTileToVisit();
+	void AddLeftTileToTileToVisit();
+	void AddRightTileToTileToVisit();
+	void AddFrontTileToTileToVisit();
+	void UpdateAllDistanceSensorsBlocking();
 	/**
 	 * Navigation utility functions
 	 */
 	bool StopRobot();
+	void FirstTileProcedure();
+	void LackOfProgressProcedure();
+	void GetAroundTileVisited(bool &left_already_visited, bool &front_already_visited, bool &right_already_visited);
 	bool NewTile();
 
 	int16_t GetRightDistance();
@@ -118,13 +127,13 @@ private:
 	bool FrontWall();
 	bool BlackTile();
 	bool BlueTile();
+	void DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited);
 	void Turn(int16_t degree);
 	void Straighten();
 	bool NotInRamp();
 	void TurnRight();
 	void TurnLeft();
 	void TurnBack();
-	void MotorPowerZGyroAndPID();
 	void FakeDelay(uint32_t time);
 	// victim variables
 	bool just_recived_from_openmv = false;
