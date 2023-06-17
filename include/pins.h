@@ -13,7 +13,6 @@
 #define R_PIN_SENSORS_POWER_ENABLE 33
 
 #define R_PIN_SERVO 2
-//#define R_PIN_COLOR_INT 14
 
 #define R_LED1_PIN 38
 #define R_LED2_PIN 39

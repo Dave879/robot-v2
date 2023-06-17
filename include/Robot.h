@@ -42,7 +42,7 @@ private:
 #define MIN_TIME_RAMP 3000
 #define RAMP_BACK_DIST 100
 
-	StaticJsonDocument<5000> json_doc;
+	StaticJsonDocument<4000> json_doc;
 	DataFormatter doc_helper;
 	JsonArray dist[4];
 
@@ -200,6 +200,9 @@ public:
 	uint8_t TrySensorDataUpdate();
 	void UpdateSensorNumBlocking(VL53L5CX num);
 	void UpdateGyroBlocking();
+	void UpdateGyroNonBlocking();
 	void UpdateFrontBlocking();
 	void PrintSensorData();
+	void TestPeripherals();
+	void TestButton(uint8_t pin, const char* name);
 };

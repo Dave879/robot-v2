@@ -6,16 +6,8 @@
 #include <unordered_set>
 #include <queue>
 #include <algorithm>
+#include "util.h"
 
-
-#define LOG(x) Serial.print(x);
-#define LOG2(x, y) \
-  Serial.print(x); \
-  Serial.print(y);
-#define LOG3(x, y, z) \
-  Serial.print(x);    \
-  Serial.print(y);    \
-  Serial.print(z);
 
 class Tile : public Printable
 {
