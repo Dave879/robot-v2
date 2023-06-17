@@ -2,21 +2,36 @@
 
 Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 {
+	/**
+	 * The following two lines MUST be first, because Robot::FakeDelay() needs the gyro pointer to be initialized correctly
+	 */
+	this->imu = imu;
+	imu_data_ready = imu_dr;
+
+	// Inizializzazione canale di comunicazione con OpenMV SX
+	OPENMV_SX.begin(115200);
+
+	// Inizializzazione canale di comunicazione con OpenMV DX
+	OPENMV_DX.begin(115200);
+
+	// TODO: check if OpenMV cams are alive
+
+	if (digitalReadFast(R_SW_XTRA_PIN))
+		TestPeripherals();
+
 	Serial.println("Servo setup started");
 	kit.attach(R_PIN_SERVO);
 	kit.write(0);
 	Serial.println("Finished servo setup!");
 
-	this->imu = imu;
-	imu_data_ready = imu_dr;
 	if (cold_start)
 	{
 		Serial.println("Disabling and then enabling sensors power supply...");
 		pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-		delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
-		delay(10);																					// Wait for sensors to wake up (especially sensor 0)
+		delay(10);														 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+		digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
+		delay(10);														 // Wait for sensors to wake up (especially sensor 0)
 		Serial.println("...done!");
 	}
 
@@ -28,14 +43,11 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		Serial.println("Finished gyro setup!");
 	*/
 
-	pinMode(R_COLLISION_SX_PIN, INPUT);
-	pinMode(R_COLLISION_DX_PIN, INPUT);
-
 	Serial.println("Motor setup started");
 	ms = new Motors();
 	Serial.println("Finished motor setup!");
 
-	Wire2.begin();					 // Lasers
+	Wire2.begin();				 // Lasers
 	Wire2.setClock(1000000); // 1MHz
 
 	Serial.println("Laser sensors setup started");
@@ -44,6 +56,11 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 
 	Serial.println("Front ir sensor setup started");
 	ir_front = new LRir(Serial3, FRAME_100);
+	if (ir_front->Read() == 2)
+	{
+		Serial.println("ir_front->Read() was successful");
+		tone(R_BUZZER_PIN, 3500, 50);
+	}
 	Serial.println("Front ir sensor setup finished");
 
 	/*
@@ -55,9 +72,9 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);								// 8*8, 12Hz
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);					 // 8*8, 12Hz
 
-	Wire1.begin();					// Color sensor
+	Wire1.begin();				// Color sensor
 	Wire1.setClock(400000); // 400kHz
 
 	Serial.println("Initializing color sensor");
@@ -65,41 +82,20 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	if (cs->begin(&Wire1))
 	{
 		Serial.println("Initialized color sensor!");
-		// pinMode(R_PIN_COLOR_INT, INPUT_PULLUP);
-		// attachInterrupt(R_PIN_COLOR_INT, R_TCS34725_int, FALLING);
-		// cs->ClearInterrupt();
+		tone(R_BUZZER_PIN, 3500, 50);
 	}
 	else
 	{
 		Serial.println("Failed to initialize color sensor!");
 	}
 
-	pinMode(R_SW_START_PIN, INPUT);
-	pinMode(R_SW_XTRA_PIN, INPUT);
-
-	/**
-	 * Robot ready signal
-	 */
-	pinMode(R_LED1_PIN, OUTPUT);
-	pinMode(R_LED2_PIN, OUTPUT);
-	pinMode(R_LED3_PIN, OUTPUT);
-	pinMode(R_LED4_PIN, OUTPUT);
-
-	digitalWriteFast(R_LED1_PIN, HIGH);
-	delay(100);
-	digitalWriteFast(R_LED1_PIN, LOW);
-
-	imu->ResetZ();
-
 	// Crea il grafo vuoto
 	map = new graph();
 
-	// Inizializzazione canale di comunicazione con OpenMV SX
-	Serial2.begin(115200);
+	FakeDelay(100);
+	tone(R_BUZZER_PIN, 4000, 69);
 
-	// Inizializzazione canale di comunicazione con OpenMV DX
-	Serial8.begin(115200);
-
+	imu->ResetZ();
 	// Get first old_gyro value for check drift
 	old_gyro_value = imu->z;
 }
@@ -313,12 +309,12 @@ void Robot::Run()
 				bool need_to_stop = false;
 				if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 				{
-					Serial8.print('9');
+					OPENMV_DX.print('9');
 					need_to_stop = true;
 				}
 				if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
 				{
-					Serial2.print('9');
+					OPENMV_SX.print('9');
 					need_to_stop = true;
 				}
 
@@ -1233,7 +1229,7 @@ bool Robot::NewTile()
 
 bool Robot::FoundVictim()
 {
-	return Serial2.available() > 0 || Serial8.available() > 0;
+	return OPENMV_SX.available() > 0 || OPENMV_DX.available() > 0;
 }
 
 void Robot::AfterTurnVictimDetection()
@@ -1263,14 +1259,14 @@ void Robot::AfterTurnVictimDetection()
 	{
 		int kits_number;
 		bool left_victim;
-		if (Serial2.available() > 0)
+		if (OPENMV_SX.available() > 0)
 		{
-			kits_number = int(Serial2.read() - '0');
+			kits_number = int(OPENMV_SX.read() - '0');
 			left_victim = true;
 		}
 		else
 		{
-			kits_number = int(Serial8.read() - '0');
+			kits_number = int(OPENMV_DX.read() - '0');
 			left_victim = false;
 		}
 		Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
@@ -1287,8 +1283,8 @@ void Robot::AfterTurnVictimDetection()
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
 	// TODO: Verificare se tenere o meno le due righe sotto
-	Serial8.print('7');
-	Serial2.print('7');
+	OPENMV_DX.print('7');
+	OPENMV_SX.print('7');
 	// -------------------
 
 	int8_t seconds_to_wait = 6;
@@ -1489,20 +1485,20 @@ void Robot::TurnBack()
 	UpdateSensorNumBlocking(VL53L5CX::DX);
 	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial8.print('9');
+		OPENMV_DX.print('9');
 	}
 	FakeDelay(1000);
 	while (FoundVictim())
 	{
 		Serial.println("Cerco vittima in U");
 		int kits_number;
-		if (Serial8.available() > 0)
+		if (OPENMV_DX.available() > 0)
 		{
-			kits_number = int(Serial8.read() - '0');
+			kits_number = int(OPENMV_DX.read() - '0');
 			DropKit(kits_number, false);
 		}
 	}
-	Serial8.print('7');
+	OPENMV_DX.print('7');
 
 	Turn(-90);
 	DecreaseDirection();
@@ -1575,11 +1571,7 @@ void Robot::FakeDelay(uint32_t time)
 	uint32_t time_to_wait = millis() + time;
 	while (millis() < time_to_wait)
 	{
-		if (*imu_data_ready)
-		{
-			imu->UpdateData();
-			*imu_data_ready = false;
-		}
+		UpdateGyroNonBlocking();
 	}
 }
 
@@ -1629,11 +1621,7 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	uint32_t time_end = millis() + 500;
 	while (millis() < time_end)
 	{
-		if (*imu_data_ready)
-		{
-			imu->UpdateData();
-			*imu_data_ready = false;
-		}
+		UpdateGyroNonBlocking();
 		if (lasers_data_ready[num])
 		{
 			lasers->sensors[num]->UpdateData();
@@ -1644,17 +1632,12 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 
 	ms->StopMotors();
 
-	digitalWriteFast(R_LED1_PIN, LOW);
-	digitalWriteFast(R_LED2_PIN, LOW);
-	digitalWriteFast(R_LED3_PIN, LOW);
-	digitalWriteFast(R_LED4_PIN, HIGH);
-
 	Serial.println("Disabling and then enabling sensors power supply...");
 	pinMode(R_PIN_SENSORS_POWER_ENABLE, OUTPUT);
 	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, HIGH); // Disable power supply output to sensors
-	delay(10);																					// Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
-	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	// Enable power supply output to sensors
-	delay(10);																					// Wait for sensors to wake up (especially sensor 0)
+	delay(10);														 // Wait for sensors to shutdown - 10ms from UM2884 Sensor reset management (VL53L5CX)
+	digitalWriteFast(R_PIN_SENSORS_POWER_ENABLE, LOW);	 // Enable power supply output to sensors
+	delay(10);														 // Wait for sensors to wake up (especially sensor 0)
 	Serial.println("...done!");
 
 	Serial.println("Laser sensors setup started");
@@ -1668,7 +1651,6 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	if (cs->begin(&Wire1))
 	{
 		Serial.println("Initialized color sensor!");
-		cs->ClearInterrupt();
 	}
 	else
 	{
@@ -1693,6 +1675,15 @@ void Robot::UpdateGyroBlocking()
 			*imu_data_ready = false;
 			break;
 		}
+	}
+}
+
+void Robot::UpdateGyroNonBlocking()
+{
+	if (*imu_data_ready)
+	{
+		imu->UpdateData();
+		*imu_data_ready = false;
 	}
 }
 
@@ -1733,14 +1724,72 @@ void Robot::PrintSensorData()
 	doc_helper.ResetIdx();
 	serializeJson(json_doc, Serial);
 	json_doc.clear();
+}
 
-	/*
-		Serial.print("Serial8 bits available for read (OpenMV DX): ");
-		Serial.println(Serial8.available());
+void Robot::TestPeripherals()
+{ // TODO: send special char to OPENMV to signal ping
+	Serial.println("----- Additional testing procedure -----");
+	FakeDelay(300);
+	tone(R_BUZZER_PIN, 5000, 100);
+	FakeDelay(200);
+	tone(R_BUZZER_PIN, 5000, 100);
 
-		Serial.print("Serial2 bits available for read (OpenMV SX): ");
-		Serial.println(Serial2.available());
-	*/
+	if (OPENMV_SX.available())
+	{
+		Serial.print("OpenMV_SX: ");
+		while (OPENMV_SX.available())
+		{
+			Serial.print((char)OPENMV_SX.read());
+			FakeDelay(1);
+		}
+		Serial.println();
+	}
+
+	if (OPENMV_DX.available())
+	{
+		Serial.print("OpenMV_DX: ");
+		while (OPENMV_DX.available())
+		{
+			Serial.print((char)OPENMV_DX.read());
+			FakeDelay(1);
+		}
+		Serial.println();
+	}
+
+	TestButton(R_COLLISION_DX_PIN, "Bumper DX");
+	TestButton(R_COLLISION_SX_PIN, "Bumper SX");
+	TestButton(R_SW_START_PIN, "Start Button");
+	TestButton(R_SW_XTRA_PIN, "Extra Button");
+
+	FakeDelay(300);
+	tone(R_BUZZER_PIN, 5000, 100);
+	FakeDelay(200);
+	tone(R_BUZZER_PIN, 5000, 100);
+	Serial.println("----- Additional testing procedure end -----");
+}
+
+void Robot::TestButton(uint8_t pin, const char *name)
+{
+	uint32_t past_time = millis();
+	while (true)
+	{
+		if (past_time + 1000 < millis())
+		{
+			Serial.print("Waiting for \"");
+			Serial.print(name);
+			Serial.println("\" to be pressed");
+			past_time = millis();
+		}
+		if (digitalReadFast(pin))
+		{
+			break;
+		}
+		FakeDelay(1);
+	}
+	Serial.print("Pressed ");
+	Serial.println(name);
+	tone(R_BUZZER_PIN, 3500, 100);
+	FakeDelay(100);
 }
 
 Robot::~Robot()

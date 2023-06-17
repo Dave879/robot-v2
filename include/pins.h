@@ -12,38 +12,39 @@
 
 #define R_PIN_SENSORS_POWER_ENABLE 33
 
-#define R_PIN_SERVO 0
-#define R_PIN_COLOR_INT 14
+#define R_PIN_SERVO 2
 
-#define R_LED1_PIN 5
-#define R_LED2_PIN 6
-#define R_LED3_PIN 9
-#define R_LED4_PIN 41
+#define R_LED1_PIN 38
+#define R_LED2_PIN 39
+#define R_LED3_PIN 34
+#define R_LED4_PIN 35
 
-#define R_SW_START_PIN 27
-#define R_SW_XTRA_PIN 26
+#define R_SW_START_PIN 31
+#define R_SW_XTRA_PIN 32
 
-#define R_COLLISION_SX_PIN 3
-#define R_COLLISION_DX_PIN 4
+#define R_COLLISION_SX_PIN 36
+#define R_COLLISION_DX_PIN 37
 
 #define R_IMU_CS_PIN 10
-#define R_IMU_EXT_CLK_SPI_PIN 36
-#define R_IMU_INT_SPI_PIN 38
+#define R_IMU_EXT_CLK_SPI_PIN 9
+#define R_IMU_INT_SPI_PIN 41
 
-// OpenMV SX -> Serial2
-// OpenMV DX -> Serial8
+#define R_BUZZER_PIN 3
+
+#define OPENMV_SX Serial2
+#define OPENMV_DX Serial1
 
 const uint8_t VL53L5CX_LPn_pin[4] = {
-	31,	// Forward
-	40,	// Backward
-	2,		// Left
-	29		// Right
+	29,	// Forward
+	5,	// Backward
+	6,		// Left
+	27		// Right
 };
 
 const uint8_t VL53L5CX_int_pin[4] = {
 	30,	// Forward
-	39,	// Backward
-	1,		// Left
+	4,	// Backward
+	26,		// Left
 	28		// Right
 };
 

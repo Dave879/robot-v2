@@ -10,7 +10,14 @@ void SignalBuiltinLED(int count, int delayTime);
 	int32_t deltaTime = endTime - startTime; \
 	Serial.println(deltaTime);
 
-#define LOG(x) Serial.println(x)
+#define LOG(x) Serial.print(x);
+#define LOG2(x, y) \
+  Serial.print(x); \
+  Serial.print(y);
+#define LOG3(x, y, z) \
+  Serial.print(x);    \
+  Serial.print(y);    \
+  Serial.print(z);
 
 #define LINEGRAPH(title, value) 	Serial.print("{\"0&n&l&"); Serial.print(title); Serial.print("\":"); Serial.print(value); Serial.print("}");
 #define LINEGRAPH_MULTI(title, value, id) 	Serial.print("{\""); Serial.print(id); Serial.print("&n&l&"); Serial.print(title); Serial.print("\":"); Serial.print(value); Serial.print("}");
