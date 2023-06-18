@@ -1045,10 +1045,12 @@ void Robot::SetNewTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_TO_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_BACK_TO_CENTER_TILE;
+	/*
 	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = ((((GetBackDistance() / 300) + 1) * 320) + DISTANCE_BACK_TO_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE));
 	}
+	*/
 }
 
 void Robot::SetCurrentTileDistances()
@@ -1057,10 +1059,12 @@ void Robot::SetCurrentTileDistances()
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_TO_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_BACK_TO_CENTER_TILE;
+	/*
 	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		back_distance_to_reach = (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE) + (GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE));
 	}
+	*/
 }
 
 void Robot::ChangeMapX(bool increment)
@@ -1482,6 +1486,7 @@ void Robot::TurnBack()
 
 	// Giro totale (-180°)
 	Turn(-90);
+	/*
 	UpdateSensorNumBlocking(VL53L5CX::DX);
 	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
@@ -1499,6 +1504,7 @@ void Robot::TurnBack()
 		}
 	}
 	OPENMV_DX.print('7');
+	*/
 
 	Turn(-90);
 	DecreaseDirection();
