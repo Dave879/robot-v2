@@ -6,14 +6,6 @@ Based on Teensy 4.1 + OpenMV H7 Plus
 To compile and upload + serial monitor:
 
 ``` bash
-pio run --target upload && pio device monitor
+pio run --target upload
 ```
-
-or
-
-``` bash
-pio run --target upload && sleep 1 && pio device monitor
-```
-
-if the device monitor doesn't pick up the correct serial port
-
+To monitor the serial output ArduPlot is needed.
