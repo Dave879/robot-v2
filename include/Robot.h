@@ -99,6 +99,8 @@ private:
 	void AddLeftTileToTileToVisit();
 	void AddRightTileToTileToVisit();
 	void AddFrontTileToTileToVisit();
+	bool InTileToVisit(Tile t);
+	void RemoveTileToVisit(Tile t);
 	void UpdateAllDistanceSensorsBlocking();
 	/**
 	 * Navigation utility functions

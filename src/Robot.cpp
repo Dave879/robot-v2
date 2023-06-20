@@ -261,6 +261,8 @@ void Robot::Run()
 				Serial.print("Tile attuale");
 				Serial.println(Tile{current_y, current_x, current_z});
 				ChangeMapPosition();
+				// Se la tile corrente è in TileToVisit() la tolgo
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 				Serial.print("Tile dopo change map position");
 				Serial.println(Tile{current_y, current_x, current_z});
 				map->PrintMazePath(path_to_tile);
@@ -323,7 +325,11 @@ void Robot::Run()
 				int16_t previous_tile_x = current_x;
 				int16_t previous_tile_z = current_z;
 				// Cambio coordinate con quelle della tile corrente
+				// Se la tile corrente è in TileToVisit() la tolgo
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 				ChangeMapPosition();
+				// Se la tile corrente è in TileToVisit() la tolgo
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 
 				// Aggiungo il vertice corrente
 				map->AddVertex(Tile{current_y, current_x, current_z});
@@ -594,7 +600,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 	case 0:
 		// Destra
 		next_tile = current_x + 1;
-		right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+		right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanTurnRight())
 		{
 			map->AddVertex(Tile{current_y, next_tile, current_z});
@@ -602,7 +608,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Sinistra
 		next_tile = current_x - 1;
-		left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+		left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanTurnLeft())
 		{
 			map->AddVertex(Tile{current_y, next_tile, current_z});
@@ -610,7 +616,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Frontale
 		next_tile = current_y + 1;
-		front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+		front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanGoOn())
 		{
 			map->AddVertex(Tile{next_tile, current_x, current_z});
@@ -620,7 +626,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 	case 1:
 		// Destra
 		next_tile = current_y - 1;
-		right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+		right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanTurnRight())
 		{
 			map->AddVertex(Tile{next_tile, current_x, current_z});
@@ -628,7 +634,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Sinistra
 		next_tile = current_y + 1;
-		left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+		left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanTurnLeft())
 		{
 			map->AddVertex(Tile{next_tile, current_x, current_z});
@@ -636,7 +642,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Frontale
 		next_tile = current_x + 1;
-		front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+		front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanGoOn())
 		{
 			map->AddVertex(Tile{current_y, next_tile, current_z});	
@@ -646,7 +652,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 	case 2:
 		// Destra
 		next_tile = current_x - 1;
-		right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+		right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanTurnRight())
 		{
 			map->AddVertex(Tile{current_y, next_tile, current_z});	
@@ -654,7 +660,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Sinistra
 		next_tile = current_x + 1;
-		left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+		left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanTurnLeft())
 		{
 			map->AddVertex(Tile{current_y, next_tile, current_z});	
@@ -662,7 +668,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Frontale
 		next_tile = current_y - 1;
-		front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+		front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanGoOn())
 		{
 			map->AddVertex(Tile{next_tile, current_x, current_z});	
@@ -672,7 +678,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 	case 3:
 		// Destra
 		next_tile = current_y + 1;
-		right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+		right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanTurnRight())
 		{
 			map->AddVertex(Tile{next_tile, current_x, current_z});	
@@ -680,7 +686,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Sinistra
 		next_tile = current_y - 1;
-		left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1;
+		left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanTurnLeft())
 		{
 			map->AddVertex(Tile{next_tile, current_x, current_z});	
@@ -688,7 +694,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		}
 		// Frontale
 		next_tile = current_x - 1;
-		front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1;
+		front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanGoOn())
 		{
 			map->AddVertex(Tile{current_y, next_tile, current_z});
@@ -1119,6 +1125,31 @@ void Robot::AddFrontTileToTileToVisit()
 		break;
 	default:
 		break;
+	}
+}
+
+
+bool Robot::InTileToVisit(Tile t)
+{
+	for (size_t i = 0; i < tile_to_visit.size(); i++)
+	{
+		if (tile_to_visit.at(i) == t)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void Robot::RemoveTileToVisit(Tile t)
+{
+	for (size_t i = 0; i < tile_to_visit.size(); i++)
+	{
+		if (tile_to_visit.at(i) == t)
+		{
+			tile_to_visit.erase(tile_to_visit.begin() + i);
+			return;
+		}
 	}
 }
 
