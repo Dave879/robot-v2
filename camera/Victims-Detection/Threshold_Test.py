@@ -6,7 +6,6 @@ from pyb import UART
 
 import pyb
 
-
 # ANALOG READ
 
 analog_distance = pyb.ADC(pyb.Pin('P6'))
@@ -24,11 +23,11 @@ uart.init(baudrate=115200, timeout_char=1)
 # The below thresholds track in general red/green/black/yellow things.
 red=(10, 100, 20, 127, 0, 127) # red_thresholds
 green=(10, 50, -128, -20, -1, 127) # green_thresholds
-yellow=(20, 65, -15, 30, 40, 127) # yellow_thresholds
+yellow=(20, 100, -15, 10, 20, 127) # yellow_thresholds
 black=(0, 15, -10, 10, -10, 10) # black_thresholds
 
 
-pixels_threshold = 50
+pixels_threshold = 80
 area_threshold = 50
 
 thresholds = [red, green, yellow, black]
@@ -68,7 +67,7 @@ colors = [ # Add more colors if you are detecting more than 7 types of classes a
 
 sensor.reset()                      # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
-sensor.set_framesize(sensor.B128X64)   # Set frame size to QVGA (320x240)
+sensor.set_framesize(sensor.QQVGA)   # Set frame size to QVGA (320x240)
 sensor.skip_frames(time = 2000)     # Wait for settings take effect.
 time.sleep(0.01)
 #sensor.set_auto_gain(True) # must be turned off for color tracking
@@ -80,9 +79,6 @@ kits = -1 # -1 means that there is no victim
 
 while(True):
 
-    sharp_read = analog_distance.read()
-
-    print("%f <- value" % sharp_read) # read value, 0-4095
 
 
     img = sensor.snapshot() # Take a picture and return the image.
@@ -93,16 +89,18 @@ while(True):
 
         for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
 
+                if blob.cy() < 32 or blob.cy() > 100:
+                    continue
                 # These values depend on the blob not being circular - otherwise they will be shaky.
-                #if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
-                    #img.draw_edges(blob.min_corners(), color=(255,0,0))
-                    #img.draw_line(blob.major_axis_line(), color=(0,255,0))
-                    #img.draw_line(blob.minor_axis_line(), color=(0,0,255))
+                if blob.elongation() > 0.5: # TODO: test with all letters to get the value all leters are detected with
+                    img.draw_edges(blob.min_corners(), color=(255,0,0))
+                    img.draw_line(blob.major_axis_line(), color=(0,255,0))
+                    img.draw_line(blob.minor_axis_line(), color=(0,0,255))
                 # These values are stable all the time.
-                #img.draw_rectangle(blob.rect())
-                #img.draw_cross(blob.cx(), blob.cy())
+                img.draw_rectangle(blob.rect())
+                img.draw_cross(blob.cx(), blob.cy())
                 # Note - the blob rotation is unique to 0-180 only.
-                #img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
+                img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
 
                 # Black detected
                 if i == black:
@@ -120,16 +118,6 @@ while(True):
                             center_y = math.floor(y + (h / 2))
                             print('x %d\ty %d' % (center_x, center_y))
                             img.draw_circle((center_x, center_y, 12), color=colors[i], thickness=2)
-
-                        if labels[i]== "H":
-                            print("black")
-                            kits = 3
-                        elif labels[i] == "S":
-                            print("black")
-                            kits = 2
-                        elif labels[i]== "U":
-                            print("black")
-                            kits = 0
 
                         sensor.set_pixformat(sensor.RGB565) # Set pixel format to RGB565 (or GRAYSCALE)
 

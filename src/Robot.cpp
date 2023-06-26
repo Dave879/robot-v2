@@ -98,10 +98,86 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	imu->ResetZ();
 	// Get first old_gyro value for check drift
 	old_gyro_value = imu->z;
+
+	while (OPENMV_SX.available())
+	{
+		OPENMV_SX.read();
+	}
+	while (OPENMV_DX.available())
+	{
+		OPENMV_DX.read();
+	}
 }
 
 void Robot::Run()
 {
+	while (1)
+	{
+		if (digitalReadFast(R_SW_XTRA_PIN))
+		{
+			if (!first_time_pressed)
+			{
+				digitalWriteFast(R_LED1_PIN, HIGH);
+				digitalWriteFast(R_LED2_PIN, HIGH);
+				digitalWriteFast(R_LED3_PIN, HIGH);
+				digitalWriteFast(R_LED4_PIN, HIGH);
+				first_time_pressed = true;
+
+				UpdateAllDistanceSensorsBlocking();
+				if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
+				{
+					OPENMV_DX.print('9');
+				}
+				if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
+				{
+					OPENMV_SX.print('9');
+				}
+
+				digitalWriteFast(R_LED1_PIN, LOW);
+				digitalWriteFast(R_LED2_PIN, LOW);
+				digitalWriteFast(R_LED3_PIN, LOW);
+				digitalWriteFast(R_LED4_PIN, LOW);
+			}
+		}
+		else
+		{
+			first_time_pressed = false;
+		}
+		// Victims detection
+		while (FoundVictim())
+		{
+			int kits_number;
+			bool left_victim;
+			if (OPENMV_SX.available() > 0)
+			{
+				kits_number = OPENMV_SX.read() - '0';
+				left_victim = true;
+			}
+			else
+			{
+				kits_number = OPENMV_DX.read() - '0';
+				left_victim = false;
+			}
+			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
+			Serial.println(kits_number);
+			if (kits_number <= 3 && kits_number >= 0)
+			{
+				DropKit(kits_number, left_victim);
+			}
+			else if (kits_number == 9)
+			{
+				if (left_victim)
+				{
+					OPENMV_SX.print('8');
+				}
+				else
+				{
+					OPENMV_DX.print('8');
+				}
+				FakeDelay(500);
+			}
+		}
+	}
 	if (!StopRobot()) // Robot in azione
 	{
 		/*
@@ -375,30 +451,6 @@ void Robot::Run()
 
 				map->PrintMaze({current_y, current_x, current_z});
 			}
-
-			/*
-			// Victims detection
-			while (FoundVictim())
-			{
-				int kits_number;
-				bool left_victim;
-				if (OPENMV_SX.available() > 0)
-				{
-					kits_number = int(OPENMV_SX.read() - '0');
-					left_victim = true;
-				}
-				else
-				{
-					kits_number = int(OPENMV_DX.read() - '0');
-					left_victim = false;
-				}
-				Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-				Serial.println(kits_number);
-				DropKit(kits_number, left_victim);
-			}
-			OPENMV_DX.print('7');
-			OPENMV_SX.print('7');
-			*/
 
 			digitalWriteFast(R_LED1_PIN, LOW);
 			digitalWriteFast(R_LED2_PIN, LOW);
@@ -1128,7 +1180,6 @@ void Robot::AddFrontTileToTileToVisit()
 	}
 }
 
-
 bool Robot::InTileToVisit(Tile t)
 {
 	for (size_t i = 0; i < tile_to_visit.size(); i++)
@@ -1448,11 +1499,6 @@ void Robot::AfterTurnVictimDetection()
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 {
-	// TODO: Verificare se tenere o meno le due righe sotto
-	OPENMV_DX.print('7');
-	OPENMV_SX.print('7');
-	// -------------------
-
 	int8_t seconds_to_wait = 6;
 	if (left_victim)
 	{
@@ -1534,6 +1580,16 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 
 		Turn(90 * side);
 	}
+	digitalWriteFast(R_LED1_PIN, HIGH);
+	digitalWriteFast(R_LED2_PIN, HIGH);
+	digitalWriteFast(R_LED3_PIN, HIGH);
+	digitalWriteFast(R_LED4_PIN, HIGH);
+	FakeDelay(250);
+	tone(R_BUZZER_PIN, 5000, 100);
+	digitalWriteFast(R_LED1_PIN, LOW);
+	digitalWriteFast(R_LED2_PIN, LOW);
+	digitalWriteFast(R_LED3_PIN, LOW);
+	digitalWriteFast(R_LED4_PIN, LOW);
 	// TODO: Verificare se tenere o meno le due righe sotto
 	UpdateFrontBlocking();
 	UpdateSensorNumBlocking(VL53L5CX::BW);
