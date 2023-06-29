@@ -29,7 +29,7 @@ boolean Color::begin(TwoWire *wireInterface)
     tcs.setInterrupt(false);
     // setGainTime();
   }
-  return (isAvailable);
+  return isAvailable;
 }
 
 // Set the gain and integration time
@@ -59,7 +59,7 @@ void Color::setGainTime()
 // Retrieve data from the sensor and do the calculations
 void Color::getData()
 {
-  if (millis() > last_reading_time + 7)
+  if (millis() > last_reading_time + 7 && isAvailable)
   {
     last_reading_time = millis();
     // read the sensor and autorange if necessary

@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <Servo.h>
 
+#include "config.h"
 #include "pins.h"
 #include "Motors.h"
 #include "Sensors/gyro.h"
@@ -17,30 +18,6 @@
 class Robot
 {
 private:
-/**
- * Global configuration variables
- */
-#define SPEED 47
-#define TURN_SPEED 75
-#define MIN_DISTANCE_TO_TURN_MM 210
-#define MIN_DISTANCE_TO_SET_IGNORE_FALSE_MM 180
-#define MIN_DISTANCE_FROM_FRONT_WALL_MM 100
-#define MIN_DISTANCE_BUMP_BACK_WALL_MM 180
-#define ADDITIONAL_ANGLE_TO_OVERCOME 3
-// Colored tile
-#define MIN_VALUE_BLUE_TILE 22
-#define MIN_VALUE_BLACK_TILE 11
-// PID controller constants
-#define KP 0.0007		//.5 // Proportional gain
-#define KI 0 //.2 // Integral gain
-#define KD 0 //.1 // Derivative gain
-// Tile to tile
-#define DISTANCE_SENSOR_CELL 27
-#define DISTANCE_END_TILE_CENTER 60
-#define DISTANCE_FRONT_TO_CENTER_TILE DISTANCE_END_TILE_CENTER + 10
-#define DISTANCE_BACK_TO_CENTER_TILE 60
-#define MIN_TIME_RAMP 3000
-#define RAMP_BACK_DIST 100
 
 	StaticJsonDocument<4000> json_doc;
 	DataFormatter doc_helper;
@@ -170,12 +147,13 @@ private:
 	Motors *ms;
 
 	gyro *imu;
-	volatile bool *imu_data_ready;
+	static volatile bool imu_data_ready;
 
 	VL53L5CX_manager *lasers;
 	static volatile bool lasers_data_ready[4];
 
 	LRir *ir_front;
+	bool ir_front_connected = false;
 
 	Color *cs;
 	static volatile bool color_data_ready; // As of 12/05/2023, unused - Dave
@@ -191,17 +169,17 @@ private:
 	static void R_VL53L5CX_int_2();
 	static void R_VL53L5CX_int_3();
 	static void R_TCS34725_int();
+	static void R_ICM_42688_P_int();
 
 public:
 	/**
 	 * The Robot initialization function. Every sensor gets initialized
-	 * @todo Need to implement cold start based on last code upload time
 	 * @param cold_start Defaults to true. If true the sensor power source will be deactivated on boot,
 	 * and every sensor will need to be configured from scratch. This usually takes ~24 seconds.
 	 * If set to false, some sensors may not work sometimes because of faulty connections caused by vibrations,
 	 * improper handling... but startup will take a significantly lower amount of time (~4.7 seconds), about 80% less.
 	 */
-	Robot(gyro *imu, volatile bool *imu_dr, bool cold_start = true);
+	Robot(bool cold_start = true);
 	void Run();
 	~Robot();
 

@@ -1,12 +1,7 @@
 #include "Robot.h"
 
-Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
+Robot::Robot(bool cold_start)
 {
-	/**
-	 * The following two lines MUST be first, because Robot::FakeDelay() needs the gyro pointer to be initialized correctly
-	 */
-	this->imu = imu;
-	imu_data_ready = imu_dr;
 
 	// Inizializzazione canale di comunicazione con OpenMV SX
 	OPENMV_SX.begin(115200);
@@ -35,14 +30,6 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		Serial.println("...done!");
 	}
 
-	/*
-		Serial.println("Gyro setup started");
-		imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
-		imu_data_ready = false;
-		attachInterrupt(R_IMU_INT_SPI_PIN, R_IMU_int, RISING);
-		Serial.println("Finished gyro setup!");
-	*/
-
 	Serial.println("Motor setup started");
 	ms = new Motors();
 	Serial.println("Finished motor setup!");
@@ -59,6 +46,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 	if (ir_front->Read() == 2)
 	{
 		Serial.println("ir_front->Read() was successful");
+		ir_front_connected = true;
 		tone(R_BUZZER_PIN, 3500, 50);
 	}
 	Serial.println("Front ir sensor setup finished");
@@ -89,6 +77,16 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 		Serial.println("Failed to initialize color sensor!");
 	}
 
+	Serial.println("Gyro setup started");
+	imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
+	attachInterrupt(R_IMU_INT_SPI_PIN, R_ICM_42688_P_int, RISING);
+	Serial.println("Finished gyro setup!");
+	tone(R_BUZZER_PIN, 3500, 50);
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//												FROM NOW ON FakeDelay() can and should be used
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	// Crea il grafo vuoto
 	map = new graph();
 
@@ -111,7 +109,7 @@ Robot::Robot(gyro *imu, volatile bool *imu_dr, bool cold_start)
 
 void Robot::Run()
 {
-	while (1)
+	// while (1)
 	{
 		if (digitalReadFast(R_SW_XTRA_PIN))
 		{
@@ -375,7 +373,7 @@ void Robot::Run()
 					LackOfProgressProcedure();
 				}
 				else
-				{	
+				{
 					SetNewTileDistances();
 				}
 			}
@@ -438,7 +436,6 @@ void Robot::Run()
 				bool right_blocked = !CanTurnRight() || right_already_visited;
 				bool left_blocked = !CanTurnLeft() || left_already_visited;
 				bool front_blocked = !CanGoOn() || front_already_visited;
-
 
 				Serial.print("Right blocked: ");
 				Serial.print(right_blocked);
@@ -528,6 +525,11 @@ void Robot::R_TCS34725_int()
 	color_data_ready = true;
 }
 
+void Robot::R_ICM_42688_P_int()
+{
+	imu_data_ready = true;
+}
+
 bool Robot::StopRobot()
 {
 	if (digitalReadFast(R_SW_START_PIN))
@@ -581,7 +583,7 @@ bool Robot::StopRobot()
 void Robot::FirstTileProcedure()
 {
 	// Set current front/back distance to reach
-	SetCurrentTileDistances();			
+	SetCurrentTileDistances();
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
@@ -599,14 +601,14 @@ void Robot::FirstTileProcedure()
 	bool right_blocked = !CanTurnRight() || right_already_visited;
 	bool left_blocked = !CanTurnLeft() || left_already_visited;
 	bool front_blocked = !CanGoOn() || front_already_visited;
-/*
-	Serial.print("Right blocked: ");
-	Serial.print(right_blocked);
-	Serial.print("\\tleft blocked: ");
-	Serial.print(left_blocked);
-	Serial.print("\\tfront blocked: ");
-	Serial.println(front_blocked);
-*/
+	/*
+		Serial.print("Right blocked: ");
+		Serial.print(right_blocked);
+		Serial.print("\\tleft blocked: ");
+		Serial.print(left_blocked);
+		Serial.print("\\tfront blocked: ");
+		Serial.println(front_blocked);
+	*/
 	// Ultimo parametro a true pk non ha senso fermarmi a controllare vittime nella tile di partenza
 	DecideTurn(left_blocked, front_blocked, right_blocked, true);
 }
@@ -614,7 +616,7 @@ void Robot::FirstTileProcedure()
 void Robot::LackOfProgressProcedure()
 {
 	// Set current front/back distance to reach
-	SetCurrentTileDistances();			
+	SetCurrentTileDistances();
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
@@ -632,14 +634,14 @@ void Robot::LackOfProgressProcedure()
 	bool left_blocked = !CanTurnLeft() || left_already_visited;
 	bool front_blocked = !CanGoOn() || front_already_visited;
 
-/*
-	Serial.print("Right blocked: ");
-	Serial.print(right_blocked);
-	Serial.print("\\tleft blocked: ");
-	Serial.print(left_blocked);
-	Serial.print("\\tfront blocked: ");
-	Serial.println(front_blocked);
-*/
+	/*
+		Serial.print("Right blocked: ");
+		Serial.print(right_blocked);
+		Serial.print("\\tleft blocked: ");
+		Serial.print(left_blocked);
+		Serial.print("\\tfront blocked: ");
+		Serial.println(front_blocked);
+	*/
 
 	DecideTurn(left_blocked, front_blocked, right_blocked, true);
 }
@@ -697,7 +699,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		front_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanGoOn())
 		{
-			map->AddVertex(Tile{current_y, next_tile, current_z});	
+			map->AddVertex(Tile{current_y, next_tile, current_z});
 			map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 		}
 		break;
@@ -707,7 +709,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		right_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanTurnRight())
 		{
-			map->AddVertex(Tile{current_y, next_tile, current_z});	
+			map->AddVertex(Tile{current_y, next_tile, current_z});
 			map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 		}
 		// Sinistra
@@ -715,7 +717,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		left_already_visited = map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && !InTileToVisit(Tile{current_y, next_tile, current_z});
 		if (CanTurnLeft())
 		{
-			map->AddVertex(Tile{current_y, next_tile, current_z});	
+			map->AddVertex(Tile{current_y, next_tile, current_z});
 			map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 1);
 		}
 		// Frontale
@@ -723,7 +725,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		front_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanGoOn())
 		{
-			map->AddVertex(Tile{next_tile, current_x, current_z});	
+			map->AddVertex(Tile{next_tile, current_x, current_z});
 			map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 		}
 		break;
@@ -733,7 +735,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		right_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanTurnRight())
 		{
-			map->AddVertex(Tile{next_tile, current_x, current_z});	
+			map->AddVertex(Tile{next_tile, current_x, current_z});
 			map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 		}
 		// Sinistra
@@ -741,7 +743,7 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 		left_already_visited = map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && !InTileToVisit(Tile{next_tile, current_x, current_z});
 		if (CanTurnLeft())
 		{
-			map->AddVertex(Tile{next_tile, current_x, current_z});	
+			map->AddVertex(Tile{next_tile, current_x, current_z});
 			map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 1);
 		}
 		// Frontale
@@ -802,8 +804,8 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 			Serial.print("Numero Tile da vedere: ");
 			Serial.println(tile_to_visit.size());
 			Serial.print("Tile da vedere: ");
-			Serial.println(tile_to_visit.at(tile_to_visit.size()-1));
-			map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.at(tile_to_visit.size()-1), path_to_tile, len, direction);
+			Serial.println(tile_to_visit.at(tile_to_visit.size() - 1));
+			map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.at(tile_to_visit.size() - 1), path_to_tile, len, direction);
 			tile_to_visit.pop_back();
 		}
 		path_to_tile.erase(path_to_tile.begin());
@@ -844,7 +846,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 			{
 				// Giro o continuo ad andare dritto
 				if (millis() % 2)
-				{	
+				{
 					// Giro a destra
 					AddLeftAndFrontTileToTileToVisit();
 					TurnRight();
@@ -1821,6 +1823,12 @@ uint8_t Robot::TrySensorDataUpdate()
 
 	uint8_t status = 0;
 
+	if (imu_data_ready)
+	{
+		imu->UpdateData();
+		imu_data_ready = false;
+	}
+
 	for (uint8_t i = 0; i < 4; i++)
 	{
 		if (lasers_data_ready[i])
@@ -1831,7 +1839,10 @@ uint8_t Robot::TrySensorDataUpdate()
 		}
 	}
 
-	status |= ir_front->Read();
+	if (ir_front_connected)
+	{
+		status |= ir_front->Read();
+	}
 
 	// if (color_data_ready)
 	{
@@ -1893,10 +1904,10 @@ void Robot::UpdateGyroBlocking()
 {
 	while (true)
 	{
-		if (*imu_data_ready)
+		if (imu_data_ready)
 		{
 			imu->UpdateData();
-			*imu_data_ready = false;
+			imu_data_ready = false;
 			break;
 		}
 	}
@@ -1904,18 +1915,23 @@ void Robot::UpdateGyroBlocking()
 
 void Robot::UpdateGyroNonBlocking()
 {
-	if (*imu_data_ready)
+	if (imu_data_ready)
 	{
 		imu->UpdateData();
-		*imu_data_ready = false;
+		imu_data_ready = false;
 	}
 }
 
 void Robot::UpdateFrontBlocking()
 {
-	while (ir_front->Read() != 2)
+	if (ir_front_connected)
 	{
-		FakeDelay(1);
+		while (ir_front->Read() != 2)
+		{
+			FakeDelay(1);
+		}
+	} else {
+		Serial.println("Front sensor unavailable!");
 	}
 }
 

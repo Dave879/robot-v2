@@ -8,31 +8,10 @@
 #include "util.h"
 
 volatile bool Robot::lasers_data_ready[4] = {0};
+volatile bool Robot::imu_data_ready = false;
 // volatile bool Robot::color_data_ready = false;
 
 Robot *rb;
-
-gyro *imu;
-
-volatile bool imu_dr;
-
-void IMU_int()
-{
-	imu_dr = true;
-}
-
-void FakeDelay(uint32_t time)
-{
-	uint32_t time_to_wait = millis() + time;
-	while (millis() < time_to_wait)
-	{
-		if (imu_dr)
-		{
-			imu->UpdateData();
-			imu_dr = false;
-		}
-	}
-}
 
 // uint16_t times_per_second = 0;
 // uint32_t past_millis = 0;
@@ -72,26 +51,14 @@ void setup()
 		tone(R_BUZZER_PIN, 4000, 69);
 	}
 
-	Serial.println("Gyro setup started");
-	imu_dr = false;
-	imu = new gyro(SPI, R_IMU_CS_PIN, R_IMU_EXT_CLK_SPI_PIN);
-	attachInterrupt(R_IMU_INT_SPI_PIN, IMU_int, RISING);
-	Serial.println("Finished gyro setup!");
-	tone(R_BUZZER_PIN, 3500, 50);
-
 	// If a complete restart of the sensors is needed on every boot, set parameter to true
-	rb = new Robot(imu, &imu_dr, true);
+	rb = new Robot(true);
 	// past_millis = millis();
 }
 
 void loop()
 {
 	rb->TrySensorDataUpdate();
-	if (imu_dr)
-	{
-		imu->UpdateData();
-		imu_dr = false;
-	}
 	rb->PrintSensorData();
 	rb->Run();
 	/*
