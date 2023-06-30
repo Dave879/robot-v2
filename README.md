@@ -2,16 +2,17 @@
 
 Based on Teensy 4.1 + OpenMV H7 Plus
 
-## PlatformIO Project
+The ```camera/``` folder contains the OpenMV code.
 
-The Camera folder contains the openMV code.
-
-The src and include folders contain the Teensy 4.1 source code.
+The ```src/``` and ```include/``` folders contain the Teensy 4.1 source code.
 
 # Usage
-To compile and upload + serial monitor:
+
+Install the PlatfomIO extension for Visual Studio Code.
+
+To compile and upload:
 
 ``` bash
 pio run --target upload
 ```
-To monitor the serial output ArduPlot is needed.
+To monitor the serial output [ArduPlot](https://github.com/Dave879/ArduPlot) is needed.

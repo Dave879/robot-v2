@@ -10,7 +10,6 @@
 #include "Motors.h"
 #include "Sensors/gyro.h"
 #include "Sensors/VL53L5CX_manager.h"
-#include "Sensors/LRir.h"
 #include "Sensors/Color.h"
 #include "data_formatter.h"
 #include "mapping/graph.h"
@@ -19,7 +18,7 @@ class Robot
 {
 private:
 
-	StaticJsonDocument<4000> json_doc;
+	StaticJsonDocument<5000> json_doc;
 	DataFormatter doc_helper;
 	JsonArray dist[4];
 
@@ -153,9 +152,6 @@ private:
 	VL53L5CX_manager *lasers;
 	static volatile bool lasers_data_ready[4];
 
-	LRir *ir_front;
-	bool ir_front_connected = false;
-
 	Color *cs;
 	static volatile bool color_data_ready; // As of 12/05/2023, unused - Dave
 
@@ -191,7 +187,6 @@ public:
 	void UpdateSensorNumBlocking(VL53L5CX num);
 	void UpdateGyroBlocking();
 	void UpdateGyroNonBlocking();
-	void UpdateFrontBlocking();
 	void PrintSensorData();
 	void TestPeripherals();
 	void TestButton(uint8_t pin, const char* name);

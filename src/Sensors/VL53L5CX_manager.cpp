@@ -5,7 +5,7 @@ VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface, bool cold_start) : resolu
 
 	if (cold_start)
 	{
-		for (uint8_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+		for (uint8_t i = 0; i < SENSORS_NUM; i++)
 		{
 			pinMode(VL53L5CX_LPn_pin[i], OUTPUT);
 			digitalWriteFast(VL53L5CX_LPn_pin[i], LOW); // Sensor stops listening
@@ -13,14 +13,14 @@ VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface, bool cold_start) : resolu
 	}
 	else
 	{
-		for (uint8_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+		for (uint8_t i = 0; i < SENSORS_NUM; i++)
 		{
 			pinMode(VL53L5CX_LPn_pin[i], OUTPUT);
 			digitalWriteFast(VL53L5CX_LPn_pin[i], HIGH); // Sensor starts listening
 		}
 	}
 	delay(100);
-	for (uint8_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		digitalWriteFast(VL53L5CX_LPn_pin[i], HIGH); // Sensor starts listening
 		Serial.print("Initializing VL53L5CX sensor ");
@@ -46,7 +46,7 @@ VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface, bool cold_start) : resolu
 		digitalWriteFast(VL53L5CX_LPn_pin[i], LOW); // Sensor stops listening
 		delay(100);											  // This delay is ESSENTIAL: If removed, the StartRanging function on the second sensor returns 255!!!
 	}
-	for (uint8_t i = 1; i < SENSORS_NUM; i++)
+	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		digitalWriteFast(VL53L5CX_LPn_pin[i], HIGH); // Sensor starts listening
 	}
@@ -55,7 +55,7 @@ VL53L5CX_manager::VL53L5CX_manager(TwoWire &interface, bool cold_start) : resolu
 uint8_t VL53L5CX_manager::StartRanging(const uint8_t resolution, const uint8_t frequency, const ELIA::RangingMode mode)
 {
 	uint8_t status = 0;
-	for (uint8_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		if (!is_disconnected[i])
 		{
@@ -78,7 +78,7 @@ uint8_t VL53L5CX_manager::StartRanging(const uint8_t resolution, const uint8_t f
 
 void VL53L5CX_manager::UpdateData()
 {
-	for (uint8_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		sensors[i]->UpdateData();
 	}
@@ -86,7 +86,7 @@ void VL53L5CX_manager::UpdateData()
 
 void VL53L5CX_manager::SetAllDataReady(bool b)
 {
-	for (uint8_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+	for (uint8_t i = 0; i < SENSORS_NUM; i++)
 	{
 		data_ready[i] = b;
 	}
@@ -94,7 +94,7 @@ void VL53L5CX_manager::SetAllDataReady(bool b)
 
 void VL53L5CX_manager::GetStatus(uint8_t status[SENSORS_NUM])
 {
-	for (size_t i = 1; i < SENSORS_NUM; i++) // i=1 hack per toglere sensore frontale senza riscrivere codebase
+	for (size_t i = 1; i < SENSORS_NUM; i++)
 	{
 		status[i] = sensors[i]->GetStatus();
 	}

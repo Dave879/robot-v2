@@ -40,22 +40,12 @@ Robot::Robot(bool cold_start)
 	lasers = new VL53L5CX_manager(Wire2, cold_start);
 	Serial.println("Laser sensors setup finished");
 
-	Serial.println("Front ir sensor setup started");
-	ir_front = new LRir(Serial3, FRAME_50);
-	if (ir_front->Read() == 2)
-	{
-		Serial.println("ir_front->Read() was successful");
-		ir_front_connected = true;
-		tone(R_BUZZER_PIN, 3500, 50);
-	}
-	Serial.println("Front ir sensor setup finished");
-
 	/*
 		Interrupts *MUST* be attached after the VL53L5CX_manager is instantiated,
 		otherwise if the data_ready array isn't initialized and an interrupt is
 		fired, the program will crash.
 	*/
-	// attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
+	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::FW], R_VL53L5CX_int_0, FALLING); // sensor_0
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
@@ -190,14 +180,14 @@ void Robot::Run()
 			SetCurrentTileDistances();
 			while (NewTile())
 			{
-				UpdateFrontBlocking();
+				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
 			ms->SetPower(SPEED, SPEED);
 			SetCurrentTileDistances();
 			while (!NewTile())
 			{
-				UpdateFrontBlocking();
+				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
 			// Adding the black tile into the map
@@ -534,7 +524,7 @@ void Robot::FirstTileProcedure()
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
-		UpdateFrontBlocking();
+		UpdateSensorNumBlocking(VL53L5CX::FW);
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
 
@@ -567,7 +557,7 @@ void Robot::LackOfProgressProcedure()
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
-		UpdateFrontBlocking();
+		UpdateSensorNumBlocking(VL53L5CX::FW);
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
 
@@ -1172,7 +1162,7 @@ void Robot::UpdateAllDistanceSensorsBlocking()
 {
 	UpdateSensorNumBlocking(VL53L5CX::SX);
 	UpdateSensorNumBlocking(VL53L5CX::DX);
-	UpdateFrontBlocking();
+	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 }
 
@@ -1188,7 +1178,7 @@ int16_t Robot::GetLeftDistance()
 
 int32_t Robot::GetFrontDistance()
 {
-	return ir_front->tfDist * 10;
+	return lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
 }
 
 int16_t Robot::GetBackDistance()
@@ -1198,7 +1188,7 @@ int16_t Robot::GetBackDistance()
 
 void Robot::SetNewTileDistances()
 {
-	UpdateFrontBlocking();
+	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300) - 1) * 320) + DISTANCE_FRONT_TO_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300) + 1) * 320) + DISTANCE_BACK_TO_CENTER_TILE;
@@ -1212,7 +1202,7 @@ void Robot::SetNewTileDistances()
 
 void Robot::SetCurrentTileDistances()
 {
-	UpdateFrontBlocking();
+	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	front_distance_to_reach = (((GetFrontDistance() / 300)) * 320) + DISTANCE_FRONT_TO_CENTER_TILE;
 	back_distance_to_reach = (((GetBackDistance() / 300)) * 320) + DISTANCE_BACK_TO_CENTER_TILE;
@@ -1364,7 +1354,7 @@ bool Robot::CanTurnLeft()
 
 bool Robot::CanGoOn()
 {
-	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || ir_front->tfFlux == 0;
+	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
 }
 
 bool Robot::CanBumpBack()
@@ -1374,7 +1364,7 @@ bool Robot::CanBumpBack()
 
 bool Robot::FrontWall()
 {
-	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && ir_front->tfFlux != 0;
+	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5;
 }
 
 bool Robot::BlackTile()
@@ -1389,7 +1379,7 @@ bool Robot::BlueTile()
 
 bool Robot::NewTile()
 {
-	if (GetFrontDistance() <= front_distance_to_reach && ir_front->tfFlux != 0)
+	if (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		Serial.print("Frontale: ");
 		Serial.println(GetFrontDistance());
@@ -1403,7 +1393,7 @@ bool Robot::NewTile()
 		Serial.print("Posteriore da raggiungere: ");
 		Serial.println(back_distance_to_reach);
 	}
-	return (GetFrontDistance() <= front_distance_to_reach && ir_front->tfFlux != 0) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
+	return (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
 }
 
 void Robot::FindVictim()
@@ -1547,7 +1537,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 			ms->SetPower(SPEED, SPEED);
 			while (!NewTile())
 			{
-				UpdateFrontBlocking();
+				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
 			ms->StopMotors();
@@ -1566,7 +1556,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 	digitalWriteFast(R_LED3_PIN, LOW);
 	digitalWriteFast(R_LED4_PIN, LOW);
 	// TODO: Verificare se tenere o meno le due righe sotto
-	UpdateFrontBlocking();
+	UpdateSensorNumBlocking(VL53L5CX::FW);
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	UpdateSensorNumBlocking(VL53L5CX::SX);
 	UpdateSensorNumBlocking(VL53L5CX::DX);
@@ -1590,7 +1580,7 @@ void Robot::Straighten()
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
 	{
-		UpdateFrontBlocking();
+		UpdateSensorNumBlocking(VL53L5CX::FW);
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
 	ms->StopMotors();
@@ -1812,11 +1802,6 @@ uint8_t Robot::TrySensorDataUpdate()
 		}
 	}
 
-	if (ir_front_connected)
-	{
-		status |= ir_front->Read();
-	}
-
 	// if (color_data_ready)
 	{
 		cs->getData();
@@ -1852,8 +1837,6 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	lasers = new VL53L5CX_manager(Wire2, true);
 	Serial.println("Laser sensors setup finished");
 
-	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous); // 8*8, 12Hz
-
 	Serial.println("Initializing color sensor");
 	cs = new Color();
 	if (cs->begin(&Wire1))
@@ -1864,6 +1847,8 @@ void Robot::UpdateSensorNumBlocking(VL53L5CX num)
 	{
 		Serial.println("Failed to initialize color sensor!");
 	}
+
+	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous); // 8*8, 12Hz
 
 	digitalWriteFast(R_LED4_PIN, LOW);
 
@@ -1895,32 +1880,18 @@ void Robot::UpdateGyroNonBlocking()
 	}
 }
 
-void Robot::UpdateFrontBlocking()
-{
-	if (ir_front_connected)
-	{
-		while (ir_front->Read() != 2)
-		{
-			FakeDelay(1);
-		}
-	} else {
-		Serial.println("Front sensor unavailable!");
-	}
-}
 
 void Robot::PrintSensorData()
 {
 	json_doc[doc_helper.AddLineGraph("Gyro X", 1)] = imu->x;
 	json_doc[doc_helper.AddLineGraph("Gyro Y", 1)] = imu->y;
 	json_doc[doc_helper.AddLineGraph("Gyro Z", 1)] = imu->z;
-	json_doc[doc_helper.AddLineGraph("Front distance (cm)", 2)] = ir_front->tfDist;
-	json_doc[doc_helper.AddLineGraph("Front strength", 2)] = ir_front->tfFlux;
-	// dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
+	dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
 	dist[VL53L5CX::BW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX BW", 8, 8, 0, 1000));
 	dist[VL53L5CX::SX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX SX", 8, 8, 0, 1000));
 	dist[VL53L5CX::DX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX DX", 8, 8, 0, 1000));
 
-	for (size_t i = 1; i < 4; i++)
+	for (size_t i = 0; i < 4; i++)
 	{
 		for (size_t j = 0; j < 64; j++)
 		{
