@@ -60,9 +60,9 @@ public:
   boolean isAvailable, isSaturated;
   uint32_t last_reading_time;
   uint16_t againx, atime, atime_ms;
-  uint16_t r, g, b, c;
+  uint16_t r = 50, g = 50, b = 50, c = 50;
   uint16_t ir;
-  uint16_t r_comp, g_comp, b_comp, c_comp;
+  uint16_t r_comp  = 50, g_comp = 50, b_comp = 50, c_comp = 50;
   uint16_t saturation, saturation75;
   float cratio, cpl, ct, lux, maxlux;
 };

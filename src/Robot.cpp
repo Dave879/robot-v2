@@ -2,7 +2,6 @@
 
 Robot::Robot(bool cold_start)
 {
-
 	// Inizializzazione canale di comunicazione con OpenMV SX
 	OPENMV_SX.begin(115200);
 
@@ -42,7 +41,7 @@ Robot::Robot(bool cold_start)
 	Serial.println("Laser sensors setup finished");
 
 	Serial.println("Front ir sensor setup started");
-	ir_front = new LRir(Serial3, FRAME_100);
+	ir_front = new LRir(Serial3, FRAME_50);
 	if (ir_front->Read() == 2)
 	{
 		Serial.println("ir_front->Read() was successful");
@@ -109,76 +108,8 @@ Robot::Robot(bool cold_start)
 
 void Robot::Run()
 {
-	// while (1)
-	{
-		if (digitalReadFast(R_SW_XTRA_PIN))
-		{
-			if (!first_time_pressed)
-			{
-				digitalWriteFast(R_LED1_PIN, HIGH);
-				digitalWriteFast(R_LED2_PIN, HIGH);
-				digitalWriteFast(R_LED3_PIN, HIGH);
-				digitalWriteFast(R_LED4_PIN, HIGH);
-				first_time_pressed = true;
-
-				UpdateAllDistanceSensorsBlocking();
-				if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
-				{
-					OPENMV_DX.print('9');
-				}
-				if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
-				{
-					OPENMV_SX.print('9');
-				}
-
-				digitalWriteFast(R_LED1_PIN, LOW);
-				digitalWriteFast(R_LED2_PIN, LOW);
-				digitalWriteFast(R_LED3_PIN, LOW);
-				digitalWriteFast(R_LED4_PIN, LOW);
-			}
-		}
-		else
-		{
-			first_time_pressed = false;
-		}
-		// Victims detection
-		while (FoundVictim())
-		{
-			int kits_number;
-			bool left_victim;
-			if (OPENMV_SX.available() > 0)
-			{
-				kits_number = OPENMV_SX.read() - '0';
-				left_victim = true;
-			}
-			else
-			{
-				kits_number = OPENMV_DX.read() - '0';
-				left_victim = false;
-			}
-			Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-			Serial.println(kits_number);
-			if (kits_number <= 3 && kits_number >= 0)
-			{
-				DropKit(kits_number, left_victim);
-			}
-			else if (kits_number == 9)
-			{
-				if (left_victim)
-				{
-					OPENMV_SX.print('8');
-				}
-				else
-				{
-					OPENMV_DX.print('8');
-				}
-				FakeDelay(500);
-			}
-		}
-	}
 	if (!StopRobot()) // Robot in azione
 	{
-		/*
 		if (!NotInRamp())
 		{
 			if (!was_in_ramp)
@@ -191,32 +122,57 @@ void Robot::Run()
 			{
 				going_down_ramp = true;
 			}
-			Serial.println("Rampa");
 		}
 		else if (was_in_ramp)
 		{
 			digitalWriteFast(R_LED3_PIN, LOW);
 			was_in_ramp = false;
-			if (millis() - time_in_ramp > 3000)
+			if (millis() - time_in_ramp > 1000)
 			{
-				ms->SetPower(45, 45);
+				Serial.println("Rampa");
+				// ms->SetPower(45, 45);
 				while (imu->y > 0.5 || imu->y < -0.5)
 				{
 					UpdateGyroBlocking();
 				}
-				// Serial.println(imu->y);
+
+				/*
+				// Aggiungo angolo tra le due tile
+				int16_t previous_tile_y = current_y;
+				int16_t previous_tile_x = current_x;
+				int16_t previous_tile_z = current_z;
+				ChangeMapPosition();
+				// Se la tile corrente è in TileToVisit() la tolgo
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
+
+				// Aggiungo il vertice corrente
+				map->AddVertex(Tile{current_y, current_x, current_z});
+				if (!going_down_ramp)
+				{
+					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z-1}, 1);
+				}
+				else
+				{
+					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z+1}, 1);
+				}
+				*/
+
+/*
+				previous_tile_y = current_y;
+				previous_tile_x = current_x;
+				previous_tile_z = current_z;
+				ChangeMapPosition();
+				// Aggiungo il vertice corrente
+				map->AddVertex(Tile{current_y, current_x, current_z});
+				map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 1);
+*/
 
 				SetCurrentTileDistances();
-				// TODO: DA TOGLIERE
-				if (going_down_ramp)
-				{
-					going_down_ramp = false;
-					UpdateSensorNumBlocking(VL53L5CX::BW);
-					back_distance_to_reach = DISTANCE_BACK_TO_CENTER_TILE + (GetBackDistance() - DISTANCE_BACK_TO_CENTER_TILE);
-				}
+
+				going_down_ramp = false;
 			}
 		}
-
+		/*
 		// Black tile
 		if (BlackTile() && NotInRamp())
 		{
@@ -336,6 +292,10 @@ void Robot::Run()
 				Serial.println(Tile{current_y, current_x, current_z});
 				ChangeMapPosition();
 				// Se la tile corrente è in TileToVisit() la tolgo
+				if (InTileToVisit(Tile{current_y, current_x, current_z}))
+				{
+					FindVictim();
+				}
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 				Serial.print("Tile dopo change map position");
 				Serial.println(Tile{current_y, current_x, current_z});
@@ -367,7 +327,6 @@ void Robot::Run()
 						}
 					}
 				}
-				ms->StopMotors();
 				if (path_to_tile.empty())
 				{
 					LackOfProgressProcedure();
@@ -379,21 +338,6 @@ void Robot::Run()
 			}
 			else
 			{
-				// Mi fermo nella tile solo se la tile non è mai stata visitata e sono presenti muri
-				bool already_visited = map->GetNode(Tile{current_y, current_x, current_z}) != -1;
-				// Invio il segnale alle openMV
-				bool need_to_stop = false;
-				if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
-				{
-					OPENMV_DX.print('9');
-					need_to_stop = true;
-				}
-				if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
-				{
-					OPENMV_SX.print('9');
-					need_to_stop = true;
-				}
-
 				// Aggiungo angolo tra le due tile
 				int16_t previous_tile_y = current_y;
 				int16_t previous_tile_x = current_x;
@@ -402,6 +346,10 @@ void Robot::Run()
 				// Se la tile corrente è in TileToVisit() la tolgo
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 				ChangeMapPosition();
+
+				// Mi fermo nella tile solo se la tile non è mai stata visitata e sono presenti muri
+				bool already_visited = map->GetNode(Tile{current_y, current_x, current_z}) != -1 && !(InTileToVisit(Tile{current_y, current_x, current_z}));
+
 				// Se la tile corrente è in TileToVisit() la tolgo
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 
@@ -418,10 +366,9 @@ void Robot::Run()
 					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 5);
 				}
 
-				if (!already_visited && need_to_stop)
+				if (!already_visited && !blue_tile)
 				{
-					ms->StopMotors();
-					FakeDelay(250);
+					FindVictim();
 				}
 
 				// Aggiorno i sensori di distanza
@@ -444,7 +391,7 @@ void Robot::Run()
 				Serial.print("\\tfront blocked: ");
 				Serial.println(front_blocked);
 
-				DecideTurn(left_blocked, front_blocked, right_blocked, already_visited);
+				DecideTurn(left_blocked, front_blocked, right_blocked, already_visited, blue_tile);
 
 				map->PrintMaze({current_y, current_x, current_z});
 			}
@@ -610,7 +557,7 @@ void Robot::FirstTileProcedure()
 		Serial.println(front_blocked);
 	*/
 	// Ultimo parametro a true pk non ha senso fermarmi a controllare vittime nella tile di partenza
-	DecideTurn(left_blocked, front_blocked, right_blocked, true);
+	DecideTurn(left_blocked, front_blocked, right_blocked, true, false);
 }
 
 void Robot::LackOfProgressProcedure()
@@ -643,7 +590,7 @@ void Robot::LackOfProgressProcedure()
 		Serial.println(front_blocked);
 	*/
 
-	DecideTurn(left_blocked, front_blocked, right_blocked, true);
+	DecideTurn(left_blocked, front_blocked, right_blocked, true, false);
 }
 
 void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already_visited, bool &right_already_visited)
@@ -760,23 +707,25 @@ void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already
 	}
 }
 
-void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited)
+void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited, bool blue_tile)
 {
 	if (right_blocked && left_blocked && front_blocked)
 	{
 		// Se è tutto bloccato calcola il percorso migliore
-		if (!CanGoOn())
+		/*if (!CanGoOn())
 		{
 			TurnBack();
-		}
+		}*/
 		Serial.print("Numero Tile da vedere: ");
 		Serial.println(tile_to_visit.size());
 		int len;
+		bool path_calculated = false;
 		if (tile_to_visit.empty())
 		{
 			if (!(Tile{current_y, current_x, current_z} == Tile{0, 0, 0}))
 			{
 				map->FindPathAStar(Tile{current_y, current_x, current_z}, Tile{0, 0, 0}, path_to_tile, len, direction);
+				path_calculated = true;
 			}
 			else
 			{
@@ -806,35 +755,40 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 			Serial.print("Tile da vedere: ");
 			Serial.println(tile_to_visit.at(tile_to_visit.size() - 1));
 			map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.at(tile_to_visit.size() - 1), path_to_tile, len, direction);
+			path_calculated = true;
 			tile_to_visit.pop_back();
 		}
-		path_to_tile.erase(path_to_tile.begin());
-		if (current_x == path_to_tile.at(0).x)
+		// Lo faccio per la prima tile
+		if (path_calculated)
 		{
-			if (current_y > path_to_tile.at(0).y)
+			path_to_tile.erase(path_to_tile.begin());
+			if (current_x == path_to_tile.at(0).x)
 			{
-				GoToDirection(2);
+				if (current_y > path_to_tile.at(0).y)
+				{
+					GoToDirection(2);
+				}
+				else
+				{
+					GoToDirection(0);
+				}
 			}
 			else
 			{
-				GoToDirection(0);
+				if (current_x > path_to_tile.at(0).x)
+				{
+					GoToDirection(3);
+				}
+				else
+				{
+					GoToDirection(1);
+				}
 			}
+			map->PrintMazePath(path_to_tile);
+			ms->StopMotors();
+			SetNewTileDistances();
+			return;
 		}
-		else
-		{
-			if (current_x > path_to_tile.at(0).x)
-			{
-				GoToDirection(3);
-			}
-			else
-			{
-				GoToDirection(1);
-			}
-		}
-		map->PrintMazePath(path_to_tile);
-		ms->StopMotors();
-		SetNewTileDistances();
-		return;
 	}
 	else if (!right_blocked && !left_blocked)
 	{
@@ -851,7 +805,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					AddLeftAndFrontTileToTileToVisit();
 					TurnRight();
 					ms->StopMotors();
-					if (!tile_already_visited)
+					if (!tile_already_visited && !blue_tile)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -868,7 +822,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				AddLeftTileToTileToVisit();
 				TurnRight();
 				ms->StopMotors();
-				if (!tile_already_visited)
+				if (!tile_already_visited  && !blue_tile)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -886,7 +840,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					AddRightAndFrontTileToTileToVisit();
 					TurnLeft();
 					ms->StopMotors();
-					if (!tile_already_visited)
+					if (!tile_already_visited  && !blue_tile)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -903,7 +857,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				AddRightTileToTileToVisit();
 				TurnLeft();
 				ms->StopMotors();
-				if (!tile_already_visited)
+				if (!tile_already_visited && !blue_tile)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -925,7 +879,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					AddFrontTileToTileToVisit();
 					TurnRight();
 					ms->StopMotors();
-					if (!tile_already_visited)
+					if (!tile_already_visited && !blue_tile)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -941,7 +895,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro a destra
 				TurnRight();
 				ms->StopMotors();
-				if (!tile_already_visited)
+				if (!tile_already_visited && !blue_tile)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -958,7 +912,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					AddFrontTileToTileToVisit();
 					TurnLeft();
 					ms->StopMotors();
-					if (!tile_already_visited)
+					if (!tile_already_visited && !blue_tile)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -974,7 +928,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro a sinistra
 				TurnLeft();
 				ms->StopMotors();
-				if (!tile_already_visited)
+				if (!tile_already_visited && !blue_tile)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -992,33 +946,41 @@ void Robot::AddLeftAndFrontTileToTileToVisit()
 	case 0:
 		// Sinistra
 		next_tile = current_x - 1;
+		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
 		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
 		// Frontale
 		next_tile = current_y + 1;
+		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
 		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
 		break;
 	case 1:
 		// Sinistra
 		next_tile = current_y + 1;
+		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
 		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
 		// Frontale
 		next_tile = current_x + 1;
+		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
 		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
 		break;
 	case 2:
 		// Sinistra
 		next_tile = current_x + 1;
+		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
 		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
 		// Frontale
 		next_tile = current_y - 1;
+		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
 		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
 		break;
 	case 3:
 		// Sinistra
 		next_tile = current_y - 1;
+		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
 		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
 		// Frontale
 		next_tile = current_x - 1;
+		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
 		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
 		break;
 	default:
@@ -1427,7 +1389,6 @@ bool Robot::BlueTile()
 
 bool Robot::NewTile()
 {
-	/*
 	if (GetFrontDistance() <= front_distance_to_reach && ir_front->tfFlux != 0)
 	{
 		Serial.print("Frontale: ");
@@ -1435,7 +1396,6 @@ bool Robot::NewTile()
 		Serial.print("Frontale da raggiungere: ");
 		Serial.println(front_distance_to_reach);
 	}
-	*/
 	if (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
 		Serial.print("Posteriore: ");
@@ -1443,60 +1403,73 @@ bool Robot::NewTile()
 		Serial.print("Posteriore da raggiungere: ");
 		Serial.println(back_distance_to_reach);
 	}
-	return /*(GetFrontDistance() <= front_distance_to_reach && ir_front->tfFlux != 0) ||*/ (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
+	return (GetFrontDistance() <= front_distance_to_reach && ir_front->tfFlux != 0) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
 }
 
-bool Robot::FoundVictim()
+void Robot::FindVictim()
+{
+	bool signal_sent = false;
+	UpdateAllDistanceSensorsBlocking();
+	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
+	{
+		OPENMV_DX.print('9');
+		signal_sent = true;
+	}
+	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
+	{
+		OPENMV_SX.print('9');
+		signal_sent = true;
+	}
+	
+	if (!signal_sent)
+	{
+		return;
+	}
+	
+	ms->StopMotors();
+	FakeDelay(250);
+
+	while (VictimFound())
+	{
+		int kits_number;
+		bool left_victim;
+		if (OPENMV_SX.available() > 0)
+		{
+			kits_number = OPENMV_SX.read() - '0';
+			left_victim = true;
+		}
+		else
+		{
+			kits_number = OPENMV_DX.read() - '0';
+			left_victim = false;
+		}
+		if (kits_number <= 3 && kits_number >= 0)
+		{
+			DropKit(kits_number, left_victim);
+		}
+		else if (kits_number == 9)
+		{
+			if (left_victim)
+			{
+				OPENMV_SX.print('8');
+			}
+			else
+			{
+				OPENMV_DX.print('8');
+			}
+			FakeDelay(500);
+		}
+	}
+}
+
+bool Robot::VictimFound()
 {
 	return OPENMV_SX.available() > 0 || OPENMV_DX.available() > 0;
 }
 
 void Robot::AfterTurnVictimDetection()
 {
-	// Invio il segnale alle openMV
-	bool need_to_stop = false;
-	UpdateSensorNumBlocking(VL53L5CX::SX);
-	UpdateSensorNumBlocking(VL53L5CX::DX);
-	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
-	{
-		OPENMV_DX.print('9');
-		need_to_stop = true;
-	}
-	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
-	{
-		OPENMV_SX.print('9');
-		need_to_stop = true;
-	}
-	if (!need_to_stop)
-	{
-		return;
-	}
-
-	/*
-	FakeDelay(250);
-	while (FoundVictim())
-	{
-		int kits_number;
-		bool left_victim;
-		if (OPENMV_SX.available() > 0)
-		{
-			kits_number = int(OPENMV_SX.read() - '0');
-			left_victim = true;
-		}
-		else
-		{
-			kits_number = int(OPENMV_DX.read() - '0');
-			left_victim = false;
-		}
-		Serial.print("Teensy 4.1 ha ricevuto in seriale: ");
-		Serial.println(kits_number);
-		DropKit(kits_number, left_victim);
-	}
-	OPENMV_DX.print('7');
-	OPENMV_SX.print('7');
-	*/
-	FakeDelay(500);
-	// TODO lettura vittime
+	FindVictim();
 }
 
 void Robot::DropKit(int8_t number_of_kits, bool left_victim)

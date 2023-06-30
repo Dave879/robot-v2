@@ -106,7 +106,7 @@ private:
 	bool FrontWall();
 	bool BlackTile();
 	bool BlueTile();
-	void DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited);
+	void DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited, bool blue_tile);
 	void Turn(int16_t degree);
 	void Straighten();
 	bool NotInRamp();
@@ -119,7 +119,8 @@ private:
 	uint32_t time_to_wait_after_openmv_search_again = 0;
 	int8_t kits_dropped = 0;
 	// victim functions
-	bool FoundVictim();
+	void FindVictim();
+	bool VictimFound();
 	void DropKit(int8_t number_of_kits, bool left_victim);
 	void AfterTurnVictimDetection();
 
