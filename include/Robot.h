@@ -69,12 +69,7 @@ private:
 
 	Tile last_checkpoint;
 	void GoToDirection(int8_t direction_to_go);
-	void AddLeftAndFrontTileToTileToVisit();
-	void AddRightAndFrontTileToTileToVisit();
-	void AddLeftAndRightTileToTileToVisit();
-	void AddLeftTileToTileToVisit();
-	void AddRightTileToTileToVisit();
-	void AddFrontTileToTileToVisit();
+	void AddEdges(bool blue_tile, bool &left_already_visited, bool &front_already_visited, bool &right_already_visited);
 	bool InTileToVisit(Tile t);
 	void RemoveTileToVisit(Tile t);
 	void UpdateAllDistanceSensorsBlocking();

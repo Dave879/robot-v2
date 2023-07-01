@@ -56,14 +56,17 @@ colors = [ # Add more colors if you are detecting more than 7 types of classes a
 
 # CAMERA
 
+time.sleep(1)
+
 sensor.reset()                         # Reset and initialize the sensor.
+sensor.set_auto_gain(False) # must be turned off for color tracking
+sensor.set_auto_whitebal(False) # must be turned off for color tracking
+sensor.set_auto_exposure(False)
 sensor.set_pixformat(sensor.RGB565)    # Set pixel format to RGB565
 sensor.set_framesize(sensor.QQVGA)      # Set frame size to QVGA (160x160)
 sensor.skip_frames(time=2000)          # Let the camera adjust.
 img2 = sensor.alloc_extra_fb(sensor.width(), sensor.width(), sensor.GRAYSCALE)
 
-sensor.set_auto_gain(False) # must be turned off for color tracking
-sensor.set_auto_whitebal(False) # must be turned off for color tracking
 
 red_led = LED(1)
 blue_led = LED(3)
@@ -71,13 +74,15 @@ green_led = LED(2)
 
 while(True):
     red_led.on()
+    img = sensor.snapshot()
     if uart.any():
         blue_led.on()
         data = uart.read().decode('utf-8').rstrip()
+        print(data)
         # Requesting teensy 4.1 to verify that openmv is up and running
-        if data == '0':
+        #if data == '0':
             # Send a confirmation message to teensy 4.1
-            uart.writechar(5)
+        #    uart.writechar(5)
         # Signal to start the search for victims
         if data == '9':
             print("OpenMV inizia a cercare...")
@@ -104,6 +109,7 @@ while(True):
             if need_to_stop:
                 uart.writechar(9 + 48) # Teel teensy 4.1 if there are black victims
             else:
+                blue_led.off()
                 continue
 
             while not uart.any():

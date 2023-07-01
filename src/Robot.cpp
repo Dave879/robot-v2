@@ -162,7 +162,7 @@ void Robot::Run()
 				going_down_ramp = false;
 			}
 		}
-		/*
+	
 		// Black tile
 		if (BlackTile() && NotInRamp())
 		{
@@ -183,6 +183,7 @@ void Robot::Run()
 				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
+			ms->StopMotors();
 			ms->SetPower(SPEED, SPEED);
 			SetCurrentTileDistances();
 			while (!NewTile())
@@ -190,28 +191,22 @@ void Robot::Run()
 				UpdateSensorNumBlocking(VL53L5CX::FW);
 				UpdateSensorNumBlocking(VL53L5CX::BW);
 			}
-			// Adding the black tile into the map
-			if (direction == 0)
-			{
-				maze->push({current_x, ++current_y, current_x, current_y});
-			}
-			else if (direction == 1)
-			{
-				maze->push({++current_x, current_y, current_x, current_y});
-			}
-			else if (direction == 2)
-			{
-				maze->push({current_x, --current_y, current_x, current_y});
-			}
-			else if (direction == 3)
-			{
-				maze->push({--current_x, current_y, current_x, current_y});
-			}
-			// Mando il robot indietro al centro della tile
-			TurnBack();
+			ms->StopMotors();
+
+			ChangeMapPosition();
+
+			map->RemoveTileAdjacencyList(Tile{current_y, current_x, current_z});
+			RemoveTileToVisit(Tile{current_y, current_x, current_z});
+
+			IncreaseDirection();
+			IncreaseDirection();
+			ChangeMapPosition();
+			ChangeMapPosition();
+			IncreaseDirection();
+			IncreaseDirection();
+			path_to_tile.clear();
 			SetCurrentTileDistances();
 		}
-		*/
 
 		// Se ho colpito un muretto con gli switch
 		if (digitalReadFast(R_COLLISION_SX_PIN) && NotInRamp())
@@ -278,17 +273,13 @@ void Robot::Run()
 
 			if (!path_to_tile.empty())
 			{
-				Serial.print("Tile attuale");
-				Serial.println(Tile{current_y, current_x, current_z});
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 				ChangeMapPosition();
-				// Se la tile corrente è in TileToVisit() la tolgo
 				if (InTileToVisit(Tile{current_y, current_x, current_z}))
 				{
 					FindVictim();
 				}
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
-				Serial.print("Tile dopo change map position");
-				Serial.println(Tile{current_y, current_x, current_z});
 				map->PrintMazePath(path_to_tile);
 				map->PrintMaze({current_y, current_x, current_z});
 				path_to_tile.erase(path_to_tile.begin());
@@ -319,7 +310,16 @@ void Robot::Run()
 				}
 				if (path_to_tile.empty())
 				{
-					LackOfProgressProcedure();
+					bool left_already_visited = false;
+					bool front_already_visited = false;
+					bool right_already_visited = false;
+					AddEdges(blue_tile, left_already_visited, front_already_visited, right_already_visited);
+
+					bool right_blocked = !CanTurnRight() || right_already_visited;
+					bool left_blocked = !CanTurnLeft() || left_already_visited;
+					bool front_blocked = !CanGoOn() || front_already_visited;
+
+					DecideTurn(left_blocked, front_blocked, right_blocked, false, blue_tile);
 				}
 				else
 				{
@@ -328,35 +328,40 @@ void Robot::Run()
 			}
 			else
 			{
-				// Aggiungo angolo tra le due tile
-				int16_t previous_tile_y = current_y;
-				int16_t previous_tile_x = current_x;
-				int16_t previous_tile_z = current_z;
 				// Cambio coordinate con quelle della tile corrente
-				// Se la tile corrente è in TileToVisit() la tolgo
+				// Se la tile corrente è InTileToVisit() la tolgo
+				Serial.print("(Prima di rimuovere)Tutte le tile da vedere: ");
+				for (size_t i = 0; i < tile_to_visit.size(); i++)
+				{
+					Serial.println(tile_to_visit.at(i));
+				}
+				Serial.print("Vecchia tile rimossa: ");
+				Serial.println(Tile{current_y, current_x, current_z});
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
 				ChangeMapPosition();
 
 				// Mi fermo nella tile solo se la tile non è mai stata visitata e sono presenti muri
-				bool already_visited = map->GetNode(Tile{current_y, current_x, current_z}) != -1 && !(InTileToVisit(Tile{current_y, current_x, current_z}));
-
-				// Se la tile corrente è in TileToVisit() la tolgo
-				RemoveTileToVisit(Tile{current_y, current_x, current_z});
+				bool current_tile_already_visited = map->GetNode(Tile{current_y, current_x, current_z}) != -1 && !(InTileToVisit(Tile{current_y, current_x, current_z}));
 
 				// Aggiungo il vertice corrente
 				map->AddVertex(Tile{current_y, current_x, current_z});
-				if (!blue_tile)
+
+				bool left_already_visited = false;
+				bool front_already_visited = false;
+				bool right_already_visited = false;
+				AddEdges(blue_tile, left_already_visited, front_already_visited, right_already_visited);
+
+				// Se la tile corrente è in TileToVisit() la tolgo
+				Serial.print("Tile da rimuovere: ");
+				Serial.println(Tile{current_y, current_x, current_z});
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
+				Serial.print("(Dopo la rimozione)Tutte le tile da vedere: ");
+				for (size_t i = 0; i < tile_to_visit.size(); i++)
 				{
-					Serial.println("Arco normale aggiunto");
-					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 1);
-				}
-				else
-				{
-					Serial.println("Arco blue aggiunto");
-					map->AddEdge(Tile{previous_tile_y, previous_tile_x, previous_tile_z}, Tile{current_y, current_x, current_z}, 5);
+					Serial.println(tile_to_visit.at(i));
 				}
 
-				if (!already_visited && !blue_tile)
+				if (!current_tile_already_visited && !blue_tile)
 				{
 					FindVictim();
 				}
@@ -364,15 +369,9 @@ void Robot::Run()
 				// Aggiorno i sensori di distanza
 				UpdateAllDistanceSensorsBlocking();
 
-				// Controllo se le tile a me adiacenti sono già state visitate
-				bool right_already_visited = false;
-				bool left_already_visited = false;
-				bool front_already_visited = false;
-				GetAroundTileVisited(left_already_visited, front_already_visited, right_already_visited);
-
-				bool right_blocked = !CanTurnRight() || right_already_visited;
 				bool left_blocked = !CanTurnLeft() || left_already_visited;
 				bool front_blocked = !CanGoOn() || front_already_visited;
+				bool right_blocked = !CanTurnRight() || right_already_visited;
 
 				Serial.print("Right blocked: ");
 				Serial.print(right_blocked);
@@ -381,7 +380,7 @@ void Robot::Run()
 				Serial.print("\\tfront blocked: ");
 				Serial.println(front_blocked);
 
-				DecideTurn(left_blocked, front_blocked, right_blocked, already_visited, blue_tile);
+				DecideTurn(left_blocked, front_blocked, right_blocked, current_tile_already_visited, blue_tile);
 
 				map->PrintMaze({current_y, current_x, current_z});
 			}
@@ -530,10 +529,10 @@ void Robot::FirstTileProcedure()
 
 	map->AddVertex({current_y, current_x, current_z});
 	UpdateAllDistanceSensorsBlocking();
-	bool right_already_visited = false;
 	bool left_already_visited = false;
 	bool front_already_visited = false;
-	GetAroundTileVisited(left_already_visited, front_already_visited, right_already_visited);
+	bool right_already_visited = false;
+	AddEdges(false, left_already_visited, front_already_visited, right_already_visited);
 
 	bool right_blocked = !CanTurnRight() || right_already_visited;
 	bool left_blocked = !CanTurnLeft() || left_already_visited;
@@ -562,23 +561,14 @@ void Robot::LackOfProgressProcedure()
 	}
 
 	UpdateAllDistanceSensorsBlocking();
-	bool right_already_visited = false;
 	bool left_already_visited = false;
 	bool front_already_visited = false;
-	GetAroundTileVisited(left_already_visited, front_already_visited, right_already_visited);
+	bool right_already_visited = false;
+	AddEdges(false, left_already_visited, front_already_visited, right_already_visited);
 
 	bool right_blocked = !CanTurnRight() || right_already_visited;
 	bool left_blocked = !CanTurnLeft() || left_already_visited;
 	bool front_blocked = !CanGoOn() || front_already_visited;
-
-	/*
-		Serial.print("Right blocked: ");
-		Serial.print(right_blocked);
-		Serial.print("\\tleft blocked: ");
-		Serial.print(left_blocked);
-		Serial.print("\\tfront blocked: ");
-		Serial.println(front_blocked);
-	*/
 
 	DecideTurn(left_blocked, front_blocked, right_blocked, true, false);
 }
@@ -702,10 +692,29 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 	if (right_blocked && left_blocked && front_blocked)
 	{
 		// Se è tutto bloccato calcola il percorso migliore
-		/*if (!CanGoOn())
+
+		// Se sono in una U controllo se ci sono vittime
+		if (!CanGoOn() && !CanTurnLeft() && !CanTurnRight())
 		{
-			TurnBack();
-		}*/
+			// Fermo il robot prima di girare
+			ms->StopMotors();
+
+			// Giro totale (-180°)
+			Turn(-90);
+			AfterTurnVictimDetection();
+			Turn(-90);
+
+			DecreaseDirection();
+			DecreaseDirection();
+
+			// Controllo se posso adrizzare il robot dopo la svolta
+			UpdateSensorNumBlocking(VL53L5CX::BW);
+			if (CanBumpBack())
+			{
+				// Manovra da eseguire per ristabilizzare il robot e resettare il giro
+				Straighten();
+			}
+		}
 		Serial.print("Numero Tile da vedere: ");
 		Serial.println(tile_to_visit.size());
 		int len;
@@ -740,17 +749,21 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 		}
 		else
 		{
-			Serial.print("Numero Tile da vedere: ");
-			Serial.println(tile_to_visit.size());
 			Serial.print("Tile da vedere: ");
 			Serial.println(tile_to_visit.at(tile_to_visit.size() - 1));
+			Serial.print("Tutte le tile da vedere: ");
+			for (size_t i = 0; i < tile_to_visit.size(); i++)
+			{
+				Serial.println(tile_to_visit.at(i));
+			}
 			map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.at(tile_to_visit.size() - 1), path_to_tile, len, direction);
 			path_calculated = true;
-			tile_to_visit.pop_back();
+			// tile_to_visit.pop_back();
 		}
 		// Lo faccio per la prima tile
 		if (path_calculated)
 		{
+			map->PrintMazePath(path_to_tile);
 			path_to_tile.erase(path_to_tile.begin());
 			if (current_x == path_to_tile.at(0).x)
 			{
@@ -774,7 +787,6 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					GoToDirection(1);
 				}
 			}
-			map->PrintMazePath(path_to_tile);
 			ms->StopMotors();
 			SetNewTileDistances();
 			return;
@@ -792,7 +804,6 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				if (millis() % 2)
 				{
 					// Giro a destra
-					AddLeftAndFrontTileToTileToVisit();
 					TurnRight();
 					ms->StopMotors();
 					if (!tile_already_visited && !blue_tile)
@@ -800,16 +811,11 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 						AfterTurnVictimDetection();
 					}
 				}
-				else
-				{
-					// Proseguo dritto
-					AddLeftAndRightTileToTileToVisit();
-				}
+				// Proseguo dritto
 			}
 			else
 			{
 				// Giro a destra
-				AddLeftTileToTileToVisit();
 				TurnRight();
 				ms->StopMotors();
 				if (!tile_already_visited  && !blue_tile)
@@ -827,7 +833,6 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				if (millis() % 2)
 				{
 					// Giro a sinistra
-					AddRightAndFrontTileToTileToVisit();
 					TurnLeft();
 					ms->StopMotors();
 					if (!tile_already_visited  && !blue_tile)
@@ -835,16 +840,11 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 						AfterTurnVictimDetection();
 					}
 				}
-				else
-				{
-					// Proseguo dritto
-					AddLeftAndRightTileToTileToVisit();
-				}
+				// Proseguo dritto
 			}
 			else
 			{
 				// Giro a sinistra
-				AddRightTileToTileToVisit();
 				TurnLeft();
 				ms->StopMotors();
 				if (!tile_already_visited && !blue_tile)
@@ -866,7 +866,6 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				if (millis() % 2)
 				{
 					// Giro a destra
-					AddFrontTileToTileToVisit();
 					TurnRight();
 					ms->StopMotors();
 					if (!tile_already_visited && !blue_tile)
@@ -874,11 +873,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 						AfterTurnVictimDetection();
 					}
 				}
-				else
-				{
-					// Proseguo dritto
-					AddRightTileToTileToVisit();
-				}
+				// Proseguo dritto
 			}
 			else
 			{
@@ -899,7 +894,6 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro o continuo ad andare dritto
 				if (millis() % 2)
 				{
-					AddFrontTileToTileToVisit();
 					TurnLeft();
 					ms->StopMotors();
 					if (!tile_already_visited && !blue_tile)
@@ -907,11 +901,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 						AfterTurnVictimDetection();
 					}
 				}
-				else
-				{
-					// Proseguo dritto
-					AddLeftTileToTileToVisit();
-				}
+				// Proseguo dritto
 			}
 			else
 			{
@@ -928,206 +918,308 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 	SetNewTileDistances();
 }
 
-void Robot::AddLeftAndFrontTileToTileToVisit()
+void Robot::AddEdges(bool blue_tile, bool &left_already_visited, bool &front_already_visited, bool &right_already_visited)
 {
 	int32_t next_tile = 0;
+	uint16_t weight = (blue_tile) ? 5 : 1;
+	UpdateAllDistanceSensorsBlocking();
 	switch (direction)
 	{
 	case 0:
+		// Destra
+		next_tile = current_x + 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && (!InTileToVisit(Tile{current_y, next_tile, current_z}) || map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty()))
+			{
+				right_already_visited = true;
+			}
+			else if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1 && !InTileToVisit(Tile{current_y, next_tile, current_z}))
+			{
+				tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+			}
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1)
+			{
+				map->AddVertex(Tile{current_y, next_tile, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+		}
 		// Sinistra
 		next_tile = current_x - 1;
-		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && (!InTileToVisit(Tile{current_y, next_tile, current_z}) || map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty()))
+			{
+				left_already_visited = true;
+			}
+			else if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1 && !InTileToVisit(Tile{current_y, next_tile, current_z}))
+			{
+				tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+			}
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1)
+			{
+				map->AddVertex(Tile{current_y, next_tile, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+		}
 		// Frontale
 		next_tile = current_y + 1;
-		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+		if (CanGoOn())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && (!InTileToVisit(Tile{next_tile, current_x, current_z}) || map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty()))
+			{
+				front_already_visited = true;
+			}
+			else if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1 && !InTileToVisit(Tile{next_tile, current_x, current_z}))
+			{
+				tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+			}
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1)
+			{
+				map->AddVertex(Tile{next_tile, current_x, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+		}
+		// Posteriore
+		if (blue_tile)
+		{
+			next_tile = current_y - 1;
+			map->ChangeTileWeight(Tile{next_tile, current_x, current_z}, Tile{current_y, current_x, current_z}, weight);
+		}
 		break;
 	case 1:
+		// Destra
+		next_tile = current_y - 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && (!InTileToVisit(Tile{next_tile, current_x, current_z}) || map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty()))
+			{
+				right_already_visited = true;
+			}
+			else if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1 && !InTileToVisit(Tile{next_tile, current_x, current_z}))
+			{
+				tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+			}
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1)
+			{
+				map->AddVertex(Tile{next_tile, current_x, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+		}
 		// Sinistra
 		next_tile = current_y + 1;
-		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && (!InTileToVisit(Tile{next_tile, current_x, current_z}) || map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty()))
+			{
+				left_already_visited = true;
+			}
+			else if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1 && !InTileToVisit(Tile{next_tile, current_x, current_z}))
+			{
+				tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+			}
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1)
+			{
+				map->AddVertex(Tile{next_tile, current_x, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+		}
 		// Frontale
 		next_tile = current_x + 1;
-		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+		if (CanGoOn())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && (!InTileToVisit(Tile{current_y, next_tile, current_z}) || map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty()))
+			{
+				front_already_visited = true;
+			}
+			else if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1 && !InTileToVisit(Tile{current_y, next_tile, current_z}))
+			{
+				tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+			}
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1)
+			{
+				map->AddVertex(Tile{current_y, next_tile, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+		}
+		// Posteriore
+		if (blue_tile)
+		{
+			next_tile = current_x - 1;
+			map->ChangeTileWeight(Tile{current_y, next_tile, current_z}, Tile{current_y, current_x, current_z}, weight);
+		}
 		break;
 	case 2:
+		// Destra
+		next_tile = current_x - 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && (!InTileToVisit(Tile{current_y, next_tile, current_z}) || map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty()))
+			{
+				right_already_visited = true;
+			}
+			else if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1 && !InTileToVisit(Tile{current_y, next_tile, current_z}))
+			{
+				tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+			}
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1)
+			{
+				map->AddVertex(Tile{current_y, next_tile, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+		}
 		// Sinistra
 		next_tile = current_x + 1;
-		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && (!InTileToVisit(Tile{current_y, next_tile, current_z}) || map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty()))
+			{
+				left_already_visited = true;
+			}
+			else if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1 && !InTileToVisit(Tile{current_y, next_tile, current_z}))
+			{
+				tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+			}
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1)
+			{
+				map->AddVertex(Tile{current_y, next_tile, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+		}
 		// Frontale
 		next_tile = current_y - 1;
-		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+		if (CanGoOn())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && (!InTileToVisit(Tile{next_tile, current_x, current_z}) || map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty()))
+			{
+				front_already_visited =true;
+			}
+			else if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1 && !InTileToVisit(Tile{next_tile, current_x, current_z}))
+			{
+				tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+			}
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1)
+			{
+				map->AddVertex(Tile{next_tile, current_x, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+		}
+		// Posteriore
+		if (blue_tile)
+		{
+			next_tile = current_y + 1;
+			map->ChangeTileWeight(Tile{next_tile, current_x, current_z}, Tile{current_y, current_x, current_z}, weight);
+		}
 		break;
 	case 3:
+		// Destra
+		next_tile = current_y + 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && (!InTileToVisit(Tile{next_tile, current_x, current_z}) || map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty()))
+			{
+				right_already_visited = true;
+			}
+			else if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1 && !InTileToVisit(Tile{next_tile, current_x, current_z}))
+			{
+				tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+			}
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1)
+			{
+				map->AddVertex(Tile{next_tile, current_x, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+		}
 		// Sinistra
 		next_tile = current_y - 1;
-		RemoveTileToVisit(Tile{next_tile, current_x, current_z});
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && (!InTileToVisit(Tile{next_tile, current_x, current_z}) || map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty()))
+			{
+				left_already_visited = true;
+			}
+			else if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1 && !InTileToVisit(Tile{next_tile, current_x, current_z}))
+			{
+				tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
+			}
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) == -1)
+			{
+				map->AddVertex(Tile{next_tile, current_x, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, weight);
+			}
+		}
 		// Frontale
 		next_tile = current_x - 1;
-		RemoveTileToVisit(Tile{current_y, next_tile, current_z});
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	default:
-		break;
-	}
-}
-
-void Robot::AddRightAndFrontTileToTileToVisit()
-{
-	int32_t next_tile = 0;
-	switch (direction)
-	{
-	case 0:
-		// Destra
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		// Fronte
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 1:
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 2:
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 3:
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	default:
-		break;
-	}
-}
-
-void Robot::AddLeftAndRightTileToTileToVisit()
-{
-	int32_t next_tile = 0;
-	switch (direction)
-	{
-	case 0:
-		// Destra
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		// Sinistra
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 1:
-		// Destra
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		// Sinistra
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 2:
-		// Destra
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		// Sinistra
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 3:
-		// Destra
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		// Sinistra
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	default:
-		break;
-	}
-}
-
-void Robot::AddLeftTileToTileToVisit()
-{
-	int32_t next_tile = 0;
-	switch (direction)
-	{
-	case 0:
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 1:
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 2:
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 3:
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	default:
-		break;
-	}
-}
-
-void Robot::AddRightTileToTileToVisit()
-{
-	int32_t next_tile = 0;
-	switch (direction)
-	{
-	case 0:
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 1:
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 2:
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 3:
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	default:
-		break;
-	}
-}
-
-void Robot::AddFrontTileToTileToVisit()
-{
-	int32_t next_tile = 0;
-	switch (direction)
-	{
-	case 0:
-		next_tile = current_y + 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 1:
-		next_tile = current_x + 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
-		break;
-	case 2:
-		next_tile = current_y - 1;
-		tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
-		break;
-	case 3:
-		next_tile = current_x - 1;
-		tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+		if (CanGoOn())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && (!InTileToVisit(Tile{current_y, next_tile, current_z}) || map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty()))
+			{
+				front_already_visited = true;
+			}
+			else if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1 && !InTileToVisit(Tile{current_y, next_tile, current_z}))
+			{
+				tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
+			}
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) == -1)
+			{
+				map->AddVertex(Tile{current_y, next_tile, current_z});
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+			else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, weight);
+			}
+		}
+		// Posteriore
+		if (blue_tile)
+		{
+			next_tile = current_x + 1;
+			map->ChangeTileWeight(Tile{current_y, next_tile, current_z}, Tile{current_y, current_x, current_z}, weight);
+		}
 		break;
 	default:
 		break;
@@ -1402,11 +1494,13 @@ void Robot::FindVictim()
 	UpdateAllDistanceSensorsBlocking();
 	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
+		Serial.println("controllo vittima destrAAAAA!!!!");
 		OPENMV_DX.print('9');
 		signal_sent = true;
 	}
 	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
+		Serial.println("controllo vittima sinistrAAAAA!!!!");
 		OPENMV_SX.print('9');
 		signal_sent = true;
 	}
@@ -1415,9 +1509,11 @@ void Robot::FindVictim()
 	{
 		return;
 	}
+
+	Serial.println("controllo vittima!!!!");
 	
 	ms->StopMotors();
-	FakeDelay(250);
+	FakeDelay(500);
 
 	while (VictimFound())
 	{
@@ -1512,6 +1608,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 		}
 
 		Turn(-90 * side);
+		consecutive_turns++;
 		bool bumped = false;
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 		if (CanBumpBack())
@@ -1544,6 +1641,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 		}
 
 		Turn(90 * side);
+		consecutive_turns++;
 	}
 	digitalWriteFast(R_LED1_PIN, HIGH);
 	digitalWriteFast(R_LED2_PIN, HIGH);
@@ -1668,28 +1766,8 @@ void Robot::TurnBack()
 	ms->StopMotors();
 
 	// Giro totale (-180°)
-	Turn(-90);
-	/*
-	UpdateSensorNumBlocking(VL53L5CX::DX);
-	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
-	{
-		OPENMV_DX.print('9');
-	}
-	FakeDelay(1000);
-	while (FoundVictim())
-	{
-		Serial.println("Cerco vittima in U");
-		int kits_number;
-		if (OPENMV_DX.available() > 0)
-		{
-			kits_number = int(OPENMV_DX.read() - '0');
-			DropKit(kits_number, false);
-		}
-	}
-	OPENMV_DX.print('7');
-	*/
+	Turn(-180);
 
-	Turn(-90);
 	DecreaseDirection();
 	DecreaseDirection();
 
@@ -1879,7 +1957,6 @@ void Robot::UpdateGyroNonBlocking()
 		imu_data_ready = false;
 	}
 }
-
 
 void Robot::PrintSensorData()
 {
