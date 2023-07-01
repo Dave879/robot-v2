@@ -169,7 +169,7 @@ void Robot::Run()
 			Serial.println("Black tile");
 			// Torno in dietro fino a quando smetto di vedere nero
 			ms->SetPower(-45, -45);
-			while (cs->c_comp <= MIN_VALUE_BLUE_TILE)
+			while (cs->c_comp <= MIN_VALUE_BLACK_TILE)
 			{
 				// if (color_data_ready)
 				{
@@ -206,6 +206,7 @@ void Robot::Run()
 			IncreaseDirection();
 			path_to_tile.clear();
 			SetCurrentTileDistances();
+			cs->getData();
 		}
 
 		// Se ho colpito un muretto con gli switch
@@ -393,27 +394,53 @@ void Robot::Run()
 		// Proseguo diretto
 		else
 		{
-			int16_t power_to_add = imu->y / 1.5;
-			if (power_to_add < -10)
+			/*
+			if ((CalculateError(imu->z) > 5 || CalculateError(imu->z) < -5) && NotInRamp())
 			{
-				power_to_add = -10;
-			}
-			if (imu->y > 15)
-			{
-				power_to_add = 25;
-			}
-			if (imu->z > desired_angle + 3)
-			{
-				ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
-			}
-			else if (imu->z < desired_angle - 3)
-			{
-				ms->SetPower(SPEED + power_to_add - 5, SPEED + power_to_add + 5);
+				if (CalculateError(imu->z) > 0)
+				{
+					while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
+					{
+						UpdateGyroBlocking();
+						ms->SetPower(-SPEED, SPEED);
+					}
+					ms->StopMotors();
+				}
+				else
+				{
+					while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
+					{
+						UpdateGyroBlocking();
+						ms->SetPower(SPEED, -SPEED);
+					}
+					ms->StopMotors();
+				}
 			}
 			else
 			{
-				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
-			}
+			*/
+				int16_t power_to_add = imu->y / 1.5;
+				if (power_to_add < -10)
+				{
+					power_to_add = -10;
+				}
+				if (imu->y > 15)
+				{
+					power_to_add = 25;
+				}
+				if (imu->z > desired_angle + 3)
+				{
+					ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
+				}
+				else if (imu->z < desired_angle - 3)
+				{
+					ms->SetPower(SPEED + power_to_add - 5, SPEED + power_to_add + 5);
+				}
+				else
+				{
+					ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
+				}
+			//}
 		}
 	}
 	else // Roboto fermo
@@ -1485,7 +1512,8 @@ bool Robot::NewTile()
 		Serial.print("Posteriore da raggiungere: ");
 		Serial.println(back_distance_to_reach);
 	}
-	return (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5);
+	UpdateGyroBlocking();
+	return (((GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)) && ((CalculateError(imu->z) < 8) || (CalculateError(imu->z) > -8)));
 }
 
 void Robot::FindVictim()
@@ -1802,9 +1830,10 @@ void Robot::Turn(int16_t degree)
 			Serial.print("\tAngolo desiderato: ");
 			Serial.println(desired_angle);
 			*/
-			int16_t gyro_speed = GetPIDOutputAndSec();
+			// int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
-			ms->SetPower(-gyro_speed, +gyro_speed);
+			//ms->SetPower(-gyro_speed, +gyro_speed);
+			ms->SetPower(-90, 90);
 		}
 	}
 	else // Giro a sinistra o indietro
@@ -1820,9 +1849,10 @@ void Robot::Turn(int16_t degree)
 				Serial.print("\tAngolo desiderato: ");
 				Serial.println(desired_angle);
 			*/
-			int16_t gyro_speed = GetPIDOutputAndSec();
+			// int16_t gyro_speed = GetPIDOutputAndSec();
 			// Potenza gestita da PID e Gyro-z
-			ms->SetPower(-gyro_speed, +gyro_speed);
+			// ms->SetPower(-gyro_speed, +gyro_speed);
+			ms->SetPower(90, -90);
 		}
 	}
 
