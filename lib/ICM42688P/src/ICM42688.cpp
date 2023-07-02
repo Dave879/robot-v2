@@ -8,6 +8,14 @@ ICM42688::ICM42688(SPIClass &bus, uint8_t csPin, uint32_t SPI_HS_CLK)
   _spi = &bus;    // SPI bus
   _csPin = csPin; // chip select pin
   SPI_HS_CLOCK = SPI_HS_CLK;
+
+  acc_earth.axis.x = 0.0f;
+  acc_earth.axis.y = 0.0f;
+  acc_earth.axis.z = 0.0f;
+
+  acc_earth_prev.axis.x = 0.0f;
+  acc_earth_prev.axis.y = 0.0f;
+  acc_earth_prev.axis.z = 0.0f;
 }
 
 /* starts communication with the ICM42688 */
@@ -39,18 +47,6 @@ uint8_t ICM42688::begin()
   // 2000DPS is default -- do this to set up gyro resolution scaling
   status |= setGyroFS(dps2000);
 
-  return status;
-}
-
-uint8_t ICM42688::firstCalibration()
-{
-  status = 0;
-  status |= enableAccelGyroLN();
-  delay(45);
-
-  // estimate gyro bias
-  status |= calibrateGyro();
-  status |= disableAccelGyro();
   return status;
 }
 
@@ -335,27 +331,37 @@ uint8_t ICM42688::disableDataReadyInterrupt()
 }
 
 /* reads the most current data from ICM42688 and stores in buffer */
-void ICM42688::ReadRawMeasurements()
+bool ICM42688::ReadRawMeasurements()
 {
+  _useSPIHS = false;
+  uint8_t data_ready;
+  readRegisters(UB0_REG_INT_STATUS, 1, &data_ready);
+  data_ready = (data_ready & (1 << 3)) != 0;
   _useSPIHS = true; // use the high speed SPI for data readout
-  // grab the data from the ICM42688
-  readRegisters(UB0_REG_TEMP_DATA1, 14, _buffer);
 
-  // combine bytes into 16 bit values
-  for (size_t i = 0; i < 7; i++)
+  if (data_ready)
   {
-    _rawMeas[i] = ((int16_t)_buffer[i * 2] << 8) | _buffer[i * 2 + 1];
+    readRegisters(UB0_REG_TEMP_DATA1, 14, _buffer);
+
+    // combine bytes into 16 bit values
+    for (size_t i = 0; i < 7; i++)
+    {
+      _rawMeas[i] = ((int16_t)_buffer[i * 2] << 8) | _buffer[i * 2 + 1];
+    }
+
+    //_t = (static_cast<float>(_rawMeas[0]) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
+
+    _acc[0] = ((_rawMeas[1] * _accelScale) - _accB[0]);
+    _acc[1] = ((_rawMeas[2] * _accelScale) - _accB[1]);
+    _acc[2] = ((_rawMeas[3] * _accelScale) - _accB[2]);
+
+    _gyr[0] = (_rawMeas[4] * _gyroScale) - _gyrB[0];
+    _gyr[1] = (_rawMeas[5] * _gyroScale) - _gyrB[1];
+    _gyr[2] = (_rawMeas[6] * _gyroScale) - _gyrB[2];
+
+    return true;
   }
-
-  _t = (static_cast<float>(_rawMeas[0]) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
-
-  _acc[0] = ((_rawMeas[1] * _accelScale) - _accB[0]) * _accS[0];
-  _acc[1] = ((_rawMeas[2] * _accelScale) - _accB[1]) * _accS[1];
-  _acc[2] = ((_rawMeas[3] * _accelScale) - _accB[2]) * _accS[2];
-
-  _gyr[0] = (_rawMeas[4] * _gyroScale) - _gyrB[0];
-  _gyr[1] = (_rawMeas[5] * _gyroScale) - _gyrB[1];
-  _gyr[2] = (_rawMeas[6] * _gyroScale) - _gyrB[2];
+  return false;
 }
 
 /* configures and enables the FIFO buffer  */
@@ -377,7 +383,7 @@ uint8_t ICM42688_FIFO::enableFifo()
 }
 
 /* reads data from the ICM42688 FIFO and stores in buffer */
-uint8_t ICM42688_FIFO::readFifo(FusionAhrs &ahrs, float &euler_yaw)
+uint8_t ICM42688_FIFO::readFifo(FusionAhrs &ahrs, float &euler_yaw, bool integrate_position)
 {
   _useSPIHS = true; // use the high speed SPI for data readout
   // get the fifo size
@@ -394,12 +400,12 @@ uint8_t ICM42688_FIFO::readFifo(FusionAhrs &ahrs, float &euler_yaw)
     rawMeas[1] = (((int16_t)_buffer[3]) << 8) | _buffer[4];
     rawMeas[2] = (((int16_t)_buffer[5]) << 8) | _buffer[6];
     // transform and convert to float values
-    _acc[0] = ((rawMeas[0] * _accelScale) - _accB[0]) * _accS[0];
-    _acc[1] = ((rawMeas[1] * _accelScale) - _accB[1]) * _accS[1];
-    _acc[2] = ((rawMeas[2] * _accelScale) - _accB[2]) * _accS[2];
+    _acc[0] = ((rawMeas[0] * _accelScale) - _accB[0]);
+    _acc[1] = ((rawMeas[1] * _accelScale) - _accB[1]);
+    _acc[2] = ((rawMeas[2] * _accelScale) - _accB[2]);
 
     // NEED TO TEST
-    _t = (static_cast<float>(_buffer[13]) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
+    //_t = (static_cast<float>(_buffer[13]) / TEMP_DATA_REG_SCALE) + TEMP_OFFSET;
 
     rawMeas[0] = (((int16_t)_buffer[7]) << 8) | _buffer[8];
     rawMeas[1] = (((int16_t)_buffer[9]) << 8) | _buffer[10];
@@ -409,13 +415,55 @@ uint8_t ICM42688_FIFO::readFifo(FusionAhrs &ahrs, float &euler_yaw)
     _gyr[1] = (rawMeas[1] * _gyroScale) - _gyrB[1];
     _gyr[2] = (rawMeas[2] * _gyroScale) - _gyrB[2];
 
+    //LINEGRAPH_MULTI("Gyro raw X", _gyr[0], 3);
+    //LINEGRAPH_MULTI("Gyro raw Y", _gyr[1], 3);
+    //LINEGRAPH_MULTI("Gyro raw Z", _gyr[2], 3);
+
     /*
       AHRS: Madgwick estimation
     */
-    euler_yaw -= _gyr[2] * delta_seconds;
+    if (abs(_gyr[2]) > 0.1) // Filter out small values, hopefully reduces drift
+    {
+      euler_yaw -= _gyr[2] * delta_seconds;
+    }
+
     gyroscope.axis = {_gyr[0], _gyr[1], _gyr[2]};
     accelerometer.axis = {_acc[0], _acc[1], _acc[2]};
     FusionAhrsUpdateNoMagnetometer(&ahrs, gyroscope, accelerometer, delta_seconds);
+
+    if (integrate_position)
+    {
+      acc_earth = FusionAhrsGetEarthAcceleration(&ahrs);
+      acc_earth.axis.x *= 9.80665;
+      acc_earth.axis.y *= 9.80665;
+      acc_earth.axis.z *= 9.80665;
+
+      if (abs(acc_earth.axis.x) < 0.05) 
+      {
+        _velocity = 0.0f;
+      }
+
+      //if (abs(acc_earth.axis.x - acc_earth_prev.axis.x) > 0.003)
+      {
+        _velocity -= acc_earth.axis.x * delta_seconds;
+        _position += _velocity * delta_seconds * 100; // Position in cm
+      }
+      acc_earth_prev.axis.x = acc_earth.axis.x;
+    }
+
+/*
+    LINEGRAPH("Velocity X", _velocity);
+    LINEGRAPH("Position X", _position);
+
+    LINEGRAPH_MULTI("Accel X", _acc[0], 2);
+    LINEGRAPH_MULTI("Accel Y", _acc[1], 2);
+    LINEGRAPH_MULTI("Accel Z", _acc[2], 2);
+
+    LINEGRAPH_MULTI("Earth X", acc_earth.axis.x, 4);
+    LINEGRAPH_MULTI("Earth Y", acc_earth.axis.y, 4);
+    LINEGRAPH_MULTI("Earth Z", acc_earth.axis.z, 4);
+*/
+
     /*
     count_++;
     if (past_millis_count_ + 1000 < millis())
@@ -435,35 +483,73 @@ uint8_t ICM42688_FIFO::readFifo(FusionAhrs &ahrs, float &euler_yaw)
   return 0;
 }
 
-/* estimates the gyro biases */
-uint8_t ICM42688::calibrateGyro()
+float ICM42688::getPosition(){
+  return _position;
+}
+
+void ICM42688::resetPosition()
+{
+  _position = 0.0f;
+  _velocity = 0.0f;
+}
+
+uint8_t ICM42688::biasCalibrationRoutine()
 {
   // set at a lower range (more resolution) since IMU not moving
   status = 0;
+  status |= disableAccelGyro();
+
   const GyroFS current_fssel = _gyroFS;
+  status |= setGyroFS(dps500);
+  status |= setGyroODR(odr100);
+  status |= setAccelODR(odr100);
   status |= enableAccelGyroLN();
 
   _useSPIHS = true;
-  status |= setGyroFS(dps500);
 
-  // take samples and find bias
-  _gyroBD[0] = 0;
-  _gyroBD[1] = 0;
-  _gyroBD[2] = 0;
-  for (size_t i = 0; i < NUM_CALIB_SAMPLES; i++)
+  float acc_average[3] = {0.0f};
+  float gyr_average[3] = {0.0f};
+
+  uint16_t count = 0;
+  while (count < NUM_CALIB_SAMPLES)
   {
-    ReadRawMeasurements();
-    _gyroBD[0] += (gyrX() + _gyrB[0]) / NUM_CALIB_SAMPLES;
-    _gyroBD[1] += (gyrY() + _gyrB[1]) / NUM_CALIB_SAMPLES;
-    _gyroBD[2] += (gyrZ() + _gyrB[2]) / NUM_CALIB_SAMPLES;
-    delay(1);
+    if (ReadRawMeasurements() && accZ() > 0.1f) // Strangely, some Z accelerometer readings are 0.0f, skewing the average. This happens randomly and is obviously undesirable. This could be happening for the other axis as well, but it isn't noticeable
+    {
+
+      gyr_average[0] += gyrX();
+      gyr_average[1] += gyrY();
+      gyr_average[2] += gyrZ();
+
+      acc_average[0] += accX();
+      acc_average[1] += accY();
+      acc_average[2] += accZ();
+
+/*
+      LINEGRAPH_MULTI("Gyro raw X", _gyr[0], 3);
+      LINEGRAPH_MULTI("Gyro raw Y", _gyr[1], 3);
+      LINEGRAPH_MULTI("Gyro raw Z", _gyr[2], 3);
+
+      LINEGRAPH_MULTI("Accel X", _acc[0] * 9.81, 2);
+      LINEGRAPH_MULTI("Accel Y", _acc[1] * 9.81, 2);
+      LINEGRAPH_MULTI("Accel Z", _acc[2] * 9.81, 2);
+*/
+      count++;
+    }
+    delay(5);
   }
-  _gyrB[0] = _gyroBD[0];
-  _gyrB[1] = _gyroBD[1];
-  _gyrB[2] = _gyroBD[2];
+
+  _gyrB[0] = gyr_average[0] / NUM_CALIB_SAMPLES;
+  _gyrB[1] = gyr_average[1] / NUM_CALIB_SAMPLES;
+  _gyrB[2] = gyr_average[2] / NUM_CALIB_SAMPLES;
+
+  _accB[0] = acc_average[0] / NUM_CALIB_SAMPLES;
+  _accB[1] = acc_average[1] / NUM_CALIB_SAMPLES;
+  _accB[2] = acc_average[2] / NUM_CALIB_SAMPLES - 1; // Gravity
 
   // recover the full scale setting
   status |= setGyroFS(current_fssel);
+  status |= disableAccelGyro();
+
   return status;
 }
 
@@ -503,88 +589,10 @@ void ICM42688::setGyroBiasZ(float bias)
   _gyrB[2] = bias;
 }
 
-/* finds bias and scale factor calibration for the accelerometer,
-this should be run for each axis in each direction (6 total) to find
-the min and max values along each */
-uint8_t ICM42688::calibrateAccel()
-{
-  // set at a lower range (more resolution) since IMU not moving
-  const AccelFS current_fssel = _accelFS;
-  status = 0;
-
-  status |= enableAccelGyroLN();
-  _useSPIHS = true;
-  status |= setAccelFS(gpm2);
-
-  // take samples and find min / max
-  _accBD[0] = 0;
-  _accBD[1] = 0;
-  _accBD[2] = 0;
-  for (size_t i = 0; i < NUM_CALIB_SAMPLES; i++)
-  {
-    ReadRawMeasurements();
-    _accBD[0] += (accX() / _accS[0] + _accB[0]) / NUM_CALIB_SAMPLES;
-    _accBD[1] += (accY() / _accS[1] + _accB[1]) / NUM_CALIB_SAMPLES;
-    _accBD[2] += (accZ() / _accS[2] + _accB[2]) / NUM_CALIB_SAMPLES;
-    delay(1);
-  }
-  if (_accBD[0] > 0.9f)
-  {
-    _accMax[0] = _accBD[0];
-  }
-  if (_accBD[1] > 0.9f)
-  {
-    _accMax[1] = _accBD[1];
-  }
-  if (_accBD[2] > 0.9f)
-  {
-    _accMax[2] = _accBD[2];
-  }
-  if (_accBD[0] < -0.9f)
-  {
-    _accMin[0] = _accBD[0];
-  }
-  if (_accBD[1] < -0.9f)
-  {
-    _accMin[1] = _accBD[1];
-  }
-  if (_accBD[2] < -0.9f)
-  {
-    _accMin[2] = _accBD[2];
-  }
-
-  // find bias and scale factor
-  if ((abs(_accMin[0]) > 0.9f) && (abs(_accMax[0]) > 0.9f))
-  {
-    _accB[0] = (_accMin[0] + _accMax[0]) / 2.0f;
-    _accS[0] = 1 / ((abs(_accMin[0]) + abs(_accMax[0])) / 2.0f);
-  }
-  if ((abs(_accMin[1]) > 0.9f) && (abs(_accMax[1]) > 0.9f))
-  {
-    _accB[1] = (_accMin[1] + _accMax[1]) / 2.0f;
-    _accS[1] = 1 / ((abs(_accMin[1]) + abs(_accMax[1])) / 2.0f);
-  }
-  if ((abs(_accMin[2]) > 0.9f) && (abs(_accMax[2]) > 0.9f))
-  {
-    _accB[2] = (_accMin[2] + _accMax[2]) / 2.0f;
-    _accS[2] = 1 / ((abs(_accMin[2]) + abs(_accMax[2])) / 2.0f);
-  }
-
-  // recover the full scale setting
-  status |= setAccelFS(current_fssel);
-  return status;
-}
-
 /* returns the accelerometer bias in the X direction, m/s/s */
 float ICM42688::getAccelBiasX_mss()
 {
   return _accB[0];
-}
-
-/* returns the accelerometer scale factor in the X direction */
-float ICM42688::getAccelScaleFactorX()
-{
-  return _accS[0];
 }
 
 /* returns the accelerometer bias in the Y direction, m/s/s */
@@ -593,43 +601,28 @@ float ICM42688::getAccelBiasY_mss()
   return _accB[1];
 }
 
-/* returns the accelerometer scale factor in the Y direction */
-float ICM42688::getAccelScaleFactorY()
-{
-  return _accS[1];
-}
-
 /* returns the accelerometer bias in the Z direction, m/s/s */
 float ICM42688::getAccelBiasZ_mss()
 {
   return _accB[2];
 }
 
-/* returns the accelerometer scale factor in the Z direction */
-float ICM42688::getAccelScaleFactorZ()
-{
-  return _accS[2];
-}
-
 /* sets the accelerometer bias (m/s/s) and scale factor in the X direction */
-void ICM42688::setAccelCalX(float bias, float scaleFactor)
+void ICM42688::setAccelCalX(float bias)
 {
   _accB[0] = bias;
-  _accS[0] = scaleFactor;
 }
 
 /* sets the accelerometer bias (m/s/s) and scale factor in the Y direction */
-void ICM42688::setAccelCalY(float bias, float scaleFactor)
+void ICM42688::setAccelCalY(float bias)
 {
   _accB[1] = bias;
-  _accS[1] = scaleFactor;
 }
 
 /* sets the accelerometer bias (m/s/s) and scale factor in the Z direction */
-void ICM42688::setAccelCalZ(float bias, float scaleFactor)
+void ICM42688::setAccelCalZ(float bias)
 {
   _accB[2] = bias;
-  _accS[2] = scaleFactor;
 }
 
 /* writes a byte to ICM42688 register given a register address and data */

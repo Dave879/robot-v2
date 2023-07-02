@@ -61,8 +61,6 @@ public:
     bw_10
   };
 
-  uint8_t firstCalibration();
-
   /**
    * @brief      Constructor for SPI communication
    *
@@ -92,7 +90,7 @@ public:
 
   uint8_t disableDataReadyInterrupt(); // NEED TO CHECK
 
-  void ReadRawMeasurements();
+  bool ReadRawMeasurements();
 
   /**
    * @brief      Get accelerometer data, per axis
@@ -126,26 +124,24 @@ public:
   int16_t getGyroY_count();
   int16_t getGyroZ_count();
 
-  uint8_t calibrateGyro();
+  uint8_t biasCalibrationRoutine();
   float getGyroBiasX();
   float getGyroBiasY();
   float getGyroBiasZ();
   void setGyroBiasX(float bias);
   void setGyroBiasY(float bias);
   void setGyroBiasZ(float bias);
-  uint8_t calibrateAccel();
   float getAccelBiasX_mss();
-  float getAccelScaleFactorX();
   float getAccelBiasY_mss();
-  float getAccelScaleFactorY();
   float getAccelBiasZ_mss();
-  float getAccelScaleFactorZ();
-  void setAccelCalX(float bias, float scaleFactor);
-  void setAccelCalY(float bias, float scaleFactor);
-  void setAccelCalZ(float bias, float scaleFactor);
+  void setAccelCalX(float bias);
+  void setAccelCalY(float bias);
+  void setAccelCalZ(float bias);
   uint8_t enableExternalClock();
   uint8_t enableAccelGyroLN();
   uint8_t disableAccelGyro();
+  void resetPosition();
+  float getPosition();
   bool dataIsReady();
 
 protected:
@@ -161,14 +157,21 @@ protected:
   uint32_t SPI_HS_CLOCK = 8000000;                  // 8 MHz
 
   // buffer for reading from sensor
-  uint8_t _buffer[15] = {0};
+  uint8_t _buffer[16] = {0};
 
   bool gyro_accel_started = false;
 
   // data buffer
   float _t = 0.0f;
-  float _acc[3] = {}; // [ x, y, z ]
-  float _gyr[3] = {}; // [ x, y, z ]
+  float _acc[3] = { 0.0f }; // [ x, y, z ]
+  float _gyr[3] = { 0.0f }; // [ x, y, z ]
+
+  FusionVector acc_earth;
+  FusionVector acc_earth_prev;
+
+  float _velocity = 0.0f;
+
+  float _position = 0.0f;
 
   ///\brief Full scale resolution factors
   float _accelScale = 0.0f;
@@ -179,19 +182,14 @@ protected:
   GyroFS _gyroFS;
 
   ///\brief Accel calibration
-  float _accBD[3] = {};
-  float _accB[3] = {};
-  float _accS[3] = {1.0f, 1.0f, 1.0f};
-  float _accMax[3] = {};
-  float _accMin[3] = {};
+  float _accB[3] = { 0.0f };
 
   ///\brief Gyro calibration
-  float _gyroBD[3] = {};
-  float _gyrB[3] = {};
+  float _gyrB[3] = { 0.0f };
 
   ///\brief Constants
   static constexpr uint8_t WHO_AM_I = 0x47;           ///< expected value in UB0_REG_WHO_AM_I reg
-  static constexpr uint16_t NUM_CALIB_SAMPLES = 1000; ///< for gyro/accel bias calib
+  static constexpr uint16_t NUM_CALIB_SAMPLES = 100; ///< for gyro/accel bias calib
 
   ///\brief Conversion formula to get temperature in Celsius (Sec 4.13)
   static constexpr float TEMP_DATA_REG_SCALE = 132.48f;
@@ -241,7 +239,7 @@ class ICM42688_FIFO : public ICM42688
 public:
   using ICM42688::ICM42688;
   uint8_t enableFifo();
-  uint8_t readFifo(FusionAhrs &ahrs, float &euler_yaw);
+  uint8_t readFifo(FusionAhrs &ahrs, float &euler_yaw, bool integrate_position);
   FusionVector gyroscope;             // degrees/s
   FusionVector accelerometer;         // g
   const double delta_seconds = 0.01f; // 1s/100(odr)

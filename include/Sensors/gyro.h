@@ -25,7 +25,9 @@ public:
 	const double delta_seconds = 0.01f; // 1s/100(odr)
 	float x, y, z;
 	gyro(SPIClass &bus, uint8_t csPin, uint8_t extClkPin);
-	uint8_t UpdateData();
+	float GetPosition();
+	void ResetPosition();
+	uint8_t UpdateData(bool integrate_position = false);
 	void ResetZ();
 	~gyro();
 };

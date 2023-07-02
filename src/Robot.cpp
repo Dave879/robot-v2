@@ -96,6 +96,23 @@ Robot::Robot(bool cold_start)
 	}
 }
 
+void Robot::TestDeadReckoning(){
+	if (digitalReadFast(R_SW_XTRA_PIN))
+	{
+		imu->ResetPosition();
+		ms->SetPower(90, 90);
+		int distance_to_reach = 5;
+		while (imu->GetPosition() < distance_to_reach)
+		{
+			imu->UpdateData(true);
+			PrintSensorData();
+		}
+		ms->StopMotors();
+		imu->ResetPosition();
+	}
+	
+}
+
 void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
@@ -446,7 +463,6 @@ void Robot::Run()
 	else // Roboto fermo
 	{
 		ms->StopMotors();
-		UpdateGyroBlocking();
 		if (imu->z - old_gyro_value > 0.1 || imu->z - old_gyro_value < -0.1)
 		{
 			digitalToggleFast(R_LED4_PIN);
@@ -1896,7 +1912,7 @@ uint8_t Robot::TrySensorDataUpdate()
 
 	if (imu_data_ready)
 	{
-		imu->UpdateData();
+		imu->UpdateData(true);
 		imu_data_ready = false;
 	}
 
@@ -1993,6 +2009,9 @@ void Robot::PrintSensorData()
 	json_doc[doc_helper.AddLineGraph("Gyro X", 1)] = imu->x;
 	json_doc[doc_helper.AddLineGraph("Gyro Y", 1)] = imu->y;
 	json_doc[doc_helper.AddLineGraph("Gyro Z", 1)] = imu->z;
+
+	json_doc[doc_helper.AddLineGraph("Position")] = imu->GetPosition();
+
 	dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
 	dist[VL53L5CX::BW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX BW", 8, 8, 0, 1000));
 	dist[VL53L5CX::SX] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX SX", 8, 8, 0, 1000));

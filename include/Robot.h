@@ -175,6 +175,8 @@ public:
 	void Run();
 	~Robot();
 
+	void TestDeadReckoning();
+
 	/**
 	 * Robot peripheral interaction
 	 */
