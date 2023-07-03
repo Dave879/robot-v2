@@ -49,7 +49,7 @@ Robot::Robot(bool cold_start)
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::BW], R_VL53L5CX_int_1, FALLING); // sensor_1
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::SX], R_VL53L5CX_int_2, FALLING); // sensor_2
 	attachInterrupt(VL53L5CX_int_pin[VL53L5CX::DX], R_VL53L5CX_int_3, FALLING); // sensor_3
-	lasers->StartRanging(64, 12, ELIA::RangingMode::kContinuous);					 // 8*8, 12Hz
+	lasers->StartRanging(64, 15, ELIA::RangingMode::kContinuous);					 // 8*8, 20Hz
 
 	Wire1.begin();				// Color sensor
 	Wire1.setClock(400000); // 400kHz
@@ -96,36 +96,20 @@ Robot::Robot(bool cold_start)
 	}
 }
 
-void Robot::TestDeadReckoning(){
-	if (digitalReadFast(R_SW_XTRA_PIN))
-	{
-		imu->ResetPosition();
-		ms->SetPower(90, 90);
-		int distance_to_reach = 5;
-		while (imu->GetPosition() < distance_to_reach)
-		{
-			imu->UpdateData(true);
-			PrintSensorData();
-		}
-		ms->StopMotors();
-		imu->ResetPosition();
-	}
-	
-}
-
 void Robot::Run()
 {
 	if (!StopRobot()) // Robot in azione
 	{
 		if (!NotInRamp())
 		{
-			if (!was_in_ramp)
+			if (!was_in_ramp && (imu->y < -15 || imu->y > 15))
 			{
 				digitalWriteFast(R_LED3_PIN, HIGH);
 				was_in_ramp = true;
 				time_in_ramp = millis();
+				bumper_stair_while_going_to_tile = true;
 			}
-			if (imu->y < -10)
+			if (imu->y < -15)
 			{
 				going_down_ramp = true;
 			}
@@ -134,7 +118,7 @@ void Robot::Run()
 		{
 			digitalWriteFast(R_LED3_PIN, LOW);
 			was_in_ramp = false;
-			if (millis() - time_in_ramp > 1000)
+			if (millis() - time_in_ramp > 3000)
 			{
 				Serial.println("Rampa");
 				// ms->SetPower(45, 45);
@@ -194,15 +178,16 @@ void Robot::Run()
 					// color_data_ready = false;
 				}
 			}
+			ms->StopMotors();
 			SetCurrentTileDistances();
+			ms->SetPower(-45, -45);
 			while (NewTile())
 			{
-				UpdateSensorNumBlocking(VL53L5CX::FW);
-				UpdateSensorNumBlocking(VL53L5CX::BW);
+				UpdateAllDistanceSensorsBlocking();
 			}
 			ms->StopMotors();
-			ms->SetPower(SPEED, SPEED);
 			SetCurrentTileDistances();
+			ms->SetPower(SPEED, SPEED);
 			while (!NewTile())
 			{
 				UpdateSensorNumBlocking(VL53L5CX::FW);
@@ -298,6 +283,10 @@ void Robot::Run()
 					FindVictim();
 				}
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
+				if (!blue_tile && analogRead(R_SHARP_VOUT) < 300)
+				{
+					last_checkpoint = Tile{current_y, current_x, current_z};
+				}
 				map->PrintMazePath(path_to_tile);
 				map->PrintMaze({current_y, current_x, current_z});
 				path_to_tile.erase(path_to_tile.begin());
@@ -364,6 +353,11 @@ void Robot::Run()
 				// Aggiungo il vertice corrente
 				map->AddVertex(Tile{current_y, current_x, current_z});
 
+				if (!blue_tile && analogRead(R_SHARP_VOUT) < 300)
+				{
+					last_checkpoint = Tile{current_y, current_x, current_z};
+				}
+
 				bool left_already_visited = false;
 				bool front_already_visited = false;
 				bool right_already_visited = false;
@@ -373,6 +367,7 @@ void Robot::Run()
 				Serial.print("Tile da rimuovere: ");
 				Serial.println(Tile{current_y, current_x, current_z});
 				RemoveTileToVisit(Tile{current_y, current_x, current_z});
+
 				Serial.print("(Dopo la rimozione)Tutte le tile da vedere: ");
 				for (size_t i = 0; i < tile_to_visit.size(); i++)
 				{
@@ -403,6 +398,7 @@ void Robot::Run()
 				map->PrintMaze({current_y, current_x, current_z});
 			}
 
+			bumper_stair_while_going_to_tile = false;
 			digitalWriteFast(R_LED1_PIN, LOW);
 			digitalWriteFast(R_LED2_PIN, LOW);
 			digitalWriteFast(R_LED3_PIN, LOW);
@@ -411,58 +407,33 @@ void Robot::Run()
 		// Proseguo diretto
 		else
 		{
-			/*
-			if ((CalculateError(imu->z) > 5 || CalculateError(imu->z) < -5) && NotInRamp())
+			int16_t power_to_add = imu->y / 3;
+			if (power_to_add < -10)
 			{
-				if (CalculateError(imu->z) > 0)
-				{
-					while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
-					{
-						UpdateGyroBlocking();
-						ms->SetPower(-SPEED, SPEED);
-					}
-					ms->StopMotors();
-				}
-				else
-				{
-					while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
-					{
-						UpdateGyroBlocking();
-						ms->SetPower(SPEED, -SPEED);
-					}
-					ms->StopMotors();
-				}
+				power_to_add = -10;
+			}
+			if (imu->y > 15)
+			{
+				power_to_add = 10;
+			}
+			if (imu->z > desired_angle)
+			{
+				ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
+			}
+			else if (imu->z < desired_angle)
+			{
+				ms->SetPower(SPEED + power_to_add - 5, SPEED + power_to_add + 5);
 			}
 			else
 			{
-			*/
-				int16_t power_to_add = imu->y / 1.5;
-				if (power_to_add < -10)
-				{
-					power_to_add = -10;
-				}
-				if (imu->y > 15)
-				{
-					power_to_add = 25;
-				}
-				if (imu->z > desired_angle + 3)
-				{
-					ms->SetPower(SPEED + power_to_add + 5, SPEED + power_to_add - 5);
-				}
-				else if (imu->z < desired_angle - 3)
-				{
-					ms->SetPower(SPEED + power_to_add - 5, SPEED + power_to_add + 5);
-				}
-				else
-				{
-					ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
-				}
-			//}
+				ms->SetPower(SPEED + power_to_add, SPEED + power_to_add);
+			}
 		}
 	}
 	else // Roboto fermo
 	{
 		ms->StopMotors();
+		UpdateGyroBlocking();
 		if (imu->z - old_gyro_value > 0.1 || imu->z - old_gyro_value < -0.1)
 		{
 			digitalToggleFast(R_LED4_PIN);
@@ -595,6 +566,7 @@ void Robot::FirstTileProcedure()
 void Robot::LackOfProgressProcedure()
 {
 	// Set current front/back distance to reach
+	path_to_tile.clear();
 	SetCurrentTileDistances();
 	ms->SetPower(SPEED, SPEED);
 	while (!NewTile())
@@ -609,11 +581,7 @@ void Robot::LackOfProgressProcedure()
 	bool right_already_visited = false;
 	AddEdges(false, left_already_visited, front_already_visited, right_already_visited);
 
-	bool right_blocked = !CanTurnRight() || right_already_visited;
-	bool left_blocked = !CanTurnLeft() || left_already_visited;
-	bool front_blocked = !CanGoOn() || front_already_visited;
-
-	DecideTurn(left_blocked, front_blocked, right_blocked, true, false);
+	DecideTurn(true, true, true, true, false);
 }
 
 void Robot::GetAroundTileVisited(bool &left_already_visited, bool &front_already_visited, bool &right_already_visited)
@@ -737,7 +705,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 		// Se è tutto bloccato calcola il percorso migliore
 
 		// Se sono in una U controllo se ci sono vittime
-		if (!CanGoOn() && !CanTurnLeft() && !CanTurnRight())
+		if (!CanGoOn() && (!CanTurnLeft() || BlackTileLeft()) && (!CanTurnRight() || BlackTileRight()))
 		{
 			// Fermo il robot prima di girare
 			ms->StopMotors();
@@ -799,6 +767,10 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 			{
 				Serial.println(tile_to_visit.at(i));
 			}
+			if ((tile_to_visit.at(tile_to_visit.size() - 1)) == Tile{0,0,0})
+			{
+				tile_to_visit.pop_back();
+			}
 			map->FindPathAStar(Tile{current_y, current_x, current_z}, tile_to_visit.at(tile_to_visit.size() - 1), path_to_tile, len, direction);
 			path_calculated = true;
 			// tile_to_visit.pop_back();
@@ -806,8 +778,14 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 		// Lo faccio per la prima tile
 		if (path_calculated)
 		{
+			Serial.print("Tutte le tile da seguire: ");
+			for (size_t i = 0; i < path_to_tile.size(); i++)
+			{
+				Serial.println(path_to_tile.at(i));
+			}
 			map->PrintMazePath(path_to_tile);
 			path_to_tile.erase(path_to_tile.begin());
+			int8_t old_dir = direction;
 			if (current_x == path_to_tile.at(0).x)
 			{
 				if (current_y > path_to_tile.at(0).y)
@@ -829,6 +807,10 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				{
 					GoToDirection(1);
 				}
+			}
+			if (old_dir!=direction && old_dir!=(direction + 2) && (old_dir!=direction - 2) && !tile_already_visited)
+			{
+				AfterTurnVictimDetection();
 			}
 			ms->StopMotors();
 			SetNewTileDistances();
@@ -1303,22 +1285,22 @@ void Robot::UpdateAllDistanceSensorsBlocking()
 
 int16_t Robot::GetRightDistance()
 {
-	return lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
+	return lasers->sensors[VL53L5CX::DX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL_RIGHT];
 }
 
 int16_t Robot::GetLeftDistance()
 {
-	return lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
+	return lasers->sensors[VL53L5CX::SX]->GetData()->distance_mm[DISTANCE_SENSOR_CELL_LEFT];
 }
 
 int32_t Robot::GetFrontDistance()
 {
-	return lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
+	return lasers->sensors[VL53L5CX::FW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL_FRONT];
 }
 
 int16_t Robot::GetBackDistance()
 {
-	return lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL];
+	return lasers->sensors[VL53L5CX::BW]->GetData()->distance_mm[DISTANCE_SENSOR_CELL_BACK];
 }
 
 void Robot::SetNewTileDistances()
@@ -1479,27 +1461,155 @@ void Robot::GoToDirection(int8_t direction_to_go)
 
 bool Robot::CanTurnRight()
 {
-	return GetRightDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::DX]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
+	return GetRightDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::DX]->GetData()->target_status[DISTANCE_SENSOR_CELL_RIGHT] != 5;
 }
 
 bool Robot::CanTurnLeft()
 {
-	return GetLeftDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::SX]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
+	return GetLeftDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::SX]->GetData()->target_status[DISTANCE_SENSOR_CELL_LEFT] != 5;
 }
 
 bool Robot::CanGoOn()
 {
-	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] != 5;
+	return GetFrontDistance() >= MIN_DISTANCE_TO_TURN_MM || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5;
 }
 
 bool Robot::CanBumpBack()
 {
-	return GetBackDistance() <= MIN_DISTANCE_BUMP_BACK_WALL_MM && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5;
+	return GetBackDistance() <= MIN_DISTANCE_BUMP_BACK_WALL_MM && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5;
 }
 
 bool Robot::FrontWall()
 {
-	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5;
+	return GetFrontDistance() <= MIN_DISTANCE_FROM_FRONT_WALL_MM && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[20] == 5;
+}
+
+bool Robot::BlackTileRight()
+{
+	int32_t next_tile = 0;
+	UpdateAllDistanceSensorsBlocking();
+	switch (direction)
+	{
+	case 0:
+		// Destra
+		next_tile = current_x + 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	case 1:
+		// Destra
+		next_tile = current_y - 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	case 2:
+		// Destra
+		next_tile = current_x - 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	case 3:
+		// Destra
+		next_tile = current_y + 1;
+		if (CanTurnRight())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 &&  map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	default:
+		return false;
+		break;
+	}
+}
+
+bool Robot::BlackTileLeft()
+{
+	int32_t next_tile = 0;
+	UpdateAllDistanceSensorsBlocking();
+	switch (direction)
+	{
+	case 0:
+		// Sinistra
+		next_tile = current_x - 1;
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	case 1:
+		// Sinistra
+		next_tile = current_y + 1;
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 && map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	case 2:
+		// Sinistra
+		next_tile = current_x + 1;
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{current_y, next_tile, current_z}) != -1 && map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	case 3:
+		// Sinistra
+		next_tile = current_y - 1;
+		if (CanTurnLeft())
+		{
+			if (map->GetNode(Tile{next_tile, current_x, current_z}) != -1 &&  map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
+			{
+				return true;
+			}
+			return false;
+		}
+		return false;
+		break;
+	default:
+		return false;
+		break;
+	}
 }
 
 bool Robot::BlackTile()
@@ -1514,14 +1624,14 @@ bool Robot::BlueTile()
 
 bool Robot::NewTile()
 {
-	if (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	if (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5)
 	{
 		Serial.print("Frontale: ");
 		Serial.println(GetFrontDistance());
 		Serial.print("Frontale da raggiungere: ");
 		Serial.println(front_distance_to_reach);
 	}
-	if (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
+	if (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5)
 	{
 		Serial.print("Posteriore: ");
 		Serial.println(GetBackDistance());
@@ -1529,24 +1639,58 @@ bool Robot::NewTile()
 		Serial.println(back_distance_to_reach);
 	}
 	UpdateGyroBlocking();
-	return (((GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)) && ((CalculateError(imu->z) < 8) || (CalculateError(imu->z) > -8)));
+	if ((((GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5) || (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5))))
+	{
+
+		if (((CalculateError(imu->z) < 5) || (CalculateError(imu->z) > -5)))
+		{
+			return true;
+		}
+		Turn(0);
+		return false;
+	}
+	return false;
 }
 
 void Robot::FindVictim()
 {
 	bool signal_sent = false;
 	UpdateAllDistanceSensorsBlocking();
-	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
+	// bool centred = false;
+	if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM || GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
 	{
-		Serial.println("controllo vittima destrAAAAA!!!!");
-		OPENMV_DX.print('9');
-		signal_sent = true;
-	}
-	if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
-	{
-		Serial.println("controllo vittima sinistrAAAAA!!!!");
-		OPENMV_SX.print('9');
-		signal_sent = true;
+		CenterTile();
+
+		if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
+		{
+			/*
+			while(GetRightDistance() < MIN_DISTANCE_TO_WIGGLE_WIGGLE)
+			{
+				Turn(-90);
+				CenterTile();
+				Turn(90);
+			}
+			centred = true;
+			*/
+			Serial.println("controllo vittima destrAAAAA!!!!");
+			OPENMV_DX.print('9');
+			signal_sent = true;
+		}
+		
+		if (GetLeftDistance() < MIN_DISTANCE_TO_TURN_MM)
+		{
+			/*
+			while(GetLeftDistance() < MIN_DISTANCE_TO_WIGGLE_WIGGLE && !centred)
+			{
+				Turn(90);
+				CenterTile();
+				Turn(-90);
+			}
+			*/
+			Serial.println("controllo vittima sinistrAAAAA!!!!");
+			OPENMV_SX.print('9');
+			signal_sent = true;
+		}
 	}
 	
 	if (!signal_sent)
@@ -1708,7 +1852,7 @@ void Robot::DropKit(int8_t number_of_kits, bool left_victim)
 void Robot::Straighten()
 {
 	consecutive_turns++;
-	if (consecutive_turns < 5)
+	if (consecutive_turns < 2)
 	{
 		return;
 	}
@@ -1726,6 +1870,34 @@ void Robot::Straighten()
 		UpdateSensorNumBlocking(VL53L5CX::BW);
 	}
 	ms->StopMotors();
+}
+
+void Robot::CenterTile()
+{
+	ms->StopMotors();
+	UpdateGyroBlocking();
+	if (NotInRamp() && !bumper_stair_while_going_to_tile)
+	{
+		Turn(0);
+		ms->StopMotors();
+		
+		SetCurrentTileDistances();
+		ms->SetPower(-45, -45);
+		while (NewTile())
+		{
+			UpdateAllDistanceSensorsBlocking();
+		}
+		ms->StopMotors();
+		SetCurrentTileDistances();
+		ms->SetPower(SPEED, SPEED);
+		while (!NewTile())
+		{
+			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateSensorNumBlocking(VL53L5CX::BW);
+		}
+		ms->StopMotors();
+		UpdateAllDistanceSensorsBlocking();
+	}
 }
 
 bool Robot::NotInRamp()
@@ -1912,7 +2084,7 @@ uint8_t Robot::TrySensorDataUpdate()
 
 	if (imu_data_ready)
 	{
-		imu->UpdateData(true);
+		imu->UpdateData();
 		imu_data_ready = false;
 	}
 
@@ -2010,7 +2182,7 @@ void Robot::PrintSensorData()
 	json_doc[doc_helper.AddLineGraph("Gyro Y", 1)] = imu->y;
 	json_doc[doc_helper.AddLineGraph("Gyro Z", 1)] = imu->z;
 
-	json_doc[doc_helper.AddLineGraph("Position")] = imu->GetPosition();
+	json_doc[doc_helper.AddLineGraph("Sharp sensor")] = analogRead(R_SHARP_VOUT);
 
 	dist[VL53L5CX::FW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX FW", 8, 8, 0, 1000));
 	dist[VL53L5CX::BW] = json_doc.createNestedArray(doc_helper.AddHeatmap("VL53L5LX BW", 8, 8, 0, 1000));

@@ -1,5 +1,7 @@
 #include "Motors.h"
 
+//#define ROBOT_2
+
 Motors::Motors(): l_motor_power_(0), r_motor_power_(0)
 {
 	pinMode(R_PIN_MOTOR_L_DIR, OUTPUT);
@@ -18,6 +20,16 @@ void Motors::SetPower(int32_t left, int32_t right)
 {
 	l_motor_power_ = clamp(left, -100, 100);
 	r_motor_power_ = clamp(right, -100, 100);
+	#ifdef ROBOT_2
+		if (l_motor_power_ != 0)
+		{
+			(l_motor_power_ < 0) ? l_motor_power_ += 20 : l_motor_power_ -= 20;
+		}
+		if (r_motor_power_ != 0)
+		{
+			(r_motor_power_ < 0) ? r_motor_power_ += 20 : r_motor_power_ -= 20;
+		}
+	#endif
 	if (left > 0)
 		digitalWriteFast(R_PIN_MOTOR_L_DIR, HIGH);
 	else

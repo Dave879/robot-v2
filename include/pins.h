@@ -29,6 +29,8 @@
 #define R_IMU_EXT_CLK_SPI_PIN 9
 #define R_IMU_INT_SPI_PIN 41
 
+#define R_SHARP_VOUT 40
+
 #define R_BUZZER_PIN 3
 
 #define OPENMV_SX Serial2

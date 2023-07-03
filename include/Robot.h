@@ -32,6 +32,7 @@ private:
 	uint32_t time_in_ramp = 0;
 	bool was_in_ramp = false;
 	bool going_down_ramp = false;
+	bool bumper_stair_while_going_to_tile = false;
 	/*
 		bool dont_look_back = false;
 	*/
@@ -98,11 +99,14 @@ private:
 	bool CanGoOn();
 	bool CanBumpBack();
 	bool FrontWall();
+	bool BlackTileRight();
+	bool BlackTileLeft();
 	bool BlackTile();
 	bool BlueTile();
 	void DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited, bool blue_tile);
 	void Turn(int16_t degree);
 	void Straighten();
+	void CenterTile();
 	bool NotInRamp();
 	void TurnRight();
 	void TurnLeft();
@@ -117,6 +121,7 @@ private:
 	bool VictimFound();
 	void DropKit(int8_t number_of_kits, bool left_victim);
 	void AfterTurnVictimDetection();
+
 
 	double old_gyro_value;
 
@@ -174,8 +179,6 @@ public:
 	Robot(bool cold_start = true);
 	void Run();
 	~Robot();
-
-	void TestDeadReckoning();
 
 	/**
 	 * Robot peripheral interaction

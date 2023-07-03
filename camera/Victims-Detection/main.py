@@ -12,17 +12,18 @@ uart.init(baudrate=115200, timeout_char=1)
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-red =(10, 100, 20, 127, 0, 127) # generic_red_thresholds
-green =(10, 50, -128, -20, -1, 127) # generic_green_thresholds
-yellow=(20, 100, -15, 10, 20, 127) # generic_yellow_thresholds
-black=(0, 15, -10, 10, -10, 10) # generic_black_thresholds
+red =(10, 100, 20, 127, 10, 127) # generic_red_thresholds
+green =(5, 100, -128, -15, 10, 127) # generic_green_thresholds
+yellow=(20, 100, -10, 40, 20, 127) # generic_yellow_thresholds
+black=(0, 15, -128, 127, -128, 127) # generic_black_thresholds
 
-pixels_threshold = 80
-area_threshold = 50
+pixels_threshold = 50
+area_threshold = 300
 
-thresholds = [red, green, yellow, black]
+black_pixels_threshold = 10
+black_area_threshold = 90
 
-
+thresholds = [green, yellow, red]
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
 # returned by "find_blobs" below. Change "pixels_threshold" and "area_threshold" if you change the
 # camera resolution. Don't set "merge=True" becuase that will merge blobs which we don't want here.
@@ -89,14 +90,14 @@ while(True):
             red_led.off()
             need_to_stop = False
             img = sensor.snapshot()
+            img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
+            img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
+            img.draw_circle(15, 9, 27, (255,255,255), 1, True)
+            img.draw_circle(150, 7, 27, (255,255,255), 1, True)
+
             for i in thresholds:
-                for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
-                    if blob.cy() < 32 or blob.cy() > 100:
-                        continue
-                    if i == black:
-                        print("Black")
-                        need_to_stop = True
-                    elif i == green:
+                for blob in img.find_blobs([i], pixels_threshold=black_pixels_threshold, area_threshold=black_area_threshold):
+                    if i == green:
                         print("green")
                         uart.writechar(0 + 48) # Nubmer of kits
                     elif i == yellow or red:
@@ -105,6 +106,18 @@ while(True):
                             print("Yellow")
                         else:
                             print("Red")
+
+            img = sensor.snapshot()
+            img.histeq(True)
+            img.median(True)
+            img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
+            img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
+            img.draw_circle(15, 9, 27, (255,255,255), 1, True)
+            img.draw_circle(150, 7, 27, (255,255,255), 1, True)
+
+            for blob in img.find_blobs([black], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
+                print("Black")
+                need_to_stop = True
 
             if need_to_stop:
                 uart.writechar(9 + 48) # Teel teensy 4.1 if there are black victims
@@ -117,8 +130,16 @@ while(True):
             data = uart.read().decode('utf-8').rstrip()
             if  data != '8':
                 continue
-            #mg.lens_corr(1.8)
+
             img = sensor.snapshot()
+            img.histeq(True)
+            img.median(True)
+            img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
+            img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
+            img.draw_circle(15, 9, 27, (255,255,255), 1, True)
+            img.draw_circle(150, 7, 27, (255,255,255), 1, True)
+
+            #mg.lens_corr(1.8)
             img2.draw_rectangle(0,0, img2.width(), img2.height(), (255,255,255), fill=True)
             img2.draw_image(img, 0 ,math.floor(img2.height()/2 - img.height()/2))
 
