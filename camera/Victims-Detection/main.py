@@ -15,13 +15,13 @@ uart.init(baudrate=115200, timeout_char=1)
 red =(10, 100, 20, 127, 10, 127) # generic_red_thresholds
 green =(5, 100, -128, -15, 10, 127) # generic_green_thresholds
 yellow=(20, 100, -10, 20, 20, 127) # generic_yellow_thresholds
-black=(0, 15, -128, 127, -128, 127) # generic_black_thresholds
+black=(0, 25, -128, 127, -128, 127) # generic_black_thresholds
 
 pixels_threshold = 100
 area_threshold = 300
 
 black_pixels_threshold = 10
-black_area_threshold = 90
+black_area_threshold = 80
 
 thresholds = [green, yellow, red]
 # Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are

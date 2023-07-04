@@ -26,6 +26,8 @@ private:
 	 * Navigation variables
 	 */
 	uint8_t consecutive_turns = 0;
+	bool using_millis_for_next_tile = false;
+	uint32_t millis_to_next_tile = 0;
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
 	bool just_found_black = false;
@@ -33,6 +35,7 @@ private:
 	bool was_in_ramp = false;
 	bool going_down_ramp = false;
 	bool bumper_stair_while_going_to_tile = false;
+	bool black_tile = false;
 	/*
 		bool dont_look_back = false;
 	*/
@@ -112,6 +115,7 @@ private:
 	void TurnRight();
 	void TurnLeft();
 	void TurnBack();
+	void SoftTurnDesiredAngle();
 	void FakeDelay(uint32_t time);
 	// victim variables
 	bool just_recived_from_openmv = false;

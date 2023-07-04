@@ -9,13 +9,13 @@ from pyb import LED
 red =(10, 100, 20, 127, 10, 127) # generic_red_thresholds
 green =(5, 100, -128, -15, 10, 127) # generic_green_thresholds
 yellow=(20, 100, -10, 20, 20, 127) # generic_yellow_thresholds
-black=(0, 15, -128, 127, -128, 127) # generic_black_thresholds
+black=(0, 20, -10, 10, -10, 10) # generic_black_thresholds
 
 pixels_threshold = 100
 area_threshold = 300
 
 black_pixels_threshold = 10
-black_area_threshold = 90
+black_area_threshold = 80
 
 thresholds = [green, yellow, red]
 
@@ -96,18 +96,18 @@ while(True):
             elif i == red:
                 print("Red")
 
-    img = sensor.snapshot()
-    img.histeq(adaptive=True, clip_limit=3)
+    #img = sensor.snapshot()
+    #img.histeq(adaptive=True, clip_limit=3)
     #img.median(True)
-    img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
-    img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
-    img.draw_circle(15, 9, 27, (255,255,255), 1, True)
-    img.draw_circle(150, 7, 27, (255,255,255), 1, True)
+    #img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
+    #img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
+    #img.draw_circle(15, 9, 27, (255,255,255), 1, True)
+    #img.draw_circle(150, 7, 27, (255,255,255), 1, True)
     for blob in img.find_blobs([black], pixels_threshold=black_pixels_threshold, area_threshold=black_area_threshold):
         print("Black")
         img = sensor.snapshot()
-        img.histeq(True)
-        img.median(True)
+        #img.histeq(True)
+        #img.median(True)
         img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
         img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
         img.draw_circle(15, 9, 27, (255,255,255), 1, True)
