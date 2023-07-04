@@ -8,10 +8,10 @@ from pyb import LED
 # The below thresholds track in general red/green/black/yellow things.
 red =(10, 100, 20, 127, 10, 127) # generic_red_thresholds
 green =(5, 100, -128, -15, 10, 127) # generic_green_thresholds
-yellow=(20, 100, -10, 40, 20, 127) # generic_yellow_thresholds
+yellow=(20, 100, -10, 20, 20, 127) # generic_yellow_thresholds
 black=(0, 15, -128, 127, -128, 127) # generic_black_thresholds
 
-pixels_threshold = 50
+pixels_threshold = 100
 area_threshold = 300
 
 black_pixels_threshold = 10
@@ -53,16 +53,23 @@ colors = [ # Add more colors if you are detecting more than 7 types of classes a
 # CAMERA
 
 time.sleep(1)
-
 sensor.reset()                         # Reset and initialize the sensor.
-sensor.set_auto_gain(False) # must be turned off for color tracking
-sensor.set_auto_whitebal(False) # must be turned off for color tracking
-sensor.set_auto_exposure(False)
 sensor.set_pixformat(sensor.RGB565)    # Set pixel format to RGB565
 sensor.set_framesize(sensor.QQVGA)      # Set frame size to QVGA (160x160)
 sensor.skip_frames(time=2000)          # Let the camera adjust.
-img2 = sensor.alloc_extra_fb(sensor.width(), sensor.width(), sensor.GRAYSCALE)
+sensor.set_auto_gain(False) # must be turned off for color tracking
+sensor.set_auto_whitebal(False) # must be turned off for color tracking
+sensor.set_auto_exposure(False)
+# Need to let the above settings get in...
+sensor.skip_frames(time = 500)
 
+# Auto gain control (AGC) is enabled by default. Calling the below function
+# disables sensor auto gain control. The additionally "gain_db"
+# argument then overrides the auto gain value after AGC is disabled.
+sensor.set_auto_gain(False, \
+    gain_db = 1.02222)
+
+img2 = sensor.alloc_extra_fb(sensor.width(), sensor.width(), sensor.GRAYSCALE)
 
 red_led = LED(1)
 blue_led = LED(3)
@@ -88,10 +95,10 @@ while(True):
                 print("Yellow")
             elif i == red:
                 print("Red")
-'''
+
     img = sensor.snapshot()
-    img.histeq(True)
-    img.median(True)
+    img.histeq(adaptive=True, clip_limit=3)
+    #img.median(True)
     img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
     img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
     img.draw_circle(15, 9, 27, (255,255,255), 1, True)
@@ -124,4 +131,3 @@ while(True):
                 center_y = math.floor(y + (h / 2))
                 print('x %d\ty %d' % (center_x, center_y))
                 img2.draw_circle((center_x, center_y, 12), color=colors[i], thickness=2)
-'''

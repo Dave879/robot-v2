@@ -82,6 +82,7 @@ private:
 	void LackOfProgressProcedure();
 	void GetAroundTileVisited(bool &left_already_visited, bool &front_already_visited, bool &right_already_visited);
 	bool NewTile();
+	bool NewTileGoingBack();
 
 	int16_t GetRightDistance();
 	int16_t GetLeftDistance();
@@ -122,24 +123,8 @@ private:
 	void DropKit(int8_t number_of_kits, bool left_victim);
 	void AfterTurnVictimDetection();
 
-
 	double old_gyro_value;
-
-	/**
-	 * PID controller variables
-	 */
-	uint32_t PID_start_time;
-	double PID_previous_error = 0;
-	double PID_integral = 0;
-	double PID_output = 0;
-	double PID_error = 0;
-	double PID_derivative = 0;
-
-	/**
-	 * PID controller functions
-	 */
 	double CalculateError(double currentYaw);
-	int16_t GetPIDOutputAndSec();
 
 	/**
 	 * Robot peripherals
