@@ -1394,17 +1394,27 @@ int16_t Robot::GetBackDistance()
 void Robot::SetNewTileDistances()
 {
 	SoftTurnDesiredAngle();
-	if (GetBackDistance() > 1300 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5)
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	UpdateSensorNumBlocking(VL53L5CX::FW);
+	if ((GetBackDistance() > 1300 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5) && (GetFrontDistance() > 1000 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5))
 	{
 		Serial.println("Uso i secondi.");
 		using_millis_for_next_tile = true;
 		millis_to_next_tile = millis() + TIME_TO_TILE;
 		return;
 	}
-	using_millis_for_next_tile = false;
 	Serial.println("Setto le nuove distanze per la prossima tile.");
-	UpdateSensorNumBlocking(VL53L5CX::BW);
-	back_distance_to_reach = (((GetBackDistance() / 280) + 1) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
+	if (GetBackDistance() > 1300 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5)
+	{
+		front_distance_to_reach = (((GetFrontDistance() / 280) - 1) * 300) + DISTANCE_FRONT_TO_CENTER_TILE;;
+		back_distance_to_reach = 6000;
+	}
+	else
+	{
+		back_distance_to_reach = (((GetBackDistance() / 280) + 1) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
+		front_distance_to_reach = 0;
+	}
+	using_millis_for_next_tile = false;
 	min_millis_to_next_tile = millis() + MIN_TIME_TO_TILE;
 	/*
 	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
@@ -1417,17 +1427,27 @@ void Robot::SetNewTileDistances()
 void Robot::SetCurrentTileDistances()
 {
 	SoftTurnDesiredAngle();
-	if (GetBackDistance() > 1300 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5)
+	UpdateSensorNumBlocking(VL53L5CX::BW);
+	UpdateSensorNumBlocking(VL53L5CX::FW);
+	if ((GetBackDistance() > 1300 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5) && (GetFrontDistance() > 1000 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5))
 	{
 		Serial.println("Uso i secondi.");
 		using_millis_for_next_tile = true;
-		millis_to_next_tile = millis() + 200;
+		millis_to_next_tile = millis() + 250;
 		return;
 	}
-	using_millis_for_next_tile = false;
 	Serial.println("Setto le nuove distanze per la tile corrente.");
-	UpdateSensorNumBlocking(VL53L5CX::BW);
-	back_distance_to_reach = (((GetBackDistance() / 280)) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
+	if (GetBackDistance() > 1300 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5)
+	{
+		front_distance_to_reach = ((GetFrontDistance() / 280) * 300) + DISTANCE_FRONT_TO_CENTER_TILE;
+		back_distance_to_reach = 6000;
+	}
+	else
+	{
+		back_distance_to_reach = ((GetBackDistance() / 280) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
+		front_distance_to_reach = 0;
+	}
+	using_millis_for_next_tile = false;
 	min_millis_to_next_tile = millis();
 	/*
 	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
@@ -1732,17 +1752,18 @@ bool Robot::NewTile()
 {
 	if (!using_millis_for_next_tile)
 	{
-		if (GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5)
+		UpdateGyroBlocking();
+		if (((GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5) || (GetFrontDistance() <= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5)) && millis() >= min_millis_to_next_tile)
 		{
 			Serial.println("---NewTile---: ");
 			Serial.print("Posteriore: ");
 			Serial.println(GetBackDistance());
 			Serial.print("Posteriore da raggiungere: ");
 			Serial.println(back_distance_to_reach);
-		}
-		UpdateGyroBlocking();
-		if ((GetBackDistance() >= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5) && millis() >= min_millis_to_next_tile)
-		{
+			Serial.print("Frontale: ");
+			Serial.println(GetFrontDistance());
+			Serial.print("Frontale da raggiungere: ");
+			Serial.println(front_distance_to_reach);
 			if ((CalculateError(imu->z) < 4) || (CalculateError(imu->z) > -4))
 			{
 				return true;
@@ -1760,33 +1781,33 @@ bool Robot::NewTile()
 
 bool Robot::NewTileGoingBack()
 {
-	if (GetFrontDistance() >= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5)
+	if (!using_millis_for_next_tile)
 	{
-		Serial.println("---NewTileGoingBack---: ");
-		Serial.print("Frontale: ");
-		Serial.println(GetFrontDistance());
-		Serial.print("Frontale da raggiungere: ");
-		Serial.println(front_distance_to_reach);
-	}
-	if (GetBackDistance() <= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5)
-	{
-		Serial.println("---NewTileGoingBack---: ");
-		Serial.print("Posteriore: ");
-		Serial.println(GetBackDistance());
-		Serial.print("Posteriore da raggiungere: ");
-		Serial.println(back_distance_to_reach);
-	}
-	UpdateGyroBlocking();
-	if ((((GetFrontDistance() >= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5) || (GetBackDistance() <= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5))))
-	{
-		if (((CalculateError(imu->z) < 5) || (CalculateError(imu->z) > -5)))
+		UpdateGyroBlocking();
+		if (((GetBackDistance() <= back_distance_to_reach && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] == 5) || (GetFrontDistance() >= front_distance_to_reach && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5)) && millis() >= min_millis_to_next_tile)
 		{
-			return true;
+			Serial.println("---NewTile---: ");
+			Serial.print("Posteriore: ");
+			Serial.println(GetBackDistance());
+			Serial.print("Posteriore da raggiungere: ");
+			Serial.println(back_distance_to_reach);
+			Serial.print("Frontale: ");
+			Serial.println(GetFrontDistance());
+			Serial.print("Frontale da raggiungere: ");
+			Serial.println(front_distance_to_reach);
+			if ((CalculateError(imu->z) < 4) || (CalculateError(imu->z) > -4))
+			{
+				return true;
+			}
+			SoftTurnDesiredAngle();
+			return false;
 		}
-		SoftTurnDesiredAngle();
 		return false;
 	}
-	return false;
+	else
+	{
+		return millis() >= millis_to_next_tile;
+	}
 }
 
 void Robot::FindVictim()
@@ -2065,7 +2086,7 @@ void Robot::CenterTileGoingOn()
 		FakeDelay(100);
 		SetCurrentTileDistances();
 		ms->SetPower(SPEED, SPEED);
-		while (!NewTileGoingBack())
+		while (!NewTile())
 		{
 			UpdateSensorNumBlocking(VL53L5CX::FW);
 			UpdateSensorNumBlocking(VL53L5CX::BW);
