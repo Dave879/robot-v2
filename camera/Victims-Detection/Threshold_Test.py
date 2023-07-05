@@ -6,13 +6,13 @@ from pyb import LED
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-red =(10, 100, 20, 127, 10, 127) # generic_red_thresholds
-green =(5, 100, -128, -15, 10, 127) # generic_green_thresholds
+red = (20, 60, 36, 65, 0, 60) #(15, 58, 30, 127, 10, 45) # generic_red_thresholds
+green =(30, 80, -128, -15, -30, 30) # generic_green_thresholds
 yellow=(20, 100, -10, 20, 20, 127) # generic_yellow_thresholds
 black=(0, 20, -10, 10, -10, 10) # generic_black_thresholds
 
-pixels_threshold = 100
-area_threshold = 300
+pixels_threshold = 300
+area_threshold = 800
 
 black_pixels_threshold = 10
 black_area_threshold = 80
@@ -57,17 +57,12 @@ sensor.reset()                         # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565)    # Set pixel format to RGB565
 sensor.set_framesize(sensor.QQVGA)      # Set frame size to QVGA (160x160)
 sensor.skip_frames(time=2000)          # Let the camera adjust.
-sensor.set_auto_gain(False) # must be turned off for color tracking
-sensor.set_auto_whitebal(False) # must be turned off for color tracking
-sensor.set_auto_exposure(False)
+sensor.set_auto_exposure(False, exposure_us=15157)
+sensor.set_auto_whitebal(False, rgb_gain_db=(62.0837, 60.2071, 62.627)) # must be turned off for color tracking
+sensor.set_auto_gain(False, gain_db=-0.000014)
 # Need to let the above settings get in...
 sensor.skip_frames(time = 500)
 
-# Auto gain control (AGC) is enabled by default. Calling the below function
-# disables sensor auto gain control. The additionally "gain_db"
-# argument then overrides the auto gain value after AGC is disabled.
-sensor.set_auto_gain(False, \
-    gain_db = 1.02222)
 
 img2 = sensor.alloc_extra_fb(sensor.width(), sensor.width(), sensor.GRAYSCALE)
 
@@ -77,41 +72,43 @@ green_led = LED(2)
 
 while(True):
     img = sensor.snapshot()
+    print("Exposure == %f" % sensor.get_exposure_us())
+    print("Gain == %f" % sensor.get_gain_db())
+    print("White balance == " + str(sensor.get_rgb_gain_db()))
+
     img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
     img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
     img.draw_circle(15, 9, 27, (255,255,255), 1, True)
     img.draw_circle(150, 7, 27, (255,255,255), 1, True)
 
+    green_victim = False
+    yellow_victim = False
+    red_victim = False
+
     for i in thresholds:
         for blob in img.find_blobs([i], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
             img.draw_rectangle(blob.rect())
             img.draw_cross(blob.cx(), blob.cy())
+            print(blob.pixels())
 
             img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
 
             if i == green:
-                print("Green")
+                green_victim = True
             elif i == yellow:
-                print("Yellow")
+                yellow_victim = True
             elif i == red:
-                print("Red")
+                red_victim = True
 
-    #img = sensor.snapshot()
-    #img.histeq(adaptive=True, clip_limit=3)
-    #img.median(True)
-    #img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
-    #img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
-    #img.draw_circle(15, 9, 27, (255,255,255), 1, True)
-    #img.draw_circle(150, 7, 27, (255,255,255), 1, True)
+    if green_victim:
+        print("green")
+    if yellow_victim:
+        print("Yellow")
+    if red_victim:
+        print("Red")
+
     for blob in img.find_blobs([black], pixels_threshold=black_pixels_threshold, area_threshold=black_area_threshold):
         print("Black")
-        img = sensor.snapshot()
-        #img.histeq(True)
-        #img.median(True)
-        img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
-        img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
-        img.draw_circle(15, 9, 27, (255,255,255), 1, True)
-        img.draw_circle(150, 7, 27, (255,255,255), 1, True)
         #img.lens_corr(1.8)
         img2.draw_rectangle(0,0, img2.width(), img2.height(), (255,255,255), fill=True)
         img2.draw_image(img, 0 ,math.floor(img2.height()/2 - img.height()/2))

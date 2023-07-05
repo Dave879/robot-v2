@@ -12,13 +12,13 @@ uart.init(baudrate=115200, timeout_char=1)
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-red =(10, 100, 20, 127, 10, 127) # generic_red_thresholds
-green =(5, 100, -128, -15, 10, 127) # generic_green_thresholds
+red = (20, 60, 36, 65, 0, 60) #(15, 58, 30, 127, 10, 45) # generic_red_thresholds
+green =(30, 80, -128, -15, -30, 30) # generic_green_thresholds
 yellow=(20, 100, -10, 20, 20, 127) # generic_yellow_thresholds
-black=(0, 25, -128, 127, -128, 127) # generic_black_thresholds
+black=(0, 20, -10, 10, -10, 10) # generic_black_thresholds
 
-pixels_threshold = 100
-area_threshold = 300
+pixels_threshold = 300
+area_threshold = 800
 
 black_pixels_threshold = 10
 black_area_threshold = 80
@@ -62,17 +62,11 @@ sensor.reset()                         # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565)    # Set pixel format to RGB565
 sensor.set_framesize(sensor.QQVGA)      # Set frame size to QVGA (160x160)
 sensor.skip_frames(time=2000)          # Let the camera adjust.
-sensor.set_auto_gain(False) # must be turned off for color tracking
-sensor.set_auto_whitebal(False) # must be turned off for color tracking
-sensor.set_auto_exposure(False)
+sensor.set_auto_exposure(False, exposure_us=15157)
+sensor.set_auto_whitebal(False, rgb_gain_db=(62.0837, 60.2071, 62.627)) # must be turned off for color tracking
+sensor.set_auto_gain(False, gain_db=-0.000014)
 # Need to let the above settings get in...
 sensor.skip_frames(time = 500)
-
-# Auto gain control (AGC) is enabled by default. Calling the below function
-# disables sensor auto gain control. The additionally "gain_db"
-# argument then overrides the auto gain value after AGC is disabled.
-sensor.set_auto_gain(False, \
-    gain_db = 1.02222)
 
 img2 = sensor.alloc_extra_fb(sensor.width(), sensor.width(), sensor.GRAYSCALE)
 
@@ -87,10 +81,6 @@ while(True):
         blue_led.on()
         data = uart.read().decode('utf-8').rstrip()
         print(data)
-        # Requesting teensy 4.1 to verify that openmv is up and running
-        #if data == '0':
-            # Send a confirmation message to teensy 4.1
-        #    uart.writechar(5)
         # Signal to start the search for victims
         if data == '9':
             print("OpenMV inizia a cercare...")
@@ -102,25 +92,28 @@ while(True):
             img.draw_circle(15, 9, 27, (255,255,255), 1, True)
             img.draw_circle(150, 7, 27, (255,255,255), 1, True)
 
+            green_victim = False
+            yellow_victim = False
+            red_victim = False
+
             for i in thresholds:
                 for blob in img.find_blobs([i], pixels_threshold=black_pixels_threshold, area_threshold=black_area_threshold):
                     if i == green:
-                        print("green")
-                        uart.writechar(0 + 48) # Nubmer of kits
-                    elif i == yellow or red:
-                        uart.writechar(1 + 48)
-                        if i == yellow:
-                            print("Yellow")
-                        else:
-                            print("Red")
+                        green_victim = True
+                    elif i == yellow:
+                        yellow_victim = True
+                    elif i == red:
+                        red_victim = True
 
-            img = sensor.snapshot()
-            img.histeq(adaptive=True, clip_limit=3)
-            #img.median(True)
-            img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
-            img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
-            img.draw_circle(15, 9, 27, (255,255,255), 1, True)
-            img.draw_circle(150, 7, 27, (255,255,255), 1, True)
+            if green_victim:
+                print("green")
+                uart.writechar(0 + 48) # Nubmer of kits
+            if yellow_victim:
+                print("Yellow")
+                uart.writechar(1 + 48)
+            if red_victim:
+                print("Red")
+                uart.writechar(1 + 48)
 
             for blob in img.find_blobs([black], pixels_threshold=pixels_threshold, area_threshold=area_threshold):
                 print("Black")
@@ -141,14 +134,6 @@ while(True):
                 continue
 
             blue_led.on()
-            img = sensor.snapshot()
-            img.histeq(True)
-            img.median(True)
-            img.draw_rectangle(0,img.height()-25,img.width(), 25, (255,255,255), 1, True)
-            img.draw_rectangle(0,0,img.width(), 18, (255,255,255), 1, True)
-            img.draw_circle(15, 9, 27, (255,255,255), 1, True)
-            img.draw_circle(150, 7, 27, (255,255,255), 1, True)
-
             #mg.lens_corr(1.8)
             img2.draw_rectangle(0,0, img2.width(), img2.height(), (255,255,255), fill=True)
             img2.draw_image(img, 0 ,math.floor(img2.height()/2 - img.height()/2))
