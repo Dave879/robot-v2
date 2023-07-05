@@ -102,7 +102,6 @@ void Robot::Run()
 	{
 		if (imu->y < -15 || imu->y > 15)
 		{
-			digitalWriteFast(R_LED3_PIN, HIGH);
 			Serial.println("possibile Rampa");
 			if (!was_in_ramp)
 			{
@@ -113,7 +112,6 @@ void Robot::Run()
 		}
 		else if (was_in_ramp)
 		{
-			digitalWriteFast(R_LED3_PIN, LOW);
 			was_in_ramp = false;
 			if (millis() - time_in_ramp > MIN_TIME_RAMP)
 			{
@@ -314,10 +312,7 @@ void Robot::Run()
 		{
 			Serial.print("Sono arrivato nella nuova tile. Con direzione: ");
 			Serial.println(direction);
-			digitalWriteFast(R_LED1_PIN, HIGH);
-			digitalWriteFast(R_LED2_PIN, HIGH);
-			digitalWriteFast(R_LED3_PIN, HIGH);
-			digitalWriteFast(R_LED4_PIN, HIGH);
+			tone(R_BUZZER_PIN, 3500, 50);
 
 			// Blue tile check
 			bool blue_tile = false;
@@ -329,16 +324,8 @@ void Robot::Run()
 				// Lampeggio per indicare la tile blue
 				for (int8_t i = 0; i < 5; i++)
 				{
-					digitalWriteFast(R_LED2_PIN, HIGH);
-					digitalWriteFast(R_LED4_PIN, HIGH);
-					FakeDelay(500);
-					digitalWriteFast(R_LED1_PIN, HIGH);
-					digitalWriteFast(R_LED3_PIN, HIGH);
-					FakeDelay(500);
-					digitalWriteFast(R_LED1_PIN, LOW);
-					digitalWriteFast(R_LED2_PIN, LOW);
-					digitalWriteFast(R_LED3_PIN, LOW);
-					digitalWriteFast(R_LED4_PIN, LOW);
+					tone(R_BUZZER_PIN, 4000, 200);
+					FakeDelay(1000);
 				}
 			}
 
@@ -474,10 +461,6 @@ void Robot::Run()
 			}
 
 			bumper_stair_while_going_to_tile = false;
-			digitalWriteFast(R_LED1_PIN, LOW);
-			digitalWriteFast(R_LED2_PIN, LOW);
-			digitalWriteFast(R_LED3_PIN, LOW);
-			digitalWriteFast(R_LED4_PIN, LOW);
 		}
 		// Proseguo diretto
 		else
