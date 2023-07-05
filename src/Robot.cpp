@@ -1817,30 +1817,28 @@ void Robot::FindVictim()
 	{
 		Serial.println("Ci sono dei muretti.");
 		bool centred = false;
-		CenterTile();
+		CenterTileGoingBack();
 		if (GetRightDistance() < MIN_DISTANCE_TO_TURN_MM)
 		{
 			if (GetRightDistance() < MIN_DISTANCE_TO_CENTER_TILE)
 			{
 				Serial.println("Sono troppo vicino al muro di destra mi sposto.");
-				Turn(-90);
+				// Turn pesante e poi sbatto dietro o softTurn
+				//Turn(-90);
+				SoftTurn(-90);
 				consecutive_turns++;
-				ms->SetPower(SPEED, SPEED);
-				FakeDelay(80);
-				ms->StopMotors();
-				Turn(90);
+				CenterTileGoingOn();
+				SoftTurn(90);
 				consecutive_turns++;
 				centred = true;
 			}
 			else if (GetRightDistance() > MAX_DISTANCE_TO_CENTER_TILE)
 			{
 				Serial.println("Sono troppo distante dal muro di destra mi sposto.");
-				Turn(90);
+				SoftTurn(-90);
 				consecutive_turns++;
-				ms->SetPower(SPEED, SPEED);
-				FakeDelay(80);
-				ms->StopMotors();
-				Turn(-90);
+				CenterTileGoingBack();
+				SoftTurn(90);
 				consecutive_turns++;
 				centred = true;
 			}
@@ -1857,21 +1855,17 @@ void Robot::FindVictim()
 				Serial.println("Sono troppo vicino al muro di sinistra mi sposto.");
 				Turn(90);
 				consecutive_turns++;
-				ms->SetPower(SPEED, SPEED);
-				FakeDelay(100);
-				ms->StopMotors();
+				CenterTileGoingOn();
 				Turn(-90);
 				consecutive_turns++;
 			}
 			else if (GetLeftDistance() > MAX_DISTANCE_TO_CENTER_TILE && !centred)
 			{
 				Serial.println("Sono troppo vicino dal muro di sinistra mi sposto.");
-				Turn(-90);
-				consecutive_turns++;
-				ms->SetPower(SPEED, SPEED);
-				FakeDelay(100);
-				ms->StopMotors();
 				Turn(90);
+				consecutive_turns++;
+				CenterTileGoingBack();
+				Turn(-90);
 				consecutive_turns++;
 			}
 			Serial.println("invio sengale muro sinistra.");
@@ -2055,9 +2049,9 @@ void Robot::Straighten()
 	desired_angle = 0;
 }
 
-void Robot::CenterTile()
+void Robot::CenterTileGoingBack()
 {
-	Serial.println("CenterTile");
+	Serial.println("CenterTileGoingBack");
 	ms->StopMotors();
 	if (NotInRamp() && !bumper_stair_while_going_to_tile && !using_millis_for_next_tile)
 	{
@@ -2066,6 +2060,28 @@ void Robot::CenterTile()
 		FakeDelay(100);
 		SetCurrentTileDistances();
 		ms->SetPower(-SPEED, -SPEED);
+		while (!NewTileGoingBack())
+		{
+			UpdateSensorNumBlocking(VL53L5CX::FW);
+			UpdateSensorNumBlocking(VL53L5CX::BW);
+		}
+		ms->StopMotors();
+		FakeDelay(100);
+		UpdateAllDistanceSensorsBlocking();
+	}
+}
+
+void Robot::CenterTileGoingOn()
+{
+	Serial.println("CenterTileGoingOn");
+	ms->StopMotors();
+	if (NotInRamp() && !bumper_stair_while_going_to_tile && !using_millis_for_next_tile)
+	{
+		SoftTurnDesiredAngle();
+		ms->StopMotors();
+		FakeDelay(100);
+		SetCurrentTileDistances();
+		ms->SetPower(SPEED, SPEED);
 		while (!NewTileGoingBack())
 		{
 			UpdateSensorNumBlocking(VL53L5CX::FW);
@@ -2155,7 +2171,7 @@ void Robot::Turn(int16_t degree)
 		while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(-TURN_SPEED - abs(imu->z / 2), TURN_SPEED + abs(imu->z / 2));
+			ms->SetPower(-TURN_SPEED - abs(imu->y / 2), TURN_SPEED + abs(imu->y / 2));
 		}
 	}
 	else // Giro a sinistra o indietro
@@ -2182,21 +2198,53 @@ void Robot::SoftTurnDesiredAngle()
 	if (abs(imu->z) >= abs(desired_angle) + 1)
 	{
 		Serial.println("Corrego prima di prendere le distanze>");
-		while (imu->z <= desired_angle - ADDITIONAL_ANGLE_TO_OVERCOME)
+		// Forse mettere - 1 e non - 3
+		while (imu->z <= desired_angle - 3)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(-TURN_SPEED + 25, TURN_SPEED - 25);
+			ms->SetPower(-50, 50);
 		}
 	}
 	else
 	{
 		Serial.println("Corrego prima di prendere le distanze>");
-		while (imu->z >= desired_angle + ADDITIONAL_ANGLE_TO_OVERCOME)
+		while (imu->z >= desired_angle + 3)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(TURN_SPEED - 25, -TURN_SPEED + 25);
+			ms->SetPower(50, -50);
 		}
 	}
+}
+
+void Robot::SoftTurn(int16_t degree)
+{
+	// Output metodo Turn()
+	Serial.println("Metodo Turn: Inizio la manovra!");
+	// desired_angle = mpu_data.x + degree;
+	desired_angle += degree;
+	// Controllo se devo girare a destra o sinistra
+	if (degree > 0) // Giro a destra
+	{
+		Serial.println("Giro destra ->");
+		while (imu->z <= desired_angle - 1)
+		{
+			UpdateGyroBlocking();
+			ms->SetPower(-50 - abs(imu->y / 3), 50 + abs(imu->y / 3));
+		}
+	}
+	else // Giro a sinistra o indietro
+	{
+		Serial.println("Giro sinistra <-");
+		while (imu->z >= desired_angle + 1)
+		{
+			UpdateGyroBlocking();
+			ms->SetPower(50 + abs(imu->y / 3), -50 - abs(imu->y / 3));
+		}
+	}
+	// Stop dei motori
+	ms->StopMotors();
+	FakeDelay(100);
+	Serial.println("Metodo Soft Turn: giro completato.");
 }
 
 void Robot::FakeDelay(uint32_t time)

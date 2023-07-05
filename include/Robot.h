@@ -111,12 +111,14 @@ private:
 	void DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked, bool tile_already_visited, bool blue_tile);
 	void Turn(int16_t degree);
 	void Straighten();
-	void CenterTile();
+	void CenterTileGoingBack();
+	void CenterTileGoingOn();
 	bool NotInRamp();
 	void TurnRight();
 	void TurnLeft();
 	void TurnBack();
 	void SoftTurnDesiredAngle();
+	void SoftTurn(int16_t degree);
 	void FakeDelay(uint32_t time);
 	// victim variables
 	bool just_recived_from_openmv = false;
