@@ -92,6 +92,7 @@ void ChangeAdjacencyListWeight(int32_t index_tile, uint16_t weight, std::vector<
 // It searches for the specified edge and removes it from the adjacency list of the source node.
 void RemoveHalfEdge(int32_t index_from, int32_t index_to, std::vector<Vertex> &graph_)
 {
+  /* TODO */
   for (HalfEdge *edges = graph_.at(index_from).adjacency_list; edges != nullptr; edges = edges->next_edge)
   {
     if (edges->vertex_index == index_to)
@@ -183,29 +184,15 @@ bool graph::RemoveEdge(Tile from, Tile to)
 bool graph::RemoveTileAdjacencyList(Tile tile)
 {
   int32_t index_tile = GetNode(tile);
-  if (index_tile < 0)
+  if (index_tile == -1)
     return false;
   if (graph_.at(index_tile).adjacency_list == nullptr)
     return false;
   HalfEdge *edges = graph_.at(index_tile).adjacency_list;
   while (edges != nullptr)
   {
-    Serial.print("Elimino edge with index: ");
-    Serial.println(index_tile);
-    Serial.println(graph_.at(index_tile).tile);
-    Serial.print("Con Edge wirh vertex_index : ");
-    Serial.println(edges->vertex_index);
-    Serial.println(graph_.at(edges->vertex_index).tile);
-
     RemoveEdge(graph_.at(edges->vertex_index).tile, graph_.at(index_tile).tile);
-    if (edges == nullptr)
-    {
-      return true;
-    } 
     edges = edges->next_edge;
-    index_tile = GetNode(tile);
-    if (index_tile < 0 || edges->vertex_index < 0 || edges->vertex_index > graph_.size()-1)
-      return true;
   }
   return true;
 }

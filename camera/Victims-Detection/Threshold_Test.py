@@ -6,16 +6,16 @@ from pyb import LED
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/black/yellow things.
-red = (20, 60, 36, 65, 0, 60) #(15, 58, 30, 127, 10, 45) # generic_red_thresholds
+red = (5, 60, 10, 55, 5, 65) #(15, 58, 30, 127, 10, 45) # generic_red_thresholds
 green =(30, 80, -128, -15, -30, 30) # generic_green_thresholds
 yellow=(20, 100, -10, 20, 20, 127) # generic_yellow_thresholds
-black=(0, 20, -10, 10, -10, 10) # generic_black_thresholds
+black=(0, 20, -8, 8, -8, 8) # generic_black_thresholds
 
-pixels_threshold = 300
-area_threshold = 800
+pixels_threshold = 100
+area_threshold = 200
 
-black_pixels_threshold = 10
-black_area_threshold = 80
+black_pixels_threshold = 20
+black_area_threshold = 100
 
 thresholds = [green, yellow, red]
 
@@ -57,8 +57,8 @@ sensor.reset()                         # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565)    # Set pixel format to RGB565
 sensor.set_framesize(sensor.QQVGA)      # Set frame size to QVGA (160x160)
 sensor.skip_frames(time=2000)          # Let the camera adjust.
-sensor.set_auto_exposure(False, exposure_us=15157)
-sensor.set_auto_whitebal(False, rgb_gain_db=(62.0837, 60.2071, 62.627)) # must be turned off for color tracking
+sensor.set_auto_exposure(False, exposure_us=15158)
+sensor.set_auto_whitebal(False, rgb_gain_db=(62.0837, 60.2071, 62.8302)) # must be turned off for color tracking
 sensor.set_auto_gain(False, gain_db=-0.000014)
 # Need to let the above settings get in...
 sensor.skip_frames(time = 500)
@@ -106,6 +106,7 @@ while(True):
         print("Yellow")
     if red_victim:
         print("Red")
+
 
     for blob in img.find_blobs([black], pixels_threshold=black_pixels_threshold, area_threshold=black_area_threshold):
         print("Black")
