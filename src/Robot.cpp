@@ -144,6 +144,7 @@ void Robot::Run()
 						{
 							map->AddVertex(Tile{next_tile, current_x, current_z});
 							map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 3);
+							tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
 						}
 						else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
 						{
@@ -160,6 +161,7 @@ void Robot::Run()
 					{
 						map->AddVertex(Tile{current_y, next_tile, current_z});
 						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 3);
+						tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
 					}
 					else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
 					{
@@ -176,6 +178,7 @@ void Robot::Run()
 					{
 						map->AddVertex(Tile{next_tile, current_x, current_z});
 						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{next_tile, current_x, current_z}, 3);
+						tile_to_visit.push_back(Tile{next_tile, current_x, current_z});
 					}
 					else if (!map->GetAdjacencyList(Tile{next_tile, current_x, current_z}).empty())
 					{
@@ -192,6 +195,7 @@ void Robot::Run()
 					{
 						map->AddVertex(Tile{current_y, next_tile, current_z});
 						map->AddEdge(Tile{current_y, current_x, current_z}, Tile{current_y, next_tile, current_z}, 3);
+						tile_to_visit.push_back(Tile{current_y, next_tile, current_z});
 					}
 					else if (!map->GetAdjacencyList(Tile{current_y, next_tile, current_z}).empty())
 					{
