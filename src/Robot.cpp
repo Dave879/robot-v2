@@ -348,7 +348,7 @@ void Robot::Run()
 					black_tile = false;
 				}
 				ChangeMapPosition();
-				if (InTileToVisit(Tile{current_y, current_x, current_z}))
+				if (InTileToVisit(Tile{current_y, current_x, current_z}) && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 				{
 					FindVictim();
 				}
@@ -444,7 +444,7 @@ void Robot::Run()
 					Serial.println(tile_to_visit.at(i));
 				}
 
-				if (!current_tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+				if (!current_tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 				{
 					FindVictim();
 				}
@@ -777,7 +777,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 		// Se è tutto bloccato calcola il percorso migliore
 
 		// Se sono in una U controllo se ci sono vittime
-		if (!CanGoOn() && (!CanTurnLeft() || BlackTileLeft()) && (!CanTurnRight() || BlackTileRight()))
+		if (!CanGoOn() && (!CanTurnLeft() || BlackTileLeft()) && (!CanTurnRight() || BlackTileRight()) && !blue_tile && analogRead(R_SHARP_VOUT) >= 300 /*&& !(Tile{current_y, current_x, current_z} == Tile{0,0,0})*/)
 		{
 			Serial.println("Tutto bloccato.");
 			// Fermo il robot prima di girare
@@ -923,7 +923,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					// Giro a destra
 					TurnRight();
 					ms->StopMotors();
-					if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+					if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -935,7 +935,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro a destra
 				TurnRight();
 				ms->StopMotors();
-				if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+				if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -952,7 +952,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					// Giro a sinistra
 					TurnLeft();
 					ms->StopMotors();
-					if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+					if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -964,7 +964,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro a sinistra
 				TurnLeft();
 				ms->StopMotors();
-				if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+				if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -985,7 +985,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 					// Giro a destra
 					TurnRight();
 					ms->StopMotors();
-					if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+					if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -997,7 +997,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro a destra
 				TurnRight();
 				ms->StopMotors();
-				if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+				if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -1013,7 +1013,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				{
 					TurnLeft();
 					ms->StopMotors();
-					if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+					if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 					{
 						AfterTurnVictimDetection();
 					}
@@ -1025,7 +1025,7 @@ void Robot::DecideTurn(bool left_blocked, bool front_blocked, bool right_blocked
 				// Giro a sinistra
 				TurnLeft();
 				ms->StopMotors();
-				if (!tile_already_visited && !blue_tile && !(analogRead(R_SHARP_VOUT) < 300))
+				if (!tile_already_visited && !blue_tile && analogRead(R_SHARP_VOUT) >= 300)
 				{
 					AfterTurnVictimDetection();
 				}
@@ -1406,7 +1406,7 @@ void Robot::SetNewTileDistances()
 	SoftTurnDesiredAngle();
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	UpdateSensorNumBlocking(VL53L5CX::FW);
-	if ((GetBackDistance() > 1000 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5) && (GetFrontDistance() > 1000 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5))
+	if ((GetBackDistance() > 1000 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5) && (GetFrontDistance() > 1200 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5))
 	{
 		Serial.println("Uso i secondi.");
 		using_millis_for_next_tile = true;
@@ -1414,18 +1414,22 @@ void Robot::SetNewTileDistances()
 		return;
 	}
 	Serial.println("Setto le nuove distanze per la prossima tile.");
+	using_millis_for_next_tile = false;
+	min_millis_to_next_tile = millis() + MIN_TIME_TO_TILE;
 	if (GetBackDistance() > 1000 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5)
 	{
 		front_distance_to_reach = (((GetFrontDistance() / 280) - 1) * 300) + DISTANCE_FRONT_TO_CENTER_TILE;;
 		back_distance_to_reach = 6000;
+		return;
 	}
-	else
+	if (GetFrontDistance() > 1200 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5)
 	{
 		back_distance_to_reach = (((GetBackDistance() / 280) + 1) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
 		front_distance_to_reach = 0;
+		return;
 	}
-	using_millis_for_next_tile = false;
-	min_millis_to_next_tile = millis() + MIN_TIME_TO_TILE;
+	front_distance_to_reach = (((GetFrontDistance() / 280) - 1) * 300) + DISTANCE_FRONT_TO_CENTER_TILE;;
+	back_distance_to_reach = (((GetBackDistance() / 280) + 1) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
 	/*
 	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
@@ -1439,7 +1443,7 @@ void Robot::SetCurrentTileDistances()
 	SoftTurnDesiredAngle();
 	UpdateSensorNumBlocking(VL53L5CX::BW);
 	UpdateSensorNumBlocking(VL53L5CX::FW);
-	if ((GetBackDistance() > 1000 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5) && (GetFrontDistance() > 1000 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5))
+	if ((GetBackDistance() > 1000 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5) && (GetFrontDistance() > 1200 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5))
 	{
 		Serial.println("Uso i secondi.");
 		using_millis_for_next_tile = true;
@@ -1447,18 +1451,22 @@ void Robot::SetCurrentTileDistances()
 		return;
 	}
 	Serial.println("Setto le nuove distanze per la tile corrente.");
+	using_millis_for_next_tile = false;
+	min_millis_to_next_tile = millis();
 	if (GetBackDistance() > 1000 || lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL_BACK] != 5)
 	{
 		front_distance_to_reach = ((GetFrontDistance() / 280) * 300) + DISTANCE_FRONT_TO_CENTER_TILE;
 		back_distance_to_reach = 6000;
+		return;
 	}
-	else
+	if (GetFrontDistance() > 1200 || lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] != 5)
 	{
 		back_distance_to_reach = ((GetBackDistance() / 280) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
 		front_distance_to_reach = 0;
+		return;
 	}
-	using_millis_for_next_tile = false;
-	min_millis_to_next_tile = millis();
+	front_distance_to_reach = ((GetFrontDistance() / 280) * 300) + DISTANCE_FRONT_TO_CENTER_TILE;
+	back_distance_to_reach = ((GetBackDistance() / 280) * 300) + DISTANCE_BACK_TO_CENTER_TILE;
 	/*
 	if ((GetBackDistance() - (((GetBackDistance() / 300) * 320) + DISTANCE_BACK_TO_CENTER_TILE)) > 250 && lasers->sensors[VL53L5CX::BW]->GetData()->target_status[DISTANCE_SENSOR_CELL] == 5)
 	{
@@ -1867,19 +1875,19 @@ void Robot::FindVictim()
 			if (GetLeftDistance() < MIN_DISTANCE_TO_CENTER_TILE && !centred)
 			{
 				Serial.println("Sono troppo vicino al muro di sinistra mi sposto.");
-				Turn(90);
+				SoftTurn(90);
 				consecutive_turns++;
 				CenterTileGoingOn();
-				Turn(-90);
+				SoftTurn(-90);
 				consecutive_turns++;
 			}
 			else if (GetLeftDistance() > MAX_DISTANCE_TO_CENTER_TILE && !centred)
 			{
 				Serial.println("Sono troppo vicino dal muro di sinistra mi sposto.");
-				Turn(90);
+				SoftTurn(90);
 				consecutive_turns++;
 				CenterTileGoingBack();
-				Turn(-90);
+				SoftTurn(-90);
 				consecutive_turns++;
 			}
 			Serial.println("invio sengale muro sinistra.");
@@ -2241,19 +2249,19 @@ void Robot::SoftTurn(int16_t degree)
 	if (degree > 0) // Giro a destra
 	{
 		Serial.println("Giro destra ->");
-		while (imu->z <= desired_angle - 1)
+		while (imu->z <= desired_angle - 2)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(-55 - abs(imu->y / 0.7), 55 + abs(imu->y / 0.7));
+			ms->SetPower(-70 - abs(imu->y / 0.7), 70 + abs(imu->y / 0.7));
 		}
 	}
 	else // Giro a sinistra o indietro
 	{
 		Serial.println("Giro sinistra <-");
-		while (imu->z >= desired_angle + 1)
+		while (imu->z >= desired_angle + 2)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(55 + abs(imu->y / 1.5), -55 - abs(imu->y / 1.5));
+			ms->SetPower(70 + abs(imu->y / 1.5), -70 - abs(imu->y / 1.5));
 		}
 	}
 	// Stop dei motori
