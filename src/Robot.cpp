@@ -107,8 +107,53 @@ void Robot::Run()
 			{
 				time_in_ramp = millis();
 			}
-			was_in_ramp = true;
-			bumper_stair_while_going_to_tile = true;
+			if (BlackTile() && (millis() - time_in_ramp) > MIN_TIME_RAMP)
+			{
+				ms->SetPower(-70,-70);
+				while (imu->y > 4 || imu->y < -4)
+				{
+					Serial.println("Rampa vado avanti giro ]-4,4[");
+					UpdateGyroBlocking();
+				}
+				FakeDelay(150);
+				ms->StopMotors();
+				FakeDelay(150);
+
+				ChangeMapPosition();
+				Serial.println("Aggiungo il vertice della tile nera.");
+				map->AddVertex(Tile{current_y, current_x, current_z});
+				Serial.println("Rimuovo la sua adjlist.");
+				Serial.println(Tile{current_y, current_x, current_z});
+				Serial.println("Adjlist.");
+				map->RemoveTileAdjacencyList(Tile{current_y, current_x, current_z});
+				Serial.println("Adjlist rimossa.");
+				RemoveTileToVisit(Tile{current_y, current_x, current_z});
+				IncreaseDirection();
+				IncreaseDirection();
+				ChangeMapPosition();
+				ChangeMapPosition();
+				IncreaseDirection();
+				IncreaseDirection();
+				if (!path_to_tile.empty())
+				{
+					ChangeMapPosition();
+					path_to_tile.clear();
+					DecideTurn(true, true, true, true, false);
+				}
+				else
+				{
+					SetCurrentTileDistances();
+					black_tile = true;
+				}
+				cs->getData();
+				was_in_ramp = false;
+				bumper_stair_while_going_to_tile = false;
+			}
+			else
+			{
+				was_in_ramp = true;
+				bumper_stair_while_going_to_tile = true;
+			}
 		}
 		else if (was_in_ramp)
 		{
@@ -246,11 +291,6 @@ void Robot::Run()
 			Serial.println("Rimuovo la sua adjlist.");
 			Serial.println(Tile{current_y, current_x, current_z});
 			Serial.println("Adjlist.");
-			std::vector<Tile> black_adj = map->GetAdjacencyList(Tile{current_y, current_x, current_z});
-			for (size_t i = 0; i < black_adj.size(); i++)
-			{
-				Serial.println(black_adj.at(i));
-			}
 			map->RemoveTileAdjacencyList(Tile{current_y, current_x, current_z});
 			Serial.println("Adjlist rimossa.");
 			RemoveTileToVisit(Tile{current_y, current_x, current_z});
@@ -318,7 +358,7 @@ void Robot::Run()
 		}
 
 		// Controllo se ho raggiunto una nuova tile
-		if (NewTile() && NotInRamp())
+		if (NewTile() && (NotInRamp() || (GetFrontDistance() <= 15 && lasers->sensors[VL53L5CX::FW]->GetData()->target_status[DISTANCE_SENSOR_CELL_FRONT] == 5)))
 		{
 			Serial.print("Sono arrivato nella nuova tile. Con direzione: ");
 			Serial.println(direction);
@@ -326,6 +366,14 @@ void Robot::Run()
 
 			// Blue tile check
 			bool blue_tile = false;
+			cs->getData();
+			if (cs->c_comp < 320 && !BlueTile())
+			{
+				ms->SetPower(-SPEED, -SPEED);
+				FakeDelay(100);
+				ms->StopMotors();
+				cs->getData();
+			}
 			if (BlueTile())
 			{
 				ms->StopMotors();
@@ -2118,7 +2166,7 @@ void Robot::CenterTileGoingOn()
 
 bool Robot::NotInRamp()
 {
-	return (imu->y <= 5 && imu->y >= -5);
+	return (imu->y <= 6 && imu->y >= -6);
 }
 
 void Robot::TurnRight()

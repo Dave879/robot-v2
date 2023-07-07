@@ -25,7 +25,7 @@ boolean Color::begin(TwoWire *wireInterface)
   if ((isAvailable = tcs.begin(0x29, wireInterface)))
   {
     tcs.setGain(tcs34725Gain_t::TCS34725_GAIN_1X);
-    tcs.setIntegrationTime(TCS34725_INTEGRATIONTIME_2_4MS);
+    tcs.setIntegrationTime(TCS34725_INTEGRATIONTIME_24MS);
     tcs.setInterrupt(false);
     // setGainTime();
   }
