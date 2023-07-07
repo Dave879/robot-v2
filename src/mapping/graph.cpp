@@ -192,7 +192,10 @@ bool graph::RemoveTileAdjacencyList(Tile tile)
   while (edges != nullptr)
   {
     RemoveEdge(graph_.at(edges->vertex_index).tile, graph_.at(index_tile).tile);
-    edges = edges->next_edge;
+    if (edges != nullptr)
+    {
+      edges = edges->next_edge;
+    }
   }
   return true;
 }
