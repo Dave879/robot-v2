@@ -523,14 +523,14 @@ void Robot::Run()
 		// Proseguo diretto
 		else
 		{
-			int16_t power_to_add = imu->y / 2;
+			int16_t power_to_add = imu->y / 1.5;
 			if (power_to_add < -10)
 			{
 				power_to_add = -5;
 			}
 			if (imu->y > 15)
 			{
-				power_to_add = 25;
+				power_to_add = 35;
 			}
 			if (imu->z > desired_angle)
 			{
@@ -2300,7 +2300,7 @@ void Robot::SoftTurn(int16_t degree)
 		while (imu->z <= desired_angle - 2)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(-70 - abs(imu->y / 0.7), 70 + abs(imu->y / 0.7));
+			ms->SetPower(-85 - (abs(imu->y / 0.7)), 85 + (abs(imu->y / 0.7)));
 		}
 	}
 	else // Giro a sinistra o indietro
@@ -2309,7 +2309,7 @@ void Robot::SoftTurn(int16_t degree)
 		while (imu->z >= desired_angle + 2)
 		{
 			UpdateGyroBlocking();
-			ms->SetPower(70 + abs(imu->y / 1.5), -70 - abs(imu->y / 1.5));
+			ms->SetPower(85 + (abs(imu->y / 1.5)), -85 - (abs(imu->y / 1.5)));
 		}
 	}
 	// Stop dei motori
