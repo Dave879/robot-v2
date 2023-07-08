@@ -29,6 +29,7 @@ private:
 	bool using_millis_for_next_tile = false;
 	uint32_t millis_to_next_tile = 0;
 	uint32_t min_millis_to_next_tile = 0;
+	uint32_t time_started_turning = 0;
 	bool stop_the_robot = true;
 	bool first_time_pressed = false;
 	bool just_found_black = false;
