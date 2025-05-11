@@ -60,7 +60,7 @@ colors = [ # Add more colors if you are detecting more than 7 types of classes a
 time.sleep(1)
 sensor.reset()                         # Reset and initialize the sensor.
 sensor.set_pixformat(sensor.RGB565)    # Set pixel format to RGB565
-sensor.set_framesize(sensor.QQVGA)      # Set frame size to QVGA (160x160)
+sensor.set_framesize(sensor.QQVGA)      # Set frame size to QQVGA (160x120)
 sensor.skip_frames(time=2000)          # Let the camera adjust.
 sensor.set_auto_exposure(False, exposure_us=15158)
 sensor.set_auto_whitebal(False, rgb_gain_db=(62.0837, 60.2071, 62.8302)) # must be turned off for color tracking
